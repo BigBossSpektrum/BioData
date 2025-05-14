@@ -1,0 +1,11 @@
+asgiref==3.8.1
+Cython==3.1.0
+Django==5.2.1
+future==1.0.0
+ply==3.11
+pyzk==0.9
+six==1.17.0
+sqlparse==0.5.3
+thriftpy2==0.5.2
+tzdata==2025.2
+zk==0.9.4
