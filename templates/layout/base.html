@@ -1,0 +1,29 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Biométrico App{% endblock %}</title>
+
+    <!-- Bloque para estilos CSS propios de cada template -->
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+
+    {% block extra_css %}{% endblock %}
+
+</head>
+<body>
+    <header>
+        <h1>{% block header %}Panel de Control Biométrico{% endblock %}</h1>
+    </header>
+
+    <main>
+        {% block content %}
+        <!-- Contenido principal -->
+        {% endblock %}
+    </main>
+
+    <!-- Bloque para scripts JS -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

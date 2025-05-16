@@ -1,0 +1,19 @@
+.text-center {
+    text-align: center;
+    font-size: 40px;
+    color: #920606;
+}
+
+.container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: left;
+}
+
+.logo {
+    width: 100px;
+    height: 100px;
+    margin-right: 20px;
+    border-radius: 60px;
+}

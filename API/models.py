@@ -19,6 +19,7 @@ class RegistroAsistencia(models.Model):
 
     class Meta:
         ordering = ['-timestamp']
+        unique_together = ('usuario', 'timestamp', 'estado')
 
     def __str__(self):
         return f"{self.usuario} - {self.timestamp}"

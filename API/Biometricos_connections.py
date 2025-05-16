@@ -18,7 +18,7 @@ from API.models import UsuarioBiometrico, RegistroAsistencia
 
 def importar_datos_dispositivo():
     zk = ZK(
-        '192.168.0.9',
+        '192.168.0.3',
         port=4370,
         timeout=5,
         password=123456,

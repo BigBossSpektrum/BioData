@@ -1,0 +1,18 @@
+{% extends 'layout/base.html' %}
+{% load static %}
+
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+    <!-- Html Styles -->
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
+<div class="container">
+    <img class="logo" src="{% static 'img/unnamed.jpg' %}" alt="Logo">
+    <p class="text-center">Bienvenido a la aplicación Biométrico.</p>
+</div>
+
+<div>
+    <a href="{% url 'historial_asistencia' %}">Ir al historial</a>
+</div>
+{% endblock %}

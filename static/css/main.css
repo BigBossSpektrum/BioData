@@ -1,0 +1,16 @@
+      /* Estilos base que pueden ir aquí o en main.css */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f6f8fa;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #1d3557;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        main {
+            padding: 40px;
+        }
