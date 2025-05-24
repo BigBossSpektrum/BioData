@@ -1,12 +1,8 @@
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .Biometricos_connections import importar_datos_dispositivo  # si lo tienes en otro archivo
+# API/views.py
+from rest_framework import generics
+from .models import RegistroAsistencia
+from .serializers import RegistroAsistenciaSerializer
 
-@csrf_exempt
-def sincronizar_logs(request):
-    try:
-        logs = importar_datos_dispositivo()
-        return JsonResponse({'status': 'ok', 'data': logs})
-    except Exception as e:
-        print("❌ Error en la vista /logs/:", e)
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+class RegistroAsistenciaListView(generics.ListAPIView):
+    queryset = RegistroAsistencia.objects.select_related('usuario__turno').all()
+    serializer_class = RegistroAsistenciaSerializer

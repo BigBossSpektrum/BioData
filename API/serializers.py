@@ -1,28 +1,22 @@
+# API/serializers.py
 from rest_framework import serializers
-from .models import UsuarioBiometrico, RegistroAsistencia
+from .models import UsuarioBiometrico, RegistroAsistencia, JornadaLaboral
+
+class JornadaLaboralSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JornadaLaboral
+        fields = '__all__'
 
 class UsuarioBiometricoSerializer(serializers.ModelSerializer):
+    turno = JornadaLaboralSerializer()
+
     class Meta:
         model = UsuarioBiometrico
-        fields = '__all__'
-
+        fields = ['user_id', 'nombre', 'privilegio', 'activo', 'turno']
 
 class RegistroAsistenciaSerializer(serializers.ModelSerializer):
-    nombre_usuario = serializers.CharField(source='usuario.nombre', read_only=True)
-    user_id = serializers.CharField(source='usuario.user_id', read_only=True)
+    usuario = UsuarioBiometricoSerializer()
 
     class Meta:
         model = RegistroAsistencia
-        fields = ['id', 'user_id', 'nombre_usuario', 'entrada', 'salida', 'timestamp', 'estado']
-
-class ResumenAsistenciaSerializer(serializers.Serializer):
-    user_id = serializers.CharField()
-    nombre = serializers.CharField(allow_null=True)
-    privilegio = serializers.IntegerField()
-    entrada = serializers.DateTimeField(allow_null=True)
-    salida = serializers.DateTimeField(allow_null=True)
-    tiempo_trabajado = serializers.CharField()
-
-    class Meta:
-        model = RegistroAsistencia
-        fields = '__all__'
+        fields = ['id', 'usuario', 'timestamp', 'tipo']
