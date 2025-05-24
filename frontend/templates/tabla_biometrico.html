@@ -1,8 +1,9 @@
-<!DOCTYPE html>
-<html lang="es">
+{% extends 'layout/base.html' %}
+{% load static %}
+
+{% block title %}Historial de Asistencia{% endblock %}
+{% block content %}
 <head>
-    <meta charset="UTF-8">
-    <title>Historial de Asistencia</title>
     <style>
         table {
             width: 100%;
@@ -46,15 +47,7 @@
                     <td>{{ forloop.counter }}</td>
                     <td>{{ r.usuario.user_id }}</td>
                     <td>{{ r.usuario.nombre }}</td>
-                    <td>
-                        {% if r.estado == 0 %}
-                            Entrada
-                        {% elif r.estado == 1 %}
-                            Salida
-                        {% else %}
-                            {{ r.estado }}
-                        {% endif %}
-                    </td>
+                    <td>{{ r.tipo }}</td>
                     <td>{{ r.timestamp|date:"Y-m-d H:i:s" }}</td>
                 </tr>
             {% empty %}
@@ -63,4 +56,5 @@
         </tbody>
     </table>
 </body>
-</html>
+
+{% endblock %}

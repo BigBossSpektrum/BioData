@@ -1,7 +1,9 @@
 from django.shortcuts import render
 from API.models import RegistroAsistencia
 from datetime import timedelta
+from django.contrib.auth.decorators import login_required
 
+@login_required
 def home(request):
     return render(request, 'home.html')
 
@@ -38,7 +40,7 @@ def tabla_biometrico(request):
 
 def historial_asistencia(request):
     registros = RegistroAsistencia.objects.select_related('usuario').order_by('-timestamp')
-    return render(request, 'historial_asistencia.html', {
+    return render(request, 'tabla_biometrico.html', {
         'registros': registros
     })
 
