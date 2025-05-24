@@ -1,0 +1,61 @@
+/* Reset básico */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 0.95rem;
+  color: #333;
+  background-color: #fafafa;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Encabezado */
+thead {
+  background: linear-gradient(90deg, #4b6cb7, #182848);
+  color: #fff;
+  text-align: left;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Celdas encabezado */
+th, td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Zebra striping para filas */
+tbody tr:nth-child(even) {
+  background-color: #f0f4ff;
+}
+
+/* Hover en filas para mejorar foco */
+tbody tr:hover {
+  background-color: #d1dafb;
+  cursor: default;
+}
+
+/* Para evitar que se pegue el texto en móviles */
+td {
+  white-space: nowrap;
+}
+
+/* Contenedor para scroll horizontal en dispositivos pequeños */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* para suavizar scroll en iOS */
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  background-color: white;
+  padding: 10px 0;
+}
+
+/* Media query para textos más pequeños en pantallas muy chicas */
+@media (max-width: 480px) {
+  th, td {
+    padding: 8px 10px;
+    font-size: 0.85rem;
+  }
+}
