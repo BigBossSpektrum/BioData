@@ -15,13 +15,9 @@
 <body>
 <header>
     <nav>
-        <a class="logo" href="{% url 'home_biometrico' %}">
-            <h1>{% block header %}Panel de Control Biométrico{% endblock %}</h1>
-        </a>
 
         <ul class="navbar-links">
             <li><a href="{% url 'home_biometrico' %}">Inicio</a></li>
-            <li><a href="{% url 'tabla_biometrico' %}">Asistencia</a></li>
             <li><a href="{% url 'historial_asistencia' %}">Historial</a></li>
 
             {% if user.is_authenticated %}
