@@ -5,15 +5,16 @@
 {% block title %}Inicio{% endblock %}
 
 {% block content %}
-    <!-- Html Styles -->
-    <link rel="stylesheet" href="{% static 'css/frontend/home.css' %}">
-<div class="container">
-    <img class="logo" src="{% static 'img/unnamed.jpg' %}" alt="Logo">
-    <p class="text-center">Bienvenido a la aplicación Biométrico.</p>
-</div>
+<div class="container mt-5">
+    <h1>Bienvenido {{ usuario.username }}</h1>
+    <p>Resumen de asistencias del día: {{ asistencias_hoy.count }}</p>
 
-<div>
-    <a href="{% url 'historial_asistencia' %}">Ir al historial</a>
+    <ul>
+        {% for registro in asistencias_hoy %}
+            <li><strong>{{ registro.usuario.nombre }}</strong>: {{ registro.tipo }} - {{ registro.timestamp|date:"H:i:s" }}</li>
+        {% empty %}
+            <li>No hay asistencias registradas hoy.</li>
+        {% endfor %}
+    </ul>
 </div>
 {% endblock %}
-+

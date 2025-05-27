@@ -2,10 +2,19 @@ from django.shortcuts import render
 from API.models import RegistroAsistencia
 from datetime import datetime
 from django.contrib.auth.decorators import login_required
+from django.utils.timezone import now
 
 @login_required
-def home(request):
-    return render(request, 'home.html')
+def home_biometrico(request):
+    usuario = request.user
+    hoy = now().date()
+
+    asistencias_hoy = RegistroAsistencia.objects.filter(timestamp__date=hoy).select_related('usuario')
+
+    return render(request, 'home.html', {
+        'usuario': usuario,
+        'asistencias_hoy': asistencias_hoy,
+    })
 
 
 def historial_asistencia(request):
