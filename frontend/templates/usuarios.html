@@ -1,0 +1,33 @@
+{% extends 'layout/base.html' %}
+
+{% load static %}
+
+
+{% block content %}
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Privilegio</th>
+                <th>Activo</th>
+                <th>Turno</th>
+                <th>Entrada/Salida</th>
+                <th>Fecha/Hora</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in registros %}
+            <tr>
+                <td>{{ registro.id }}</td>
+                <td>{{ registro.usuario.nombre }}</td>
+                <td>{{ registro.usuario.privilegio }}</td>
+                <td>{{ registro.usuario.activo }}</td>
+                <td>{{ registro.usuario.turno.nombre }}</td>
+                <td>{{ registro.tipo }}</td>
+                <td>{{ registro.timestamp }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

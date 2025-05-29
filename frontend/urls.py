@@ -4,4 +4,5 @@ from . import views  # o los views que uses
 urlpatterns = [
     path('', views.home_biometrico, name='home_biometrico'),
     path('historial_asistencia/', views.historial_asistencia, name='historial_asistencia'),
+    path('usuarios-list/', views.usuarios_list, name='usuarios-list'),
 ]

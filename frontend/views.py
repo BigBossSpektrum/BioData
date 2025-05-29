@@ -2,6 +2,7 @@ from django.shortcuts import render
 from API.models import RegistroAsistencia
 from datetime import datetime
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.utils.timezone import now
 
 @login_required
@@ -48,3 +49,7 @@ def determinar_estado_por_turno(usuario, timestamp):
         return 0 if hora <= medio else 1  # 0 = entrada, 1 = salida
 
     return 0  # fallback
+
+def usuarios_list(request):
+    registros = RegistroAsistencia.objects.all().select_related("usuario__turno")
+    return render(request, 'usuarios.html', {'registros': registros})
