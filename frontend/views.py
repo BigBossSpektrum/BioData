@@ -57,15 +57,15 @@ def historial_asistencia(request):
         for fecha, registros_dia in dias.items():
             registros_dia.sort(key=lambda r: r.timestamp)
             i = 0
-            while i < len(registros_dia):
+            while i < len(registros_dia) - 1:  # Importante: evitamos IndexError
                 entrada = registros_dia[i]
-                salida = registros_dia[i + 1] if i + 1 < len(registros_dia) else None
+                salida = registros_dia[i + 1]
 
-                if salida:
+                # Verificamos que entrada sea tipo 'entrada' y salida tipo 'salida'
+                if entrada.tipo == 'entrada' and salida.tipo == 'salida':
                     entrada_time = localtime(entrada.timestamp)
                     salida_time = localtime(salida.timestamp)
 
-                    # Si la salida es el día siguiente
                     if salida_time < entrada_time:
                         salida_time += timedelta(days=1)
 
@@ -79,16 +79,10 @@ def historial_asistencia(request):
                         'salida': salida_time,
                         'horas_trabajadas': horas,
                     })
-                    i += 2
+
+                    i += 2  # saltamos la pareja procesada
                 else:
-                    registros_combinados.append({
-                        'usuario_id': entrada.usuario.user_id,
-                        'nombre': entrada.usuario.nombre,
-                        'entrada': localtime(entrada.timestamp),
-                        'salida': None,
-                        'horas_trabajadas': '',
-                    })
-                    i += 1
+                    i += 1  # si no son pareja válida, pasamos al siguiente registro
     context = {
         'registros': registros_combinados,
         'usuarios': UsuarioBiometrico.objects.all(),
