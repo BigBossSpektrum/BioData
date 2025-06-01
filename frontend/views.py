@@ -1,9 +1,12 @@
 from django.shortcuts import render
-from API.models import RegistroAsistencia
-from datetime import datetime
+from API.models import RegistroAsistencia, UsuarioBiometrico
+from datetime import datetime, timedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.utils.timezone import now
+from collections import defaultdict
+from django.utils.timezone import localtime
+from django.db.models import Prefetch
 
 @login_required
 def home_biometrico(request):
@@ -17,13 +20,83 @@ def home_biometrico(request):
         'asistencias_hoy': asistencias_hoy,
     })
 
+def obtener_rango_semana(fecha_str):
+    """
+    A partir de una fecha string (YYYY-MM-DD), devuelve el lunes y domingo de esa semana.
+    """
+    fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+    inicio_semana = fecha - timedelta(days=fecha.weekday())  # lunes
+    fin_semana = inicio_semana + timedelta(days=6)           # domingo
+    return inicio_semana, fin_semana
 
 def historial_asistencia(request):
-    registros = RegistroAsistencia.objects.select_related('usuario').order_by('-timestamp')
-    return render(request, 'tabla_biometrico.html', {
-        'registros': registros
-    })
-    
+    registros = RegistroAsistencia.objects.select_related('usuario', 'usuario__turno')
+
+    usuario_id = request.GET.get('usuario')
+    fecha_str = request.GET.get('fecha')
+
+    if usuario_id:
+        registros = registros.filter(usuario__user_id=usuario_id)
+
+    if fecha_str:
+        inicio_semana, fin_semana = obtener_rango_semana(fecha_str)
+        registros = registros.filter(timestamp__date__range=(inicio_semana, fin_semana))
+
+    registros = registros.order_by('usuario__id', 'timestamp')
+
+    # Agrupar y calcular horas trabajadas como antes
+    from collections import defaultdict
+    asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
+    for r in registros:
+        fecha = localtime(r.timestamp).date()
+        asistencia_por_usuario_fecha[r.usuario][fecha].append(r)
+
+    registros_combinados = []
+
+    for usuario, dias in asistencia_por_usuario_fecha.items():
+        for fecha, registros_dia in dias.items():
+            registros_dia.sort(key=lambda r: r.timestamp)
+            i = 0
+            while i < len(registros_dia):
+                entrada = registros_dia[i]
+                salida = registros_dia[i + 1] if i + 1 < len(registros_dia) else None
+
+                if salida:
+                    entrada_time = localtime(entrada.timestamp)
+                    salida_time = localtime(salida.timestamp)
+
+                    # Si la salida es el día siguiente
+                    if salida_time < entrada_time:
+                        salida_time += timedelta(days=1)
+
+                    duracion = salida_time - entrada_time
+                    horas = round(duracion.total_seconds() / 3600, 2)
+
+                    registros_combinados.append({
+                        'usuario_id': entrada.usuario.user_id,
+                        'nombre': entrada.usuario.nombre,
+                        'entrada': entrada_time,
+                        'salida': salida_time,
+                        'horas_trabajadas': horas,
+                    })
+                    i += 2
+                else:
+                    registros_combinados.append({
+                        'usuario_id': entrada.usuario.user_id,
+                        'nombre': entrada.usuario.nombre,
+                        'entrada': localtime(entrada.timestamp),
+                        'salida': None,
+                        'horas_trabajadas': '',
+                    })
+                    i += 1
+    context = {
+        'registros': registros_combinados,
+        'usuarios': UsuarioBiometrico.objects.all(),
+        'usuario_id': usuario_id,
+        'fecha_seleccionada': fecha_str,
+    }
+    return render(request, 'tabla_biometrico.html', context)
+
 def determinar_estado_por_turno(usuario, timestamp):
     """
     Determina si el registro es entrada (0) o salida (1) según la jornada laboral asignada.
@@ -53,3 +126,38 @@ def determinar_estado_por_turno(usuario, timestamp):
 def usuarios_list(request):
     registros = RegistroAsistencia.objects.all().select_related("usuario__turno")
     return render(request, 'usuarios.html', {'registros': registros})
+
+def calcular_horas_trabajadas():
+    registros = RegistroAsistencia.objects.select_related('usuario__turno').order_by('usuario__id', 'timestamp')
+    
+    # Agrupamos registros por usuario y día
+    asistencia_por_usuario = defaultdict(lambda: defaultdict(list))
+
+    for r in registros:
+        fecha = localtime(r.timestamp).date()
+        asistencia_por_usuario[r.usuario][fecha].append(localtime(r.timestamp))
+    
+    resumen_horas = []
+
+    for usuario, dias in asistencia_por_usuario.items():
+        for fecha, timestamps in dias.items():
+            timestamps.sort()
+            total_trabajado = timedelta()
+            
+            for i in range(0, len(timestamps) - 1, 2):
+                entrada = timestamps[i]
+                salida = timestamps[i + 1] if i + 1 < len(timestamps) else None
+
+                if salida:
+                    # Si el turno cruza medianoche, ajustamos la salida
+                    if salida < entrada:
+                        salida += timedelta(days=1)
+                    total_trabajado += (salida - entrada)
+
+            resumen_horas.append({
+                'usuario': usuario.nombre,
+                'fecha': fecha.strftime('%Y-%m-%d'),
+                'horas_trabajadas': round(total_trabajado.total_seconds() / 3600, 2)
+            })
+
+    return resumen_horas

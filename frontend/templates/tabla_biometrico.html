@@ -30,31 +30,59 @@
     </style>
 </head>
 <body>
-    <h1>Historial de Asistencia</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Usuario</th>
-                <th>Nombre</th>
-                <th>Estado</th>
-                <th>Fecha y Hora</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in registros %}
-                <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ r.usuario.user_id }}</td>
-                    <td>{{ r.usuario.nombre }}</td>
-                    <td>{{ r.tipo }}</td>
-                    <td>{{ r.timestamp|date:"Y-m-d H:i:s" }}</td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="5">No hay registros.</td></tr>
+    <h2 style="text-align: center;">Filtrar Asistencia</h2>
+    <form method="get" style="text-align: center; margin-bottom: 20px;">
+        <label for="usuario">Usuario:</label>
+        <select name="usuario" id="usuario">
+            <option value="">Todos</option>
+            {% for u in usuarios %}
+                <option value="{{ u.user_id }}" {% if usuario_id == u.user_id %}selected{% endif %}>
+                    {{ u.nombre }}
+                </option>
             {% endfor %}
-        </tbody>
-    </table>
+        </select>
+
+        <label for="fecha">Fecha (cualquier día de la semana):</label>
+        <input type="date" name="fecha" id="fecha" value="{{ fecha_seleccionada }}">
+
+        <button type="submit">Filtrar</button>
+    </form>
+
+
+<h1>Historial de Asistencia</h1>
+<table>
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Usuario</th>
+            <th>Nombre</th>
+            <th>Entrada</th>
+            <th>Salida</th>
+            <th>Horas Trabajadas</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in registros %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ r.usuario_id }}</td>
+                <td>{{ r.nombre }}</td>
+                <td>{{ r.entrada|date:"Y-m-d H:i:s" }}</td>
+                <td>
+                    {% if r.salida %}
+                        {{ r.salida|date:"Y-m-d H:i:s" }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>{{ r.horas_trabajadas }}</td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6">No hay registros.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 </body>
 
 {% endblock %}

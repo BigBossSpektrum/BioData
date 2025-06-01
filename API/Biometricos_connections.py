@@ -40,7 +40,7 @@ def obtener_estado_alternado(usuario, timestamp):
 
 def importar_datos_dispositivo():
     zk = ZK(
-        '192.168.0.5',
+        '192.168.0.28',
         port=4370,
         timeout=10,
         password=123456,
