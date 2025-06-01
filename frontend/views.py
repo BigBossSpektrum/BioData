@@ -16,7 +16,7 @@ def home_biometrico(request):
     asistencias_hoy = RegistroAsistencia.objects.filter(timestamp__date=hoy).select_related('usuario')
 
     return render(request, 'home.html', {
-        'usuario': usuario,
+        'usuario': request.user,
         'asistencias_hoy': asistencias_hoy,
     })
 
