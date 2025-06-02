@@ -34,6 +34,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -45,6 +46,14 @@ INSTALLED_APPS = [
     'frontend',
     'accounts',
 ]
+
+JAZZMIN_SETTINGS = {
+    "login_logo": "img/ECYREU.jpg",
+        # CSS classes that are applied to the logo above
+    "site_logo_classes": "img-circle",
+        # Welcome text on the login screen
+    "welcome_sign": "Bienvenido a Entreredes Access",
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
