@@ -137,14 +137,7 @@ def crear_o_actualizar_usuario_biometrico(user_id, nombre):
             conn.disconnect()
 
 
-def borrar_usuario_biometrico(user_id):
-    conn = conectar_dispositivo()
-    if conn:
-        try:
-            conn.delete_user(uid=int(user_id))
-            print(f"🗑️ Usuario con ID {user_id} eliminado del biométrico.")
-        except Exception as e:
-            print(f"❌ Error al eliminar usuario: {e}")
-        finally:
-            conn.enable_device()
-            conn.disconnect()
+def eliminar_usuario_biometrico(zk, user_id):
+    zk.disable_device()
+    zk.delete_user(uid=int(user_id))  # Asegurate que el user_id es el UID usado en el biométrico
+    zk.enable_device()

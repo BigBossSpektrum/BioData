@@ -32,6 +32,10 @@
             onclick="abrirModalEditar('{{ usuario.user_id|escapejs }}', '{{ usuario.user_id|escapejs }}', '{{ usuario.nombre|escapejs }}', '{{ usuario.dni|escapejs }}')">
             Editar
           </button>
+          <button class="btn btn-danger btn-sm"
+                  onclick="confirmarEliminacion('{{ usuario.user_id }}', '{{ usuario.nombre }}')">
+            Eliminar
+          </button>
         </td>
       </tr>
       {% endfor %}
@@ -70,6 +74,37 @@
     </form>
   </div>
 </div>
+
+<!-- Modal para Eliminar -->
+<div class="modal fade" id="modalEliminar" tabindex="-1" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="formEliminar" method="POST">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalEliminarLabel">Eliminar Usuario</h5>
+        </div>
+        <div class="modal-body">
+          <p id="mensajeConfirmacion">¿Estás seguro de que deseas eliminar este usuario?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Eliminar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function confirmarEliminacion(user_id, nombre) {
+    const mensaje = `¿Estás seguro de que deseas eliminar al usuario "${nombre}" (ID: ${user_id})?`;
+    document.getElementById("mensajeConfirmacion").innerText = mensaje;
+    document.getElementById("formEliminar").action = `/API/usuarios/eliminar/${user_id}/`;
+    new bootstrap.Modal(document.getElementById('modalEliminar')).show();
+  }
+</script>
+
 
 <script>
   function abrirModalCrear() {
