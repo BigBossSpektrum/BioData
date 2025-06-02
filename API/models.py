@@ -26,3 +26,10 @@ class RegistroAsistencia(models.Model):
     usuario = models.ForeignKey(UsuarioBiometrico, on_delete=models.CASCADE)
     timestamp = models.DateTimeField()
     tipo = models.CharField(max_length=10, choices=(('entrada', 'Entrada'), ('salida', 'Salida')))
+
+class EstacionServico(models.Model):
+    nombre = models.CharField(max_length=100)
+    direccion = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.nombre
