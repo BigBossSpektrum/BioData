@@ -4,12 +4,11 @@ import django
 from zk import ZK
 from django.utils.timezone import make_aware
 from datetime import datetime
+from API.models import UsuarioBiometrico, RegistroAsistencia
 
 sys.path.append("C:/Users/Entrecables y Redes/Documents/GitHub/BioData")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "inverligol.settings")
 django.setup()
-
-from API.models import UsuarioBiometrico, RegistroAsistencia
 
 STATUS_MAP = {
     0: "Entrada",
@@ -36,7 +35,6 @@ def obtener_estado_alternado(usuario, timestamp):
     ).order_by("timestamp")
 
     return 0 if registros_del_dia.count() % 2 == 0 else 1  # 0=Entrada, 1=Salida
-
 
 def importar_datos_dispositivo():
     zk = ZK(
@@ -105,3 +103,48 @@ def importar_datos_dispositivo():
 
 if __name__ == "__main__":
     importar_datos_dispositivo()
+
+def conectar_dispositivo(ip='192.168.0.28', puerto=4370, password=123456):
+    zk = ZK(
+        ip,
+        port=puerto,
+        timeout=10,
+        password=password,
+        force_udp=False,
+        ommit_ping=False,
+    )
+    try:
+        print("🔌 [CONECTANDO] Verificando disponibilidad del dispositivo...")
+        conn = zk.connect()
+        conn.disable_device()
+        print("✅ [CONECTADO] Dispositivo ZKTeco en línea.")
+        return conn
+    except Exception as e:
+        print(f"❌ Error al conectar con el dispositivo: {e}")
+        return None
+
+
+def crear_o_actualizar_usuario_biometrico(user_id, nombre):
+    conn = conectar_dispositivo()
+    if conn:
+        try:
+            conn.set_user(uid=int(user_id), name=nombre, privilege=0, password='', group_id='', user_id=str(user_id))
+            print(f"✅ Usuario {nombre} (ID {user_id}) creado/actualizado en el biométrico.")
+        except Exception as e:
+            print(f"❌ Error al crear/actualizar usuario: {e}")
+        finally:
+            conn.enable_device()
+            conn.disconnect()
+
+
+def borrar_usuario_biometrico(user_id):
+    conn = conectar_dispositivo()
+    if conn:
+        try:
+            conn.delete_user(uid=int(user_id))
+            print(f"🗑️ Usuario con ID {user_id} eliminado del biométrico.")
+        except Exception as e:
+            print(f"❌ Error al eliminar usuario: {e}")
+        finally:
+            conn.enable_device()
+            conn.disconnect()

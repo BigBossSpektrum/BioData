@@ -117,10 +117,6 @@ def determinar_estado_por_turno(usuario, timestamp):
 
     return 0  # fallback
 
-def usuarios_list(request):
-    registros = RegistroAsistencia.objects.all().select_related("usuario__turno")
-    return render(request, 'usuarios.html', {'registros': registros})
-
 def calcular_horas_trabajadas():
     registros = RegistroAsistencia.objects.select_related('usuario__turno').order_by('usuario__id', 'timestamp')
     

@@ -13,6 +13,8 @@ class JornadaLaboral(models.Model):
 class UsuarioBiometrico(models.Model):
     user_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
     nombre = models.CharField(max_length=100, blank=True, null=True)
+    apellido = models.CharField(max_length=100, blank=True, null=True)
+    dni = models.CharField(max_length=20, blank=True, null=True)
     privilegio = models.IntegerField(default=0)
     activo = models.BooleanField(default=True)
     turno = models.ForeignKey(JornadaLaboral, on_delete=models.SET_NULL, null=True, blank=True)
