@@ -44,8 +44,6 @@ def historial_asistencia(request):
 
     registros = registros.order_by('usuario__id', 'timestamp')
 
-    # Agrupar y calcular horas trabajadas como antes
-    from collections import defaultdict
     asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
     for r in registros:
         fecha = localtime(r.timestamp).date()
@@ -57,11 +55,10 @@ def historial_asistencia(request):
         for fecha, registros_dia in dias.items():
             registros_dia.sort(key=lambda r: r.timestamp)
             i = 0
-            while i < len(registros_dia) - 1:  # Importante: evitamos IndexError
+            while i < len(registros_dia) - 1:
                 entrada = registros_dia[i]
                 salida = registros_dia[i + 1]
 
-                # Verificamos que entrada sea tipo 'entrada' y salida tipo 'salida'
                 if entrada.tipo == 'entrada' and salida.tipo == 'salida':
                     entrada_time = localtime(entrada.timestamp)
                     salida_time = localtime(salida.timestamp)
@@ -72,17 +69,22 @@ def historial_asistencia(request):
                     duracion = salida_time - entrada_time
                     horas = round(duracion.total_seconds() / 3600, 2)
 
+                    # ✅ Incluimos el nombre del turno si está asignado
+                    turno_nombre = entrada.usuario.turno.nombre if entrada.usuario.turno else "No asignado"
+
                     registros_combinados.append({
                         'usuario_id': entrada.usuario.user_id,
                         'nombre': entrada.usuario.nombre,
                         'entrada': entrada_time,
                         'salida': salida_time,
                         'horas_trabajadas': horas,
+                        'turno': turno_nombre,
                     })
 
-                    i += 2  # saltamos la pareja procesada
+                    i += 2
                 else:
-                    i += 1  # si no son pareja válida, pasamos al siguiente registro
+                    i += 1
+
     context = {
         'registros': registros_combinados,
         'usuarios': UsuarioBiometrico.objects.all(),
@@ -90,7 +92,6 @@ def historial_asistencia(request):
         'fecha_seleccionada': fecha_str,
     }
     return render(request, 'tabla_biometrico.html', context)
-
 def determinar_estado_por_turno(usuario, timestamp):
     """
     Determina si el registro es entrada (0) o salida (1) según la jornada laboral asignada.
@@ -116,6 +117,34 @@ def determinar_estado_por_turno(usuario, timestamp):
         return 0 if hora <= medio else 1  # 0 = entrada, 1 = salida
 
     return 0  # fallback
+
+def obtener_turno_por_hora(usuario, entrada_time):
+    """
+    Devuelve el nombre del turno al que pertenece la hora de entrada, basado en la jornada asignada al usuario.
+    """
+    turno = usuario.turno
+    if not turno:
+        return "No asignado"
+
+    hora = entrada_time.time()
+    inicio = turno.hora_inicio
+    fin = turno.hora_fin
+
+    if inicio > fin:
+        # Turno nocturno (22:00 - 06:00)
+        if hora >= inicio or hora <= fin:
+            return "Turno Noche"
+    else:
+        if inicio <= hora <= fin:
+            if inicio == time(6, 0):
+                return "Turno Mañana"
+            elif inicio == time(14, 0):
+                return "Turno Tarde"
+            else:
+                return "Turno Día"
+
+    return "Desconocido"
+
 
 def calcular_horas_trabajadas():
     registros = RegistroAsistencia.objects.select_related('usuario__turno').order_by('usuario__id', 'timestamp')

@@ -33,7 +33,6 @@ def crear_usuario(request):
 
         return redirect('lista_usuarios')  # Reemplaza con tu nombre de vista/listado
 
-
 def editar_usuario(request, user_id):
     usuario = get_object_or_404(UsuarioBiometrico, user_id=user_id)
 
