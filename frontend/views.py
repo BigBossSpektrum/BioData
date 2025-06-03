@@ -3,9 +3,8 @@ from API.models import RegistroAsistencia, UsuarioBiometrico
 from datetime import datetime, timedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.utils.timezone import now
+from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
-from django.utils.timezone import localtime
 from django.db.models import Prefetch
 
 @login_required
@@ -69,8 +68,28 @@ def historial_asistencia(request):
                     duracion = salida_time - entrada_time
                     horas = round(duracion.total_seconds() / 3600, 2)
 
-                    # ✅ Incluimos el nombre del turno si está asignado
+                    # ✅ Nombre del turno
                     turno_nombre = entrada.usuario.turno.nombre if entrada.usuario.turno else "No asignado"
+
+                    # ✅ Cálculo de horas extra
+                    horas_extra = 0.0
+                    if entrada.usuario.turno:
+                        turno = entrada.usuario.turno
+                        tzinfo = entrada_time.tzinfo
+
+                        turno_inicio = make_aware(datetime.combine(entrada_time.date(), turno.hora_inicio), timezone=tzinfo)
+                        turno_fin = make_aware(datetime.combine(entrada_time.date(), turno.hora_fin), timezone=tzinfo)
+
+                        if turno_fin <= turno_inicio:
+                            turno_fin += timedelta(days=1)
+
+                        horas_extra_timedelta = timedelta(0)
+                        if entrada_time < turno_inicio:
+                            horas_extra_timedelta += turno_inicio - entrada_time
+                        if salida_time > turno_fin:
+                            horas_extra_timedelta += salida_time - turno_fin
+
+                        horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
 
                     registros_combinados.append({
                         'usuario_id': entrada.usuario.user_id,
@@ -78,6 +97,7 @@ def historial_asistencia(request):
                         'entrada': entrada_time,
                         'salida': salida_time,
                         'horas_trabajadas': horas,
+                        'horas_extra': horas_extra,
                         'turno': turno_nombre,
                     })
 
@@ -92,6 +112,7 @@ def historial_asistencia(request):
         'fecha_seleccionada': fecha_str,
     }
     return render(request, 'tabla_biometrico.html', context)
+
 def determinar_estado_por_turno(usuario, timestamp):
     """
     Determina si el registro es entrada (0) o salida (1) según la jornada laboral asignada.
