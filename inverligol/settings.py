@@ -154,3 +154,6 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 LOGIN_URL = '/accounts/login/'
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
+BIOMETRIC_DEVICE_IP = '192.168.0.5'
+BIOMETRIC_DEVICE_PORT = 4370

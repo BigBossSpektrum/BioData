@@ -5,6 +5,7 @@ from datetime import datetime
 from django.utils.timezone import make_aware
 from zk import ZK
 
+
 # ============================== #
 # ⚙️ Configuración del entorno Django
 # ============================== #
@@ -29,7 +30,6 @@ STATUS_MAP = {
     15: "Desconocido",
 }
 
-
 # ============================== #
 # 📘 Funciones auxiliares
 # ============================== #
@@ -49,19 +49,25 @@ def obtener_estado_alternado(usuario, timestamp):
 
 # ============================== #
 # 🔌 Funciones de conexión
-# ============================== #
-def conectar_dispositivo(ip='192.168.0.11', puerto=4370):
-    zk = ZK(ip, port=puerto, timeout=10, password=password, force_udp=False, ommit_ping=False)
+# ============================== #def conectar_dispositivo(ip='192.168.0.11', puerto=None):
+def conectar_dispositivo(ip='192.168.0.11', puerto=None):
     try:
-        print("🔌 [CONECTANDO] Verificando disponibilidad del dispositivo...")
+        if puerto is None:
+            print("⚠️ Puerto no especificado. Usando 4370 por defecto.")
+            puerto = 4370
+        else:
+            puerto = int(puerto)  # Esto lanza error si no es convertible
+
+        print(f"🔌 [CONECTANDO] Verificando disponibilidad del dispositivo en {ip}:{puerto}...")
+        zk = ZK(ip, port=puerto, timeout=10, password='0', force_udp=False, ommit_ping=False)
         conn = zk.connect()
         conn.disable_device()
         print("✅ [CONECTADO] Dispositivo ZKTeco en línea.")
         return conn
+
     except Exception as e:
         print(f"❌ Error al conectar con el dispositivo: {e}")
         return None
-
 
 # ============================== #
 # 🧠 Funciones CRUD

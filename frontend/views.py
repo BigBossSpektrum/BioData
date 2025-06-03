@@ -19,14 +19,32 @@ def home_biometrico(request):
         'asistencias_hoy': asistencias_hoy,
     })
 
-def obtener_rango_semana(fecha_str):
-    """
-    A partir de una fecha string (YYYY-MM-DD), devuelve el lunes y domingo de esa semana.
-    """
-    fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
-    inicio_semana = fecha - timedelta(days=fecha.weekday())  # lunes
-    fin_semana = inicio_semana + timedelta(days=6)           # domingo
-    return inicio_semana, fin_semana
+def filtrar_asistencias(request):
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    registros = RegistroAsistencia.objects.all().order_by('-fecha')
+
+    if fecha_inicio and fecha_fin:
+        try:
+            inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            fin = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+
+            # Validación: asegurarse que fecha_inicio <= fecha_fin
+            if inicio > fin:
+                inicio, fin = fin, inicio
+
+            registros = registros.filter(fecha__range=(inicio, fin))
+        except ValueError:
+            pass  # Si alguna fecha es inválida, ignora el filtro
+
+    context = {
+        'registros': registros,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+    }
+
+    return render(request, 'mi_template.html', context)
 
 def historial_asistencia(request):
     registros = RegistroAsistencia.objects.select_related('usuario', 'usuario__turno')
