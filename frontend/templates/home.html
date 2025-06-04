@@ -17,8 +17,17 @@
                 {% for registro in asistencias_hoy %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span><strong>{{ registro.usuario.nombre }}</strong></span>
-                        <span class="badge bg-primary rounded-pill">{{ registro.tipo }} - {{ registro.timestamp|date:"H:i:s" }}</span>
-                    </li>
+                        <span class="badge rounded-pill 
+                            {% if registro.tipo == 'entrada' %}
+                                bg-primary
+                            {% elif registro.tipo == 'salida' %}
+                                bg-danger
+                            {% else %}
+                                bg-secondary
+                            {% endif %}
+                        ">
+                            {{ registro.tipo }} - {{ registro.timestamp|date:"H:i:s" }}
+                        </span>                    </li>
                 {% empty %}
                     <li class="list-group-item text-center text-muted">No hay asistencias registradas hoy.</li>
                 {% endfor %}

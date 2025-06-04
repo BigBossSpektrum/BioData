@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from API.models import RegistroAsistencia, UsuarioBiometrico
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.utils.timezone import now, localtime, make_aware
@@ -46,8 +46,17 @@ def filtrar_asistencias(request):
 
     return render(request, 'mi_template.html', context)
 
+def detectar_turno(entrada_time):
+    hora = entrada_time.time()
+    if time(6, 0) <= hora < time(14, 0):
+        return "Turno 1"
+    elif time(14, 0) <= hora < time(22, 0):
+        return "Turno 2"
+    else:
+        return "Turno 3"
+
 def historial_asistencia(request):
-    registros = RegistroAsistencia.objects.select_related('usuario', 'usuario__turno')
+    registros = RegistroAsistencia.objects.select_related('usuario')
 
     usuario_id = request.GET.get('usuario')
     fecha_str = request.GET.get('fecha')
@@ -60,7 +69,7 @@ def historial_asistencia(request):
         registros = registros.filter(timestamp__date__range=(inicio_semana, fin_semana))
 
     registros = registros.order_by('usuario__id', 'timestamp')
-
+    
     asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
     for r in registros:
         fecha = localtime(r.timestamp).date()
@@ -86,28 +95,28 @@ def historial_asistencia(request):
                     duracion = salida_time - entrada_time
                     horas = round(duracion.total_seconds() / 3600, 2)
 
-                    # ✅ Nombre del turno
-                    turno_nombre = entrada.usuario.turno.nombre if entrada.usuario.turno else "No asignado"
+                    # ✅ Detectar turno automáticamente
+                    turno_detectado = detectar_turno(entrada_time)
 
-                    # ✅ Cálculo de horas extra
+                    # ✅ Cálculo de horas extra por turno
                     horas_extra = 0.0
-                    if entrada.usuario.turno:
-                        turno = entrada.usuario.turno
-                        tzinfo = entrada_time.tzinfo
+                    if turno_detectado == "Turno 1":
+                        turno_inicio = make_aware(datetime.combine(entrada_time.date(), time(6, 0)), timezone=entrada_time.tzinfo)
+                        turno_fin = make_aware(datetime.combine(entrada_time.date(), time(14, 0)), timezone=entrada_time.tzinfo)
+                    elif turno_detectado == "Turno 2":
+                        turno_inicio = make_aware(datetime.combine(entrada_time.date(), time(14, 0)), timezone=entrada_time.tzinfo)
+                        turno_fin = make_aware(datetime.combine(entrada_time.date(), time(22, 0)), timezone=entrada_time.tzinfo)
+                    else:  # Turno 3
+                        turno_inicio = make_aware(datetime.combine(entrada_time.date(), time(22, 0)), timezone=entrada_time.tzinfo)
+                        turno_fin = make_aware(datetime.combine(entrada_time.date() + timedelta(days=1), time(6, 0)), timezone=entrada_time.tzinfo)
 
-                        turno_inicio = make_aware(datetime.combine(entrada_time.date(), turno.hora_inicio), timezone=tzinfo)
-                        turno_fin = make_aware(datetime.combine(entrada_time.date(), turno.hora_fin), timezone=tzinfo)
+                    horas_extra_timedelta = timedelta(0)
+                    if entrada_time < turno_inicio:
+                        horas_extra_timedelta += turno_inicio - entrada_time
+                    if salida_time > turno_fin:
+                        horas_extra_timedelta += salida_time - turno_fin
 
-                        if turno_fin <= turno_inicio:
-                            turno_fin += timedelta(days=1)
-
-                        horas_extra_timedelta = timedelta(0)
-                        if entrada_time < turno_inicio:
-                            horas_extra_timedelta += turno_inicio - entrada_time
-                        if salida_time > turno_fin:
-                            horas_extra_timedelta += salida_time - turno_fin
-
-                        horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
+                    horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
 
                     registros_combinados.append({
                         'usuario_id': entrada.usuario.user_id,
@@ -116,7 +125,7 @@ def historial_asistencia(request):
                         'salida': salida_time,
                         'horas_trabajadas': horas,
                         'horas_extra': horas_extra,
-                        'turno': turno_nombre,
+                        'turno': turno_detectado,
                     })
 
                     i += 2
@@ -131,6 +140,7 @@ def historial_asistencia(request):
     }
     return render(request, 'tabla_biometrico.html', context)
 
+"""FUNCION PARA DETECTAR SI ES ENTRADA O SALIDA"""
 def determinar_estado_por_turno(usuario, timestamp):
     """
     Determina si el registro es entrada (0) o salida (1) según la jornada laboral asignada.
@@ -157,32 +167,78 @@ def determinar_estado_por_turno(usuario, timestamp):
 
     return 0  # fallback
 
-def obtener_turno_por_hora(usuario, entrada_time):
-    """
-    Devuelve el nombre del turno al que pertenece la hora de entrada, basado en la jornada asignada al usuario.
-    """
-    turno = usuario.turno
-    if not turno:
-        return "No asignado"
 
-    hora = entrada_time.time()
-    inicio = turno.hora_inicio
-    fin = turno.hora_fin
+"""FUNCION PARA DETECTAR EL TURNOS DE ACUERDO A LA HORA"""
+def detectar_turno_por_hora(hora: time) -> str:
+    """
+    Detecta automáticamente el turno laboral según la hora proporcionada.
 
-    if inicio > fin:
-        # Turno nocturno (22:00 - 06:00)
-        if hora >= inicio or hora <= fin:
-            return "Turno Noche"
+    Parámetros:
+        hora (datetime.time): Hora de entrada o salida.
+
+    Retorna:
+        str: Nombre del turno detectado.
+    """
+    if time(6, 0) <= hora < time(14, 0):
+        return "Turno Mañana"
+    elif time(14, 0) <= hora < time(22, 0):
+        return "Turno Tarde"
+    elif hora >= time(22, 0) or hora < time(6, 0):
+        return "Turno Noche"
     else:
-        if inicio <= hora <= fin:
-            if inicio == time(6, 0):
-                return "Turno Mañana"
-            elif inicio == time(14, 0):
-                return "Turno Tarde"
-            else:
-                return "Turno Día"
+        return "Desconocido"
 
-    return "Desconocido"
+
+"""FUNCION PARA CONSIDERAR LOS TURNOS DE LOS USUARIOS COMO PRIORIDAD"""
+def procesar_registros_asistencia(registros):
+    registros_por_usuario = defaultdict(list)
+
+    # Agrupar por usuario
+    for registro in registros:
+        user_id = registro['usuario']['user_id']
+        registros_por_usuario[user_id].append(registro)
+
+    resumen_jornadas = []
+
+    for user_id, lista_registros in registros_por_usuario.items():
+        # Ordenar por timestamp
+        lista_ordenada = sorted(lista_registros, key=lambda r: r['timestamp'])
+
+        i = 0
+        while i < len(lista_ordenada):
+            registro_entrada = lista_ordenada[i]
+            entrada_time = datetime.fromisoformat(registro_entrada['timestamp'])
+
+            if registro_entrada['tipo'] != 'entrada':
+                i += 1
+                continue  # saltamos registros huérfanos de tipo "salida" sin entrada previa
+
+            # Buscar siguiente salida del mismo usuario
+            salida_time = None
+            for j in range(i+1, len(lista_ordenada)):
+                if lista_ordenada[j]['tipo'] == 'salida':
+                    salida_time = datetime.fromisoformat(lista_ordenada[j]['timestamp'])
+                    i = j  # saltamos al índice de la salida
+                    break
+            else:
+                i += 1
+                continue  # si no hay salida, no procesamos jornada
+
+            turno = detectar_turno_por_hora(entrada_time.time())
+            duracion = salida_time - entrada_time
+
+            resumen_jornadas.append({
+                "usuario": registro_entrada['usuario']['nombre'],
+                "fecha": entrada_time.date().isoformat(),
+                "hora_entrada": entrada_time.time().isoformat(timespec='minutes'),
+                "hora_salida": salida_time.time().isoformat(timespec='minutes'),
+                "turno": turno,
+                "tiempo_trabajado": str(duracion)
+            })
+
+            i += 1
+
+    return resumen_jornadas
 
 
 def calcular_horas_trabajadas():
