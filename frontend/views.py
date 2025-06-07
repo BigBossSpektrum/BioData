@@ -22,29 +22,42 @@ def home_biometrico(request):
 def filtrar_asistencias(request):
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
+    usuario_id = request.GET.get('usuario')
 
     registros = RegistroAsistencia.objects.all().order_by('-fecha')
 
-    if fecha_inicio and fecha_fin:
+    # Filtro por usuario (si se selecciona uno)
+    if usuario_id:
+        registros = registros.filter(usuario__user_id=usuario_id)
+
+    # Filtro por fechas
+    if fecha_inicio:
         try:
-            inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
-            fin = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
-
-            # Validación: asegurarse que fecha_inicio <= fecha_fin
-            if inicio > fin:
-                inicio, fin = fin, inicio
-
-            registros = registros.filter(fecha__range=(inicio, fin))
+            inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            registros = registros.filter(fecha__gte=inicio)
         except ValueError:
-            pass  # Si alguna fecha es inválida, ignora el filtro
+            pass
+
+    if fecha_fin:
+        try:
+            fin = datetime.strptime(fecha_fin, '%Y-%m-%d')
+            fin_con_hora = datetime.combine(fin, time.max)  # 23:59:59.999999
+            registros = registros.filter(fecha__lte=fin_con_hora)
+        except ValueError:
+            pass
+
+    # Obtener todos los usuarios para el select del formulario
+    usuarios = UsuarioBiometrico.objects.all()
 
     context = {
         'registros': registros,
+        'usuarios': usuarios,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
+        'usuario_id': usuario_id
     }
 
-    return render(request, 'mi_template.html', context)
+    return render(request, 'tabla_biometrico.html', context)
 
 def detectar_turno(entrada_time):
     hora = entrada_time.time()
