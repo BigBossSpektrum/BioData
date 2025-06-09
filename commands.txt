@@ -1,1 +1,2 @@
 celery -A inverligol worker --pool=solo -l info -E
+
