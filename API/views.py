@@ -4,10 +4,12 @@ from .Biometricos_connections import crear_o_actualizar_usuario_biometrico, elim
 from rest_framework import generics
 from .models import RegistroAsistencia
 from .serializers import RegistroAsistenciaSerializer
-from .models import UsuarioBiometrico
+from .models import UsuarioBiometrico, RegistroAsistencia
 from django.contrib import messages
-from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.utils.dateparse import parse_datetime
 
 class RegistroAsistenciaListView(generics.ListAPIView):
     queryset = RegistroAsistencia.objects.select_related('usuario__turno').all()
@@ -67,12 +69,21 @@ def eliminar_usuario(request, user_id):
             messages.error(request, f"Error eliminando usuario: {e}")
         return redirect('lista_usuarios')  # Cambiá esto por tu vista principal
 
-@login_required
-def ejecutar_sincronizacion(request):
-    if request.method == "POST" and request.user.is_authenticated:
-        try:
-            importar_datos_dispositivo()  # Llama tu lógica
-            return JsonResponse({'success': True, 'message': 'Sincronización completada con éxito.'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
-    return JsonResponse({'success': False, 'message': 'Acceso no autorizado o método no permitido'})
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def recibir_datos_biometrico(request):
+    datos = request.data
+    nuevos = 0
+
+    for registro in datos:
+        user_id = registro.get("user_id")
+        nombre = registro.get("nombre")
+        timestamp = parse_datetime(registro.get("timestamp"))
+        tipo = registro.get("tipo")
+
+        user, _ = UsuarioBiometrico.objects.get_or_create(user_id=user_id, defaults={"nombre": nombre})
+        RegistroAsistencia.objects.get_or_create(usuario=user, timestamp=timestamp, tipo=tipo)
+        nuevos += 1
+
+    return Response({"status": "ok", "registros_importados": nuevos})
