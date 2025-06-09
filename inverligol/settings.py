@@ -29,10 +29,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = config("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ['*']
-# ALLOWED_HOSTS = ['192.168.0.211','127.0.0.1']
+ALLOWED_HOSTS = ['.cleverapps.io', 'localhost', '127.0.0.1']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -155,6 +155,10 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR, 'static']
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 if not DEBUG:
     # Tell Django to copy static assets into a path called `staticfiles` (this is specific to Render)
@@ -176,5 +180,5 @@ LOGIN_URL = '/accounts/login/'
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 
-BIOMETRIC_DEVICE_IP = '192.168.0.5'
+BIOMETRIC_DEVICE_IP = '192.168.0.8'
 BIOMETRIC_DEVICE_PORT = 4370

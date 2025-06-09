@@ -6,10 +6,12 @@ from .models import RegistroAsistencia
 from .serializers import RegistroAsistenciaSerializer
 from .models import UsuarioBiometrico, RegistroAsistencia
 from django.contrib import messages
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from django.utils.dateparse import parse_datetime
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 
 class RegistroAsistenciaListView(generics.ListAPIView):
     queryset = RegistroAsistencia.objects.select_related('usuario__turno').all()
@@ -70,9 +72,14 @@ def eliminar_usuario(request, user_id):
         return redirect('lista_usuarios')  # Cambiá esto por tu vista principal
 
 
+@csrf_exempt
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
 def recibir_datos_biometrico(request):
+    print("🛰️  PATH recibido:", request.get_full_path())
+    print("📨  Headers:", request.headers)
+    print("🧱  Body (JSON):", request.data)
+    print("🧱  Body (RAW):", request.body)
+
     datos = request.data
     nuevos = 0
 
@@ -87,3 +94,20 @@ def recibir_datos_biometrico(request):
         nuevos += 1
 
     return Response({"status": "ok", "registros_importados": nuevos})
+
+
+@api_view(["GET"])
+def obtener_datos_biometrico(request):
+    # Supongamos que importar_datos_dispositivo(retornar_datos=True) devuelve lista de dicts
+    datos = importar_datos_dispositivo(retornar_datos=True)
+    return Response(datos)
+
+@login_required
+def ejecutar_sincronizacion(request):
+    if request.method == "POST" and request.user.is_authenticated:
+        try:
+            importar_datos_dispositivo()  # Llama tu lógica
+            return JsonResponse({'success': True, 'message': 'Sincronización completada con éxito.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    return JsonResponse({'success': False, 'message': 'Acceso no autorizado o método no permitido'})

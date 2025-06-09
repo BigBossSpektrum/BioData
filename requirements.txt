@@ -4,11 +4,13 @@ async-timeout==5.0.1
 billiard==4.2.1
 Brotli==1.1.0
 celery==5.5.2
+cffi==1.17.1
 click==8.2.1
 click-didyoumean==0.3.1
 click-plugins==1.1.1
 click-repl==0.3.0
 colorama==0.4.6
+cryptography==45.0.3
 Cython==3.1.1
 Django==5.2.2
 django-jazzmin==3.0.1
@@ -20,6 +22,7 @@ kombu==5.5.3
 packaging==25.0
 ply==3.11
 prompt_toolkit==3.0.51
+pycparser==2.22
 PyMySQL==1.1.1
 python-dateutil==2.9.0.post0
 python-decouple==3.8

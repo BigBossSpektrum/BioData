@@ -43,24 +43,27 @@
 <!-- BOTON PARA SINCRONIZAR CON BIOMETRICO -->
 <script>
 document.getElementById('btn-sincronizar').addEventListener('click', function() {
-    fetch("{% url 'sincronizar_biometrico' %}", {
+    fetch("https://app-1c847a00-9e53-4a38-b723-a8c88df01b97.cleverapps.io/recibir_datos_biometrico/", {
         method: 'POST',
         headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+            token: "mi_token_seguro"  // Opcional para autenticar si deseas
+        })
     })
     .then(response => response.json())
     .then(data => {
-        alert(data.message); // Puedes mejorar esto con un modal bonito
+        alert(data.message);
         if (data.success) {
-            location.reload(); // O actualiza solo parte del DOM si quieres
+            location.reload();
         }
     })
     .catch(error => {
-        alert("Error al ejecutar la sincronización");
+        alert("Error al sincronizar");
         console.error(error);
     });
 });
 </script>
+
 {% endblock %}
