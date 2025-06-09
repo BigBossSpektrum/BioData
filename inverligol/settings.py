@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,10 +23,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-q0nlvzw%hlg06ud5h(f)v=)j(%kveerb+821a3!o5z8e2gk&_9'
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = ['*']
 # ALLOWED_HOSTS = ['192.168.0.211','127.0.0.1']
@@ -91,11 +92,11 @@ WSGI_APPLICATION = 'inverligol.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'biometrico',         # nombre de tu base de datos
-        'USER': 'root',               # tu usuario MySQL
-        'PASSWORD': 'L0sm3j0r3s!',    # tu contraseña MySQL
-        'HOST': 'localhost',          # o la IP del servidor
-        'PORT': '3308',               # puerto por defecto de MySQL
+        'NAME': config('DB_NAME'),         # nombre de tu base de datos
+        'USER': config('DB_USER'),               # tu usuario MySQL
+        'PASSWORD': config('DB_PASSWORD'),    # tu contraseña MySQL
+        'HOST': config('DB_HOST'),          # o la IP del servidor
+        'PORT': config('DB_PORT', cast=int),               # puerto por defecto de MySQL
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         }
