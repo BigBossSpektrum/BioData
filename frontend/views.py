@@ -5,7 +5,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
-from django.db.models import Prefetch
+from django.utils import timezone
+from .utils import obtener_rango_semana
 
 @login_required
 def home_biometrico(request):
@@ -85,7 +86,7 @@ def historial_asistencia(request):
     
     asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
     for r in registros:
-        fecha = localtime(r.timestamp).date()
+        fecha = r.timestamp.date()  # ✅ No usamos localtime
         asistencia_por_usuario_fecha[r.usuario][fecha].append(r)
 
     registros_combinados = []
@@ -99,8 +100,8 @@ def historial_asistencia(request):
                 salida = registros_dia[i + 1]
 
                 if entrada.tipo == 'entrada' and salida.tipo == 'salida':
-                    entrada_time = localtime(entrada.timestamp)
-                    salida_time = localtime(salida.timestamp)
+                    entrada_time = entrada.timestamp
+                    salida_time = salida.timestamp
 
                     if salida_time < entrada_time:
                         salida_time += timedelta(days=1)
@@ -114,15 +115,15 @@ def historial_asistencia(request):
                     # ✅ Cálculo de horas extra por turno
                     horas_extra = 0.0
                     if turno_detectado == "Turno 1":
-                        turno_inicio = make_aware(datetime.combine(entrada_time.date(), time(6, 0)), timezone=entrada_time.tzinfo)
-                        turno_fin = make_aware(datetime.combine(entrada_time.date(), time(14, 0)), timezone=entrada_time.tzinfo)
+                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(6, 0)))
+                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
                     elif turno_detectado == "Turno 2":
-                        turno_inicio = make_aware(datetime.combine(entrada_time.date(), time(14, 0)), timezone=entrada_time.tzinfo)
-                        turno_fin = make_aware(datetime.combine(entrada_time.date(), time(22, 0)), timezone=entrada_time.tzinfo)
+                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
+                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
                     else:  # Turno 3
-                        turno_inicio = make_aware(datetime.combine(entrada_time.date(), time(22, 0)), timezone=entrada_time.tzinfo)
-                        turno_fin = make_aware(datetime.combine(entrada_time.date() + timedelta(days=1), time(6, 0)), timezone=entrada_time.tzinfo)
-
+                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
+                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date() + timedelta(days=1), time(6, 0)))                    
+    
                     horas_extra_timedelta = timedelta(0)
                     if entrada_time < turno_inicio:
                         horas_extra_timedelta += turno_inicio - entrada_time
