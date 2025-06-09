@@ -1,2 +1,9 @@
 celery -A inverligol worker --pool=solo -l info -E
 
+python manage.py runserver
+
+uvicorn inverligol.asgi:application --reload
+
+    O para producción (sin --reload):
+
+uvicorn inverligol.asgi:application --host 0.0.0.0 --port 8000

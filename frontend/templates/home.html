@@ -11,6 +11,7 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <h1 class="card-title text-center mb-4">Bienvenido, {{ usuario.username }}</h1>
+            <button id="btn-sincronizar" class="btn btn-primary">Sincronizar Biométrico</button>
             <p class="card-text fs-5 text-center">Resumen de asistencias del día: <span class="fw-bold">{{ asistencias_hoy.count }}</span></p>
 
             <ul class="list-group mt-4">
@@ -38,4 +39,28 @@
 
 <!-- Bootstrap JS Bundle (opcional si usas tooltips, modals, etc.) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- BOTON PARA SINCRONIZAR CON BIOMETRICO -->
+<script>
+document.getElementById('btn-sincronizar').addEventListener('click', function() {
+    fetch("{% url 'sincronizar_biometrico' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message); // Puedes mejorar esto con un modal bonito
+        if (data.success) {
+            location.reload(); // O actualiza solo parte del DOM si quieres
+        }
+    })
+    .catch(error => {
+        alert("Error al ejecutar la sincronización");
+        console.error(error);
+    });
+});
+</script>
 {% endblock %}

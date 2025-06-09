@@ -1,12 +1,13 @@
 # API/views.py
 from django.shortcuts import render, redirect, get_object_or_404
-from .Biometricos_connections import crear_o_actualizar_usuario_biometrico, eliminar_usuario_biometrico, conectar_dispositivo
+from .Biometricos_connections import crear_o_actualizar_usuario_biometrico, eliminar_usuario_biometrico, conectar_dispositivo, importar_datos_dispositivo
 from rest_framework import generics
 from .models import RegistroAsistencia
 from .serializers import RegistroAsistenciaSerializer
 from .models import UsuarioBiometrico
-from .forms import UsuarioBiometricoForm
 from django.contrib import messages
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 
 class RegistroAsistenciaListView(generics.ListAPIView):
     queryset = RegistroAsistencia.objects.select_related('usuario__turno').all()
@@ -65,3 +66,13 @@ def eliminar_usuario(request, user_id):
         except Exception as e:
             messages.error(request, f"Error eliminando usuario: {e}")
         return redirect('lista_usuarios')  # Cambiá esto por tu vista principal
+
+@login_required
+def ejecutar_sincronizacion(request):
+    if request.method == "POST" and request.user.is_authenticated:
+        try:
+            importar_datos_dispositivo()  # Llama tu lógica
+            return JsonResponse({'success': True, 'message': 'Sincronización completada con éxito.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    return JsonResponse({'success': False, 'message': 'Acceso no autorizado o método no permitido'})
