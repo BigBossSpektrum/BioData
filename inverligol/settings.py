@@ -72,6 +72,8 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 ROOT_URLCONF = 'inverligol.urls'
 
 TEMPLATES = [
@@ -105,6 +107,20 @@ WSGI_APPLICATION = 'inverligol.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'biometrico',         # nombre de tu base de datos
+        'USER': 'root',               # tu usuario MySQL
+        'PASSWORD': 'L0sm3j0r3s!',    # tu contraseña MySQL
+        'HOST': 'localhost',          # o la IP del servidor
+        'PORT': '3308',               # puerto por defecto de MySQL
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        }
+    }
+}
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
         'NAME': config('DB_NAME'),         # nombre de tu base de datos
         'USER': config('DB_USER'),               # tu usuario MySQL
         'PASSWORD': config('DB_PASSWORD'),    # tu contraseña MySQL
@@ -115,6 +131,8 @@ DATABASES = {
         }
     }
 }
+
+
 
 
 
@@ -140,7 +158,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'es-es'
+LANGUAGE_CODE = 'es-co'
 
 TIME_ZONE = 'America/Bogota'
 
@@ -182,3 +200,5 @@ CELERY_BROKER_URL = 'redis://localhost:6379/0'
 
 BIOMETRIC_DEVICE_IP = '192.168.0.8'
 BIOMETRIC_DEVICE_PORT = 4370
+
+AUTH_USER_MODEL = 'accounts.CustomUser'

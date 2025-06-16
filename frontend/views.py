@@ -264,14 +264,14 @@ def calcular_horas_trabajadas():
     for r in registros:
         fecha = localtime(r.timestamp).date()
         asistencia_por_usuario[r.usuario][fecha].append(localtime(r.timestamp))
-    
+
     resumen_horas = []
 
     for usuario, dias in asistencia_por_usuario.items():
         for fecha, timestamps in dias.items():
             timestamps.sort()
             total_trabajado = timedelta()
-            
+
             for i in range(0, len(timestamps) - 1, 2):
                 entrada = timestamps[i]
                 salida = timestamps[i + 1] if i + 1 < len(timestamps) else None

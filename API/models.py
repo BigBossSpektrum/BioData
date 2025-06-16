@@ -1,6 +1,11 @@
 # models.py
 
 from django.db import models
+from django.utils import timezone
+from django.contrib.auth.models import AbstractUser
+
+
+
 
 class JornadaLaboral(models.Model):
     nombre = models.CharField(max_length=50)
@@ -24,7 +29,7 @@ class UsuarioBiometrico(models.Model):
 
 class RegistroAsistencia(models.Model):
     usuario = models.ForeignKey(UsuarioBiometrico, on_delete=models.CASCADE)
-    timestamp = models.DateTimeField()
+    timestamp = models.DateTimeField(default=timezone.now)
     tipo = models.CharField(max_length=10, choices=(('entrada', 'Entrada'), ('salida', 'Salida')))
 
 class EstacionServico(models.Model):
