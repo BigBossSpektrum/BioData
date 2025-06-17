@@ -36,25 +36,32 @@ def lista_usuarios(request):
 
     return render(request, 'usuarios.html', {'usuarios': usuarios})
 
+
 @login_required
 def crear_usuario(request):
     if request.user.rol not in ['admin', 'rrhh']:
-        return redirect('no_autorizado')  # Crea esta vista/template si aún no existe
+        return redirect('no_autorizado')
 
     if request.method == 'POST':
         user_id = request.POST.get('user_id')
         nombre = request.POST.get('nombre')
         dni = request.POST.get('dni')
 
+        # Validación: verificar que el usuario exista
+        user_obj = get_object_or_404(User, id=user_id)
+
+        # Crear perfil biométrico asociado
         usuario = UsuarioBiometrico.objects.create(
-            user_id=user_id,
+            user_id=user_obj,
             nombre=nombre,
             dni=dni,
             jefe=request.user if request.user.rol == 'jefe_patio' else None
         )
 
-        crear_o_actualizar_usuario_biometrico(user_id, nombre)
+        crear_o_actualizar_usuario_biometrico(user_obj.id, nombre)
         return redirect('lista_usuarios')
+
+    return redirect('lista_usuarios')  # En caso de GET, redirige (podrías mostrar un form en otra vista)
 
 def no_autorizado(request):
     return render(request, 'no_autorizado.html')
