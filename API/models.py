@@ -3,9 +3,7 @@
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
-
-
-
+from django.conf import settings
 
 class JornadaLaboral(models.Model):
     nombre = models.CharField(max_length=50)
@@ -16,9 +14,14 @@ class JornadaLaboral(models.Model):
         return self.nombre
 
 class UsuarioBiometrico(models.Model):
-    user_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    user_id = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='perfil_biometrico'
+    )
     nombre = models.CharField(max_length=100, blank=True, null=True)
-    apellido = models.CharField(max_length=100, blank=True, null=True)
     dni = models.CharField(max_length=20, blank=True, null=True)
     privilegio = models.IntegerField(default=0)
     activo = models.BooleanField(default=True)
