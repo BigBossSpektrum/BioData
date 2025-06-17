@@ -23,13 +23,13 @@
     <tbody>
       {% for usuario in usuarios %}
       <tr>
-        <td>{{ usuario.user_id }}</td>
+        <td>{{ usuario.user_id.id }}</td>
         <td>{{ usuario.nombre }}</td>
         <td>{{ usuario.dni }}</td>
         <td>
           <!-- Botón para editar -->
           <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalUsuario"
-            onclick="abrirModalEditar('{{ usuario.user_id|escapejs }}', '{{ usuario.user_id|escapejs }}', '{{ usuario.nombre|escapejs }}', '{{ usuario.dni|escapejs }}')">
+              onclick="abrirModalEditar('{{ usuario.user_id.id }}', '{{ usuario.user_id.username|escapejs }}', '{{ usuario.nombre|escapejs }}', '{{ usuario.dni|escapejs }}')"
             Editar
           </button>
           <button class="btn btn-danger btn-sm"
