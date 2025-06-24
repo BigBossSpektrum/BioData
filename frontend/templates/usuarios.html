@@ -118,7 +118,7 @@
 
   function abrirModalEditar(user_id, user_id_value, nombre, dni) {
     document.getElementById("modalUsuarioLabel").textContent = "Editar Usuario";
-    document.getElementById("formUsuario").action = "/API/usuarios/editar/" + user_id + "/";
+    document.getElementById("formUsuario").action = "/usuarios/editar/" + user_id + "/";
     document.getElementById("input_id").value = user_id;
     document.getElementById("input_user_id").value = user_id_value;
     document.getElementById("input_nombre").value = nombre;
