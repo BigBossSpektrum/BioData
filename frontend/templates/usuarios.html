@@ -6,7 +6,7 @@
   <h2>Usuarios Biométricos</h2>
 
   <!-- Botón para abrir el modal de creación -->
-  <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalUsuario" onclick="abrirModalCrear()">
+  <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario">
     Crear nuevo usuario
   </button>
 
@@ -14,21 +14,34 @@
   <table class="table table-bordered">
     <thead class="table-light">
       <tr>
-        <th>ID</th>
+        <th>ID Biométrico</th>
         <th>Nombre</th>
         <th>DNI</th>
+        <th>ESTACION</th>
+        <th>ESTADO</th>
         <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
       {% for usuario in usuarios %}
       <tr>
-        <td>{{ usuario.user_id.id }}</td>
+        <td>{{ usuario.id }}</td>
         <td>{{ usuario.nombre }}</td>
         <td>{{ usuario.dni }}</td>
+        <td>{{ usuario.estacion }}</td>
+
+          {% if usuario.activo %}
+        <td class="text-success">Activo</td>
+          {% else %}
+        <td class="text-danger">Inactivo</td>
+          {% endif %}
+
+          {% if usuario.user_id %}
+          {% endif %}
+
         <td>
           <!-- Botón para editar -->
-          <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalUsuario"
+          <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalEditarUsuario"
               onclick="abrirModalEditar('{{ usuario.user_id.id }}', '{{ usuario.user_id.username|escapejs }}', '{{ usuario.nombre|escapejs }}', '{{ usuario.dni|escapejs }}')">
             Editar
           </button>
@@ -43,28 +56,85 @@
   </table>
 </div>
 
-<!-- Modal para Crear/Editar -->
-<div class="modal fade" id="modalUsuario" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
+<!-- Modal para Crear Usuario -->
+<div class="modal fade" id="modalCrearUsuario" tabindex="-1" aria-labelledby="modalCrearUsuarioLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <form id="formUsuario" method="POST">
-      {% csrf_token %}
-      <div class="modal-content">
+    <div class="modal-content">
+
+      <form method="POST" action="{% url 'crear_usuario' %}">
+        {% csrf_token %}
+
         <div class="modal-header">
-          <h5 class="modal-title" id="modalUsuarioLabel">Editar Usuario</h5>
+          <h5 class="modal-title" id="modalCrearUsuarioLabel">Crear Usuario Biométrico</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
+
         <div class="modal-body">
-          <input type="hidden" id="input_id" name="id">
-          <div class="mb-3">
-            <label for="input_user_id" class="form-label">ID</label>
-            <input type="text" class="form-control" id="input_user_id" name="user_id" readonly>
-          </div>
           <div class="mb-3">
             <label for="input_nombre" class="form-label">Nombre</label>
-            <input type="text" class="form-control" id="input_nombre" name="nombre">
+            <input type="text" class="form-control" name="nombre" id="input_nombre" required>
           </div>
           <div class="mb-3">
             <label for="input_dni" class="form-label">DNI</label>
-            <input type="text" class="form-control" id="input_dni" name="dni">
+            <input type="text" class="form-control" name="dni" id="input_dni" required>
+          </div>
+          <div class="mb-3">
+            <label for="input_estacion_id" class="form-label">Estación de Servicio</label>
+            <select class="form-control" name="estacion_id" id="input_estacion_id" required>
+              {% for estacion in estaciones %}
+                <option value="{{ estacion.id }}">{{ estacion.nombre }} - {{ estacion.direccion }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Editar Usuario -->
+<div class="modal fade" id="modalEditarUsuario" tabindex="-1" aria-labelledby="modalEditarUsuarioLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="formEditarUsuario" method="POST">
+      {% csrf_token %}
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalEditarUsuarioLabel">Editar Usuario</h5>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="input_id_editar" name="id">
+          <div class="mb-3">
+            <label for="input_user_id_editar" class="form-label">ID</label>
+            <input type="text" class="form-control" id="input_user_id_editar" name="user_id" readonly>
+          </div>
+          <div class="mb-3">
+            <label for="input_nombre_editar" class="form-label">Nombre</label>
+            <input type="text" class="form-control" id="input_nombre_editar" name="nombre">
+          </div>
+          <div class="mb-3">
+            <label for="input_dni_editar" class="form-label">DNI</label>
+            <input type="text" class="form-control" id="input_dni_editar" name="dni">
+          </div>
+          <div>
+            <label for="input_estacion_id_editar" class="form-label">Estación de Servicio</label>
+            input type="hidden" id="input_estacion_id_editar" name="estacion_id">
+            <select class="form-control" name="estacion_id" id="input_estacion_id_editar" required>
+              {% for estacion in estaciones %}
+                <option value="{{ estacion.id }}">{{ estacion.nombre }} - {{ estacion.direccion }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div for="input_activo_editar" class="form-check mt-3">
+            <label for="input_activo_editar" class="form-check-label"></label>
+            <input type="checkbox" class="form-check-input" id="input_activo_editar" name="activo" checked>
+            Activo
           </div>
         </div>
         <div class="modal-footer">
@@ -97,16 +167,6 @@
 </div>
 
 <script>
-  function confirmarEliminacion(user_id, nombre) {
-    const mensaje = `¿Estás seguro de que deseas eliminar al usuario "${nombre}" (ID: ${user_id})?`;
-    document.getElementById("mensajeConfirmacion").innerText = mensaje;
-    document.getElementById("formEliminar").action = `/API/usuarios/eliminar/${user_id}/`;
-    new bootstrap.Modal(document.getElementById('modalEliminar')).show();
-  }
-</script>
-
-
-<script>
   function abrirModalCrear() {
     document.getElementById("modalUsuarioLabel").textContent = "Crear Usuario";
     document.getElementById("formUsuario").action = "/usuarios/crear/";
@@ -117,12 +177,18 @@
   }
 
   function abrirModalEditar(user_id, user_id_value, nombre, dni) {
-    document.getElementById("modalUsuarioLabel").textContent = "Editar Usuario";
-    document.getElementById("formUsuario").action = "/usuarios/editar/" + user_id + "/";
-    document.getElementById("input_id").value = user_id;
-    document.getElementById("input_user_id").value = user_id_value;
-    document.getElementById("input_nombre").value = nombre;
-    document.getElementById("input_dni").value = dni;
+    document.getElementById("formEditarUsuario").action = "/usuarios/editar/" + user_id + "/";
+    document.getElementById("input_id_editar").value = user_id;
+    document.getElementById("input_user_id_editar").value = user_id_value;
+    document.getElementById("input_nombre_editar").value = nombre;
+    document.getElementById("input_dni_editar").value = dni;
+  }
+
+  function confirmarEliminacion(user_id, nombre) {
+    const mensaje = `¿Estás seguro de que deseas eliminar al usuario "${nombre}" (ID: ${user_id})?`;
+    document.getElementById("mensajeConfirmacion").innerText = mensaje;
+    document.getElementById("formEliminar").action = `/API/usuarios/eliminar/${user_id}/`;
+    new bootstrap.Modal(document.getElementById('modalEliminar')).show();
   }
 </script>
 {% endblock %}

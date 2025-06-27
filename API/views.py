@@ -4,7 +4,7 @@ from .Biometricos_connections import crear_o_actualizar_usuario_biometrico, elim
 from rest_framework import generics
 from .models import RegistroAsistencia
 from .serializers import RegistroAsistenciaSerializer
-from .models import UsuarioBiometrico, RegistroAsistencia
+from .models import UsuarioBiometrico, RegistroAsistencia, EstacionServicio
 from django.contrib import messages
 from rest_framework.decorators import api_view
 from django.views.decorators.csrf import csrf_exempt
@@ -25,16 +25,23 @@ class RegistroUsuariosView(generics.ListAPIView):
 
 @login_required
 def lista_usuarios(request):
-    if request.user.rol == 'admin':
-        usuarios = UsuarioBiometrico.objects.all()
-    elif request.user.rol == 'rrhh':
-        usuarios = UsuarioBiometrico.objects.filter(activo=True)
-    elif request.user.rol == 'jefe_patio':
-        usuarios = UsuarioBiometrico.objects.filter(jefe=request.user)
-    else:
-        usuarios = UsuarioBiometrico.objects.none()
+    rol = request.user.rol
 
-    return render(request, 'usuarios.html', {'usuarios': usuarios})
+    if rol == 'admin':
+        usuarios_biometricos = UsuarioBiometrico.objects.all()
+    elif rol == 'rrhh':
+        usuarios_biometricos = UsuarioBiometrico.objects.filter(activo=True)
+    elif rol == 'jefe_patio':
+        usuarios_biometricos = UsuarioBiometrico.objects.filter(jefe=request.user)
+    else:
+        usuarios_biometricos = UsuarioBiometrico.objects.none()
+
+    estaciones = EstacionServicio.objects.all()
+
+    return render(request, 'usuarios.html', {
+        'usuarios': usuarios_biometricos,
+        'estaciones': estaciones,
+    })
 
 
 @login_required
@@ -43,25 +50,40 @@ def crear_usuario(request):
         return redirect('no_autorizado')
 
     if request.method == 'POST':
-        user_id = request.POST.get('user_id')
         nombre = request.POST.get('nombre')
         dni = request.POST.get('dni')
+        estacion_id = request.POST.get('estacion_id')
 
-        # Validación: verificar que el usuario exista
-        user_obj = get_object_or_404(User, id=user_id)
+        if not nombre or not dni or not estacion_id:
+            messages.error(request, "Todos los campos son obligatorios.")
+            return redirect('lista_usuarios')
 
-        # Crear perfil biométrico asociado
-        usuario = UsuarioBiometrico.objects.create(
-            user_id=user_obj,
+        try:
+            estacion = EstacionServicio.objects.get(id=estacion_id)
+        except EstacionServicio.DoesNotExist:
+            messages.error(request, "Estación no válida.")
+            return redirect('lista_usuarios')
+
+        # Validar que no exista duplicado por DNI
+        if UsuarioBiometrico.objects.filter(dni=dni).exists():
+            messages.error(request, "Ya existe un usuario biométrico con este DNI.")
+            return redirect('lista_usuarios')
+
+        usuario_bio = UsuarioBiometrico.objects.create(
             nombre=nombre,
             dni=dni,
-            jefe=request.user if request.user.rol == 'jefe_patio' else None
+            estacion=estacion
         )
 
-        crear_o_actualizar_usuario_biometrico(user_obj.id, nombre)
+        if usuario_bio:
+            crear_o_actualizar_usuario_biometrico(usuario_bio.id, nombre)
+            messages.success(request, "Usuario biométrico creado correctamente.")
+        else:
+            messages.error(request, "Error al crear el usuario biométrico.")
+
         return redirect('lista_usuarios')
 
-    return redirect('lista_usuarios')  # En caso de GET, redirige (podrías mostrar un form en otra vista)
+    return redirect('lista_usuarios')
 
 def no_autorizado(request):
     return render(request, 'no_autorizado.html')

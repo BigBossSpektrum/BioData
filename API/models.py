@@ -11,10 +11,17 @@ class CustomUser(AbstractUser):
         ('admin', 'Administrador'),
         ('rrhh', 'Recursos Humanos'),
         ('jefe_patio', 'Jefe de Patio'),
+        ('Vendedor', 'Vendedor'),
+        ('Operador', 'Operador'),
+        ('Supervisor', 'Supervisor'),
+        ('Encargado', 'Encargado'),
+        ('Tecnico', 'Técnico'),
+        ('Gerente', 'Gerente'),
+        ('Otro', 'Otro'),
     ]
     rol = models.CharField(max_length=20, choices=ROLE_CHOICES)
     estacion = models.ForeignKey(
-        'EstacionServico',
+        'EstacionServicio',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -33,7 +40,7 @@ class JornadaLaboral(models.Model):
     def __str__(self):
         return self.nombre
 
-class EstacionServico(models.Model):
+class EstacionServicio(models.Model):
     nombre = models.CharField(max_length=100)
     direccion = models.CharField(max_length=200)
 
@@ -41,7 +48,7 @@ class EstacionServico(models.Model):
         return self.nombre
 
 class UsuarioBiometrico(models.Model):
-    user_id = models.OneToOneField(
+    user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         null=True,
@@ -52,24 +59,25 @@ class UsuarioBiometrico(models.Model):
         max_length=100,
         blank=True,
         null=True
-        )
+    )
     dni = models.CharField(
         max_length=20,
+        unique=True,
         blank=True,
         null=True
-        )
+    )
     privilegio = models.IntegerField(
         default=0
-        )
+    )
     activo = models.BooleanField(
         default=True
-        )
+    )
     turno = models.ForeignKey(
         JornadaLaboral,
         on_delete=models.SET_NULL,
         null=True,
         blank=True
-        )
+    )
     jefe = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -78,14 +86,15 @@ class UsuarioBiometrico(models.Model):
         related_name='empleados'
     )
     estacion = models.ForeignKey(
-        EstacionServico,
+        EstacionServicio,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='usuarios_biometricos'
     )
+
     def __str__(self):
-        return f"{self.nombre} ({self.user_id})"
+        return f"{self.nombre} ({self.user})"
 
 
 class RegistroAsistencia(models.Model):

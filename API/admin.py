@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, UsuarioBiometrico, JornadaLaboral, RegistroAsistencia, EstacionServico
+from .models import CustomUser, UsuarioBiometrico, JornadaLaboral, RegistroAsistencia, EstacionServicio
 
 # ---------- Admin CustomUser ----------
 @admin.register(CustomUser)
@@ -44,7 +44,7 @@ class RegistroAsistenciaAdmin(admin.ModelAdmin):
 
 
 # ---------- Admin EstacionServico ----------
-@admin.register(EstacionServico)
+@admin.register(EstacionServicio)
 class EstacionServicoAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'direccion')
     search_fields = ('nombre', 'direccion')
