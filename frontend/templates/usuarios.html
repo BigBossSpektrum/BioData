@@ -6,9 +6,16 @@
   <h2>Usuarios Biométricos</h2>
 
   <!-- Botón para abrir el modal de creación -->
-  <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario">
-    Crear nuevo usuario
-  </button>
+  {% if request.user.rol == 'admin' or request.user.rol == 'rrhh' %}
+    <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario">
+      Crear nuevo usuario
+    </button>
+  {% endif %}
+
+  <!-- Filtro de búsqueda -->
+  <div class="mb-3">
+    <input type="text" id="filtroUsuarios" class="form-control" placeholder="Buscar usuario por nombre, DNI o estación...">
+  </div>
 
   <!-- Tabla de usuarios -->
   <table class="table table-bordered">
@@ -20,7 +27,9 @@
         <th>DNI</th>
         <th>ESTACION</th>
         <th>ESTADO</th>
+        {% if request.user.rol == 'admin' or request.user.rol == 'rrhh' %}
         <th>Acciones</th>
+        {% endif %}
       </tr>
     </thead>
     <tbody>
@@ -192,6 +201,15 @@
     document.getElementById("formEliminar").action = `/api/usuarios/eliminar/${id}/`;
     new bootstrap.Modal(document.getElementById('modalEliminar')).show();
   }
+  // Filtro de búsqueda de usuarios
+  document.getElementById('filtroUsuarios').addEventListener('keyup', function() {
+    const filtro = this.value.toLowerCase();
+    const filas = document.querySelectorAll('table tbody tr');
+    filas.forEach(function(fila) {
+      const texto = fila.textContent.toLowerCase();
+      fila.style.display = texto.includes(filtro) ? '' : 'none';
+    });
+  });
   // Mostrar alertas SweetAlert para mensajes de Django
   document.addEventListener('DOMContentLoaded', function() {
     {% if messages %}
