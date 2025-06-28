@@ -23,7 +23,7 @@
                 {% for registro in asistencias_hoy %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span><strong>{{ registro.usuario.nombre }}</strong></span>
-                        <span class="badge rounded-pill 
+                        <span class="badge rounded-pill
                             {% if registro.tipo == 'entrada' %}
                                 bg-primary
                             {% elif registro.tipo == 'salida' %}
@@ -48,7 +48,7 @@
 {% if request.user.rol == "admin" %}
 <script>
 document.getElementById('btn-sincronizar').addEventListener('click', function() {
-    fetch("{% url 'recibir_datos_biometrico' %}", {
+    fetch("{% url 'sincronizar_biometrico' %}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

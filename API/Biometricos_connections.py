@@ -128,41 +128,58 @@ def importar_datos_dispositivo():
         print("📋 [USUARIOS] Leyendo usuarios desde el dispositivo...")
         for user in conn.get_users():
             activo = not getattr(user, 'disabled', False)
-            obj, creado = UsuarioBiometrico.objects.update_or_create(
-                user_id=user.user_id,
-                defaults={
-                    'nombre': user.name.strip() if user.name else 'N/A',
-                    'privilegio': user.privilege,
-                    'activo': activo
-                }
+            # Ya no se asocia con CustomUser
+            defaults_default = {
+                'nombre': user.name.strip() if user.name else 'N/A',
+                'privilegio': user.privilege,
+                'activo': activo
+            }
+            obj, creado = UsuarioBiometrico.objects.using('default').update_or_create(
+                biometrico_id=user.uid,  # Cambiado de user_id a biometrico_id
+                defaults=defaults_default
             )
-            print(f"🔍 ID: {user.user_id}, Nombre: {user.name}, Privilegio: {user.privilege}, Activo: {activo}")
-            print(f"✅ Usuario {'creado' if creado else 'actualizado'} en BD: {obj.nombre} ({obj.user_id})")
+            defaults_local = {
+                'nombre': user.name.strip() if user.name else 'N/A',
+                'privilegio': user.privilege,
+                'activo': activo
+            }
+            obj_local, creado_local = UsuarioBiometrico.objects.using('local').update_or_create(
+                biometrico_id=user.uid,  # Cambiado de user_id a biometrico_id
+                defaults=defaults_local
+            )
+            print(f"🔍 ID: {user.uid}, Nombre: {user.name}, Privilegio: {user.privilege}, Activo: {activo}")
+            print(f"✅ Usuario {'creado' if creado else 'actualizado'} en BD: {obj.nombre} ({obj.biometrico_id})")
 
         # Asistencia
         print("⏱️ [ASISTENCIA] Descargando registros de asistencia...")
         asistencia = conn.get_attendance()
 
         for record in asistencia:
-            user = UsuarioBiometrico.objects.filter(user_id=record.user_id).first()
-            if not user:
+            user_default = UsuarioBiometrico.objects.using('default').filter(biometrico_id=record.user_id).first()
+            user_local = UsuarioBiometrico.objects.using('local').filter(biometrico_id=record.user_id).first()
+            if not user_default or not user_local:
                 continue
 
             timestamp = record.timestamp
             if not timestamp.tzinfo:
                 timestamp = make_aware(timestamp)
 
-            estado_num = obtener_estado_alternado(user, timestamp)
+            estado_num = obtener_estado_alternado(user_default, timestamp)
             tipo = 'entrada' if estado_num == 0 else 'salida'
 
-            _, created = RegistroAsistencia.objects.get_or_create(
-                usuario=user,
+            _, created_default = RegistroAsistencia.objects.using('default').get_or_create(
+                usuario=user_default,
                 timestamp=timestamp,
                 tipo=tipo,
             )
-            if created:
+            _, created_local = RegistroAsistencia.objects.using('local').get_or_create(
+                usuario=user_local,
+                timestamp=timestamp,
+                tipo=tipo,
+            )
+            if created_default or created_local:
                 nuevos += 1
-                print(f"🧾 Registro - Usuario: {user.nombre}, Hora: {timestamp}, Estado: {tipo.capitalize()}")
+                print(f"🧾 Registro - Usuario: {user_default.nombre}, Hora: {timestamp}, Estado: {tipo.capitalize()}")
 
         print(f"📊 Total nuevos registros importados: {nuevos}")
         conn.clear_attendance()

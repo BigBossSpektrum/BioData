@@ -48,13 +48,6 @@ class EstacionServicio(models.Model):
         return self.nombre
 
 class UsuarioBiometrico(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='perfil_biometrico'
-    )
     biometrico_id = models.IntegerField(
         null=True,
         blank=True
@@ -99,7 +92,7 @@ class UsuarioBiometrico(models.Model):
     )
 
     def __str__(self):
-        return f"{self.nombre} ({self.user})"
+        return f"{self.nombre}"
 
 
 class RegistroAsistencia(models.Model):

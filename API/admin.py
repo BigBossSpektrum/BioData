@@ -22,10 +22,10 @@ class CustomUserAdmin(UserAdmin):
 # ---------- Admin UsuarioBiometrico ----------
 @admin.register(UsuarioBiometrico)
 class UsuarioBiometricoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'dni', 'user_id', 'privilegio', 'activo', 'turno', 'jefe', 'estacion')
+    list_display = ('nombre', 'dni', 'privilegio', 'activo', 'turno', 'jefe', 'estacion')
     list_filter = ('activo', 'turno', 'estacion')
-    search_fields = ('nombre', 'dni', 'user_id__username', 'jefe__username', 'estacion__nombre')
-    autocomplete_fields = ['user_id', 'jefe', 'turno', 'estacion']
+    search_fields = ('nombre', 'dni', 'jefe__username', 'estacion__nombre')
+    autocomplete_fields = ['jefe', 'turno', 'estacion']
 
 
 # ---------- Admin JornadaLaboral ----------

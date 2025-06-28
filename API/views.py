@@ -142,7 +142,6 @@ def recibir_datos_biometrico(request):
     print(f"[DEBUG] Recibiendo datos biométrico. PATH: {request.get_full_path()}")
     print(f"[DEBUG] Headers: {request.headers}")
     print(f"[DEBUG] Body (JSON): {request.data}")
-    print(f"[DEBUG] Body (RAW): {request.body}")
     datos = request.data
     nuevos = 0
     for registro in datos:

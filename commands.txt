@@ -10,5 +10,8 @@ uvicorn inverligol.asgi:application --host 0.0.0.0 --port 8000
 
 
 DESPLIEGUE WSGI SENCILLO Y TRADICIONAL
-
 gunicorn inverligol.wsgi:application
+
+
+MIGRAR MODELOS A LA BASE DE DATOS LOCAL
+python manage.py migrate --database=local
