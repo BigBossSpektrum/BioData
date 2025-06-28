@@ -78,23 +78,40 @@ def filtrar_asistencias(request):
                     duracion = salida_time - entrada_time
                     horas = round(duracion.total_seconds() / 3600, 2)
                     turno_detectado = detectar_turno(entrada_time)
+
                     # Cálculo de horas extra por turno (igual que antes)
                     horas_extra = 0.0
-                    if turno_detectado == "Turno 1":
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(6, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
-                    elif turno_detectado == "Turno 2":
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
-                    else:  # Turno 3
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date() + timedelta(days=1), time(6, 0)))
-                    horas_extra_timedelta = timedelta(0)
-                    if entrada_time < turno_inicio:
-                        horas_extra_timedelta += turno_inicio - entrada_time
-                    if salida_time > turno_fin:
-                        horas_extra_timedelta += salida_time - turno_fin
-                    horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
+                    # Nuevo cálculo basado en el turno asignado al usuario
+                    if entrada.usuario.turno:
+                        turno_inicio = entrada.usuario.turno.hora_inicio
+                        turno_fin = entrada.usuario.turno.hora_fin
+                        # Duración del turno en horas
+                        if turno_inicio < turno_fin:
+                            duracion_turno = (datetime.combine(entrada_time.date(), turno_fin) - datetime.combine(entrada_time.date(), turno_inicio)).total_seconds() / 3600
+                        else:
+                            # Turno nocturno (ej: 22:00 a 06:00)
+                            duracion_turno = ((datetime.combine(entrada_time.date(), time(23,59,59)) - datetime.combine(entrada_time.date(), turno_inicio)).total_seconds() + (datetime.combine(entrada_time.date() + timedelta(days=1), turno_fin) - datetime.combine(entrada_time.date() + timedelta(days=1), time(0,0,0))).total_seconds() + 1) / 3600
+                        if horas > duracion_turno:
+                            horas_extra = round(horas - duracion_turno, 2)
+                        else:
+                            horas_extra = 0.0
+                    else:
+                        # Si no tiene turno asignado, usar el cálculo anterior por horario
+                        if turno_detectado == "Turno 1":
+                            turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(6, 0)))
+                            turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
+                        elif turno_detectado == "Turno 2":
+                            turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
+                            turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
+                        else:  # Turno 3
+                            turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
+                            turno_fin = timezone.make_aware(datetime.combine(entrada_time.date() + timedelta(days=1), time(6, 0)))
+                        horas_extra_timedelta = timedelta(0)
+                        if entrada_time < turno_inicio:
+                            horas_extra_timedelta += turno_inicio - entrada_time
+                        if salida_time > turno_fin:
+                            horas_extra_timedelta += salida_time - turno_fin
+                        horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
 
                     registros_combinados.append({
                         'usuario_id': entrada.usuario.user_id,
@@ -358,3 +375,70 @@ def calcular_horas_trabajadas():
             })
 
     return resumen_horas
+
+@login_required
+def resumen_asistencias_diarias(request):
+    registros = []
+    registros_qs = RegistroAsistencia.objects.select_related('usuario', 'usuario__turno').order_by('usuario__id', 'timestamp')
+    asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
+    for r in registros_qs:
+        fecha = r.timestamp.date()
+        asistencia_por_usuario_fecha[r.usuario][fecha].append(r)
+
+    for usuario, dias in asistencia_por_usuario_fecha.items():
+        for fecha, registros_dia in dias.items():
+            # Filtrar entradas y salidas
+            entradas = [reg for reg in registros_dia if reg.tipo == 'entrada']
+            salidas = [reg for reg in registros_dia if reg.tipo == 'salida']
+            if not entradas or not salidas:
+                continue  # Si falta alguno, no se puede calcular
+            primera_entrada = min(entradas, key=lambda r: r.timestamp)
+            ultima_salida = max(salidas, key=lambda r: r.timestamp)
+            entrada_time = primera_entrada.timestamp
+            salida_time = ultima_salida.timestamp
+            if salida_time < entrada_time:
+                salida_time += timedelta(days=1)
+            duracion = salida_time - entrada_time
+            horas = round(duracion.total_seconds() / 3600, 2)
+
+            # Detectar turno real del usuario
+            turno_nombre = None
+            horas_turno = None
+            if hasattr(primera_entrada.usuario, 'turno') and primera_entrada.usuario.turno:
+                turno = primera_entrada.usuario.turno
+                turno_nombre = turno.nombre
+                inicio = turno.hora_inicio
+                fin = turno.hora_fin
+                if inicio < fin:
+                    horas_turno = (datetime.combine(entrada_time.date(), fin) - datetime.combine(entrada_time.date(), inicio)).total_seconds() / 3600
+                else:
+                    # Turno nocturno
+                    horas_turno = ((datetime.combine(entrada_time.date(), time(23,59,59)) - datetime.combine(entrada_time.date(), inicio)).total_seconds() + (datetime.combine(entrada_time.date() + timedelta(days=1), fin) - datetime.combine(entrada_time.date() + timedelta(days=1), time(0,0,0))).total_seconds() + 1) / 3600
+            else:
+                # Si no tiene turno asignado, usar el turno detectado por hora
+                hora = entrada_time.time()
+                if time(6, 0) <= hora < time(14, 0):
+                    turno_nombre = "Turno 1"
+                    horas_turno = 8
+                elif time(14, 0) <= hora < time(22, 0):
+                    turno_nombre = "Turno 2"
+                    horas_turno = 8
+                else:
+                    turno_nombre = "Turno 3"
+                    horas_turno = 8
+
+            # Calcular horas extra
+            horas_extra = 0.0
+            if horas_turno is not None and horas > horas_turno:
+                horas_extra = round(horas - horas_turno, 2)
+
+            registros.append({
+                'usuario_id': primera_entrada.usuario.user_id,
+                'nombre': primera_entrada.usuario.nombre,
+                'turno': turno_nombre,
+                'entrada': entrada_time,
+                'salida': salida_time,
+                'horas_trabajadas': horas,
+                'horas_extra': horas_extra,
+            })
+    return render(request, 'resumen_asistencias_diarias.html', {'registros': registros})

@@ -66,6 +66,10 @@
                             </li>
                         {% endif %}
 
+                        <li>
+                            <a class="nav-link" href="{% url 'resumen_asistencias_diarias' %}">Resumen Asistencias Diarias</a>
+                        </li>
+
                         <!-- Cerrar sesión -->
                         <li class="nav-item">
                             <form method="post" action="{% url 'logout' %}" class="d-inline">
