@@ -1,20 +1,50 @@
 from django.contrib import admin
-from .models import JornadaLaboral, UsuarioBiometrico, RegistroAsistencia
+from django.contrib.auth.admin import UserAdmin
+from .models import CustomUser, UsuarioBiometrico, JornadaLaboral, RegistroAsistencia, EstacionServicio
 
+# ---------- Admin CustomUser ----------
+@admin.register(CustomUser)
+class CustomUserAdmin(UserAdmin):
+    model = CustomUser
+
+    list_display = ('username', 'email', 'first_name', 'last_name', 'rol', 'estacion', 'is_staff')
+    list_filter = ('rol', 'estacion', 'is_staff', 'is_superuser', 'is_active')
+    search_fields = ('username', 'email', 'rol', 'estacion__nombre')
+
+    fieldsets = UserAdmin.fieldsets + (
+        ('Información adicional', {'fields': ('rol', 'estacion')}),
+    )
+    add_fieldsets = UserAdmin.add_fieldsets + (
+        ('Información adicional', {'fields': ('rol', 'estacion')}),
+    )
+
+
+# ---------- Admin UsuarioBiometrico ----------
+@admin.register(UsuarioBiometrico)
+class UsuarioBiometricoAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'dni', 'user_id', 'privilegio', 'activo', 'turno', 'jefe', 'estacion')
+    list_filter = ('activo', 'turno', 'estacion')
+    search_fields = ('nombre', 'dni', 'user_id__username', 'jefe__username', 'estacion__nombre')
+    autocomplete_fields = ['user_id', 'jefe', 'turno', 'estacion']
+
+
+# ---------- Admin JornadaLaboral ----------
 @admin.register(JornadaLaboral)
 class JornadaLaboralAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'hora_inicio', 'hora_fin')
     search_fields = ('nombre',)
 
-@admin.register(UsuarioBiometrico)
-class UsuarioBiometricoAdmin(admin.ModelAdmin):
-    list_display = ('user_id', 'nombre', 'privilegio', 'activo', 'turno')
-    search_fields = ('user_id', 'nombre')
-    list_filter = ('activo', 'turno')
 
+# ---------- Admin RegistroAsistencia ----------
 @admin.register(RegistroAsistencia)
 class RegistroAsistenciaAdmin(admin.ModelAdmin):
     list_display = ('usuario', 'timestamp', 'tipo')
-    search_fields = ('usuario__nombre', 'usuario__user_id')
-    list_filter = ('tipo', 'usuario__turno')
-    date_hierarchy = 'timestamp'
+    list_filter = ('tipo', 'timestamp')
+    search_fields = ('usuario__nombre', 'usuario__dni')
+
+
+# ---------- Admin EstacionServico ----------
+@admin.register(EstacionServicio)
+class EstacionServicoAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'direccion')
+    search_fields = ('nombre', 'direccion')

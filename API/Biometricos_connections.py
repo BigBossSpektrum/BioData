@@ -4,6 +4,9 @@ import django
 from datetime import datetime
 from django.utils.timezone import make_aware
 from zk import ZK
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # ============================== #
@@ -50,11 +53,11 @@ def obtener_estado_alternado(usuario, timestamp):
 # ============================== #
 # 🔌 Funciones de conexión
 # ============================== #def conectar_dispositivo(ip='192.168.0.11', puerto=None):
-def conectar_dispositivo(ip='192.168.0.10', puerto=None):
+def conectar_dispositivo(ip=os.getenv("BIOMETRICO_IP_ZKTECO"), puerto=None):
     try:
         if puerto is None:
             print("⚠️ Puerto no especificado. Usando 4370 por defecto.")
-            puerto = 4370
+            puerto = os.getenv
         else:
             puerto = int(puerto)  # Esto lanza error si no es convertible
 
@@ -96,7 +99,7 @@ def eliminar_usuario_biometrico(zk, user_id):
 # 📥 Función principal de importación
 # ============================== #
 def importar_datos_dispositivo():
-    zk = ZK('192.168.0.10', port=4370, timeout=10, force_udp=False, ommit_ping=False)
+    zk = ZK(os.getenv("BIOMETRICO_IP_ZKTECO"), port=os.getenv("BIOMETRICO_PUERTO_ZKTECO"), timeout=10, force_udp=False, ommit_ping=False)
     nuevos = 0
 
     try:
