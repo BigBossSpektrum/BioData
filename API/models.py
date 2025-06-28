@@ -55,6 +55,11 @@ class UsuarioBiometrico(models.Model):
         blank=True,
         related_name='perfil_biometrico'
     )
+    biometrico_id = models.IntegerField(
+        null=True,
+        blank=True
+        )  # ID biométrico en el dispositivo
+
     nombre = models.CharField(
         max_length=100,
         blank=True,

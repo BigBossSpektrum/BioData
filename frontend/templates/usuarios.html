@@ -14,6 +14,7 @@
   <table class="table table-bordered">
     <thead class="table-light">
       <tr>
+        <th>ID BD</th>
         <th>ID Biométrico</th>
         <th>Nombre</th>
         <th>DNI</th>
@@ -26,27 +27,23 @@
       {% for usuario in usuarios %}
       <tr>
         <td>{{ usuario.id }}</td>
+        <td>{{ usuario.biometrico_id }}</td>
         <td>{{ usuario.nombre }}</td>
         <td>{{ usuario.dni }}</td>
         <td>{{ usuario.estacion }}</td>
-
-          {% if usuario.activo %}
+        {% if usuario.activo %}
         <td class="text-success">Activo</td>
-          {% else %}
+        {% else %}
         <td class="text-danger">Inactivo</td>
-          {% endif %}
-
-          {% if usuario.user_id %}
-          {% endif %}
-
+        {% endif %}
         <td>
           <!-- Botón para editar -->
           <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalEditarUsuario"
-              onclick="abrirModalEditar('{{ usuario.id }}', '{{ usuario.user_id|escapejs }}', '{{ usuario.nombre|escapejs }}', '{{ usuario.dni|escapejs }}', '{{ usuario.estacion.id }}', '{{ usuario.activo|yesno:"true,false" }}')">
+              onclick="abrirModalEditar('{{ usuario.id }}', '{{ usuario.biometrico_id|default_if_none:'' }}', '{{ usuario.nombre|escapejs }}', '{{ usuario.dni|escapejs }}', '{{ usuario.estacion.id }}', '{{ usuario.activo|yesno:'true,false' }}')">
             Editar
           </button>
-          <button class="btn btn-danger btn-sm"
-                  onclick="confirmarEliminacion('{{ usuario.user_id }}', '{{ usuario.nombre }}')">
+          <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalEliminar"
+                  onclick="confirmarEliminacion('{{ usuario.id }}', '{{ usuario.nombre|escapejs }}')">
             Eliminar
           </button>
         </td>
@@ -60,15 +57,12 @@
 <div class="modal fade" id="modalCrearUsuario" tabindex="-1" aria-labelledby="modalCrearUsuarioLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-
       <form method="POST" action="{% url 'crear_usuario' %}">
         {% csrf_token %}
-
         <div class="modal-header">
           <h5 class="modal-title" id="modalCrearUsuarioLabel">Crear Usuario Biométrico</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
-
         <div class="modal-body">
           <div class="mb-3">
             <label for="input_nombre" class="form-label">Nombre</label>
@@ -87,14 +81,11 @@
             </select>
           </div>
         </div>
-
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar</button>
         </div>
-
       </form>
-
     </div>
   </div>
 </div>
@@ -111,8 +102,8 @@
         <div class="modal-body">
           <input type="hidden" id="input_id_editar" name="id">
           <div class="mb-3">
-            <label for="input_user_id_editar" class="form-label">ID</label>
-            <input type="text" class="form-control" id="input_user_id_editar" name="user_id" readonly>
+            <label for="input_biometrico_id_editar" class="form-label">ID Biométrico</label>
+            <input type="text" class="form-control" id="input_biometrico_id_editar" name="biometrico_id" readonly>
           </div>
           <div class="mb-3">
             <label for="input_nombre_editar" class="form-label">Nombre</label>
@@ -164,40 +155,40 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-  function abrirModalCrear() {
-    document.getElementById("modalUsuarioLabel").textContent = "Crear Usuario";
-    document.getElementById("formUsuario").action = "/api//usuarios/crear/";
-    document.getElementById("input_user_id").value = "";
-    document.getElementById("input_user_id").readOnly = false; // Editable solo al crear
-    document.getElementById("input_nombre").value = "";
-    document.getElementById("input_dni").value = "";
-  }
-
-  // Modificada para aceptar estacion_id y activo
-  function abrirModalEditar(user_id, user_id_value, nombre, dni, estacion_id, activo) {
-    document.getElementById("formEditarUsuario").action = "/api/usuarios/editar/" + user_id + "/";
-    document.getElementById("input_id_editar").value = user_id;
-    document.getElementById("input_user_id_editar").value = user_id_value;
+  function abrirModalEditar(id, biometrico_id, nombre, dni, estacion_id, activo) {
+    document.getElementById("formEditarUsuario").action = "/api/usuarios/editar/" + id + "/";
+    document.getElementById("input_id_editar").value = id;
+    document.getElementById("input_biometrico_id_editar").value = biometrico_id;
     document.getElementById("input_nombre_editar").value = nombre;
     document.getElementById("input_dni_editar").value = dni;
-    // Selecciona la estación correspondiente
     const selectEstacion = document.getElementById("input_estacion_id_editar");
     if (selectEstacion && estacion_id) {
       selectEstacion.value = estacion_id;
     }
-    // Marca o desmarca el checkbox de activo
     const checkActivo = document.getElementById("input_activo_editar");
     if (checkActivo) {
       checkActivo.checked = (activo === 'true' || activo === true);
     }
   }
-
-  function confirmarEliminacion(user_id, nombre) {
-    const mensaje = `¿Estás seguro de que deseas eliminar al usuario "${nombre}" (ID: ${user_id})?`;
+  function confirmarEliminacion(id, nombre) {
+    const mensaje = `¿Estás seguro de que deseas eliminar al usuario "${nombre}" (ID: ${id})?`;
     document.getElementById("mensajeConfirmacion").innerText = mensaje;
-    document.getElementById("formEliminar").action = `/api/usuarios/eliminar/${user_id}/`;
+    document.getElementById("formEliminar").action = `/api/usuarios/eliminar/${id}/`;
     new bootstrap.Modal(document.getElementById('modalEliminar')).show();
   }
 </script>
+{% if messages %}
+  {% for message in messages %}
+    <script>
+      Swal.fire({
+        icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% else %}info{% endif %}',
+        title: '{{ message|escapejs }}',
+        showConfirmButton: false,
+        timer: 2500
+      });
+    </script>
+  {% endfor %}
+{% endif %}
 {% endblock %}
