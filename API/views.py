@@ -89,25 +89,6 @@ def no_autorizado(request):
     return render(request, 'no_autorizado.html')
 
 @login_required
-def editar_usuario(request, user_id):
-    user = get_object_or_404(User, id=user_id)
-    usuario = get_object_or_404(UsuarioBiometrico, user_id=user)
-
-    # Seguridad por rol
-    if request.user.rol not in ['admin', 'rrhh'] and usuario.jefe != request.user:
-        return redirect('no_autorizado')
-
-    if request.method == 'POST':
-        usuario.nombre = request.POST.get('nombre')
-        usuario.dni = request.POST.get('dni')
-        usuario.save()
-        crear_o_actualizar_usuario_biometrico(user, usuario.nombre)
-        return redirect('lista_usuarios')
-
-    return render(request, 'editar_usuario.html', {'usuario': usuario})
-
-
-@login_required
 def eliminar_usuario(request, user_id):
     usuario = get_object_or_404(UsuarioBiometrico, user_id=user_id)
 
@@ -165,3 +146,37 @@ def ejecutar_sincronizacion(request):
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
     return JsonResponse({'success': False, 'message': 'Acceso no autorizado o método no permitido'})
+
+@login_required
+def editar_usuario(request, user_id):
+    usuario = get_object_or_404(UsuarioBiometrico, id=user_id)
+
+    if request.user.rol not in ['admin', 'rrhh']:
+        return redirect('no_autorizado')
+
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre')
+        dni = request.POST.get('dni')
+        estacion_id = request.POST.get('estacion_id')
+        activo = request.POST.get('activo') == 'on' or request.POST.get('activo') == 'true'
+
+        if not nombre or not dni or not estacion_id:
+            messages.error(request, "Todos los campos son obligatorios.")
+            return redirect('lista_usuarios')
+
+        try:
+            estacion = EstacionServicio.objects.get(id=estacion_id)
+        except EstacionServicio.DoesNotExist:
+            messages.error(request, "Estación no válida.")
+            return redirect('lista_usuarios')
+
+        usuario.nombre = nombre
+        usuario.dni = dni
+        usuario.estacion = estacion
+        usuario.activo = activo
+        usuario.save()
+        crear_o_actualizar_usuario_biometrico(usuario.id, nombre)
+        messages.success(request, "Usuario biométrico editado correctamente.")
+        return redirect('lista_usuarios')
+
+    return redirect('lista_usuarios')
