@@ -6,6 +6,20 @@
 
 <div class="container mt-4">
     <h2 class="mb-4">Resumen de Asistencias Diarias</h2>
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label for="usuario_id" class="form-label">Usuario</label>
+            <input type="text" class="form-control" id="usuario_id" name="usuario_id" value="{{ request.GET.usuario_id|default:'' }}" placeholder="ID Usuario o Nombre">
+        </div>
+        <div class="col-md-3">
+            <label for="fecha" class="form-label">Fecha</label>
+            <input type="date" class="form-control" id="fecha" name="fecha" value="{{ request.GET.fecha|default:'' }}">
+        </div>
+        <div class="col-md-3 align-self-end">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="?" class="btn btn-secondary">Limpiar</a>
+        </div>
+    </form>
     <table class="table table-bordered table-striped">
         <thead class="table-dark">
             <tr>

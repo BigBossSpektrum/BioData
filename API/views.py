@@ -79,9 +79,13 @@ def crear_usuario(request):
             try:
                 biometrico_id = crear_o_actualizar_usuario_biometrico(usuario_bio.id, nombre)
                 print(f"[DEBUG] ID biométrico retornado por dispositivo: {biometrico_id}")
-                usuario_bio.biometrico_id = biometrico_id
-                usuario_bio.save()
-                messages.success(request, "Usuario biométrico creado correctamente.")
+                if biometrico_id is not None:
+                    usuario_bio.biometrico_id = biometrico_id
+                    usuario_bio.save()
+                    messages.success(request, "Usuario biométrico creado correctamente.")
+                else:
+                    print("[ERROR] No se pudo crear el usuario en el biométrico.")
+                    messages.error(request, "No se pudo crear el usuario en el biométrico.")
             except Exception as e:
                 print(f"[ERROR] Error al crear usuario en dispositivo: {e}")
                 messages.error(request, f"Error al crear el usuario biométrico en el dispositivo: {e}")

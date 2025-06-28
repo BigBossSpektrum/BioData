@@ -52,24 +52,32 @@ def obtener_estado_alternado(usuario, timestamp):
 
 # ============================== #
 # 🔌 Funciones de conexión
-# ============================== #def conectar_dispositivo(ip='192.168.0.11', puerto=None):
-def conectar_dispositivo(ip=os.getenv("BIOMETRICO_IP_ZKTECO"), puerto=None):
+# ============================== #
+def conectar_dispositivo(ip=None, puerto=None, timeout=10):
+    """
+    Intenta conectar con el dispositivo ZKTeco usando IP y puerto de argumentos o variables de entorno.
+    Muestra sugerencias si la conexión falla.
+    """
+    ip = ip or os.getenv("BIOMETRICO_IP_ZKTECO") or "192.168.0.23"
+    puerto_env = puerto or os.getenv("BIOMETRICO_PUERTO_ZKTECO")
     try:
-        if puerto is None:
-            print("⚠️ Puerto no especificado. Usando 4370 por defecto.")
-            puerto = os.getenv
-        else:
-            puerto = int(puerto)  # Esto lanza error si no es convertible
-
+        puerto = int(puerto_env) if puerto_env else 4370
+    except Exception:
+        puerto = 4370
+    try:
         print(f"🔌 [CONECTANDO] Verificando disponibilidad del dispositivo en {ip}:{puerto}...")
-        zk = ZK(ip, port=puerto, timeout=10, password='0', force_udp=False, ommit_ping=False)
+        zk = ZK(ip, port=puerto, timeout=timeout, password='0', force_udp=False, ommit_ping=False)
         conn = zk.connect()
         conn.disable_device()
         print("✅ [CONECTADO] Dispositivo ZKTeco en línea.")
         return conn
-
     except Exception as e:
         print(f"❌ Error al conectar con el dispositivo: {e}")
+        print("ℹ️ Sugerencias:")
+        print("- Verifica que el biométrico esté encendido y conectado a la red.")
+        print(f"- Haz ping a {ip} desde tu PC para comprobar conectividad.")
+        print(f"- Asegúrate de que el puerto {puerto} esté abierto (puedes usar telnet o nmap).")
+        print("- Revisa la configuración de red del dispositivo.")
         return None
 
 # ============================== #
@@ -81,11 +89,14 @@ def crear_o_actualizar_usuario_biometrico(user_id, nombre):
         try:
             conn.set_user(uid=int(user_id), name=nombre, privilege=0, password='', group_id='', user_id=str(user_id))
             print(f"✅ Usuario {nombre} (ID {user_id}) creado/actualizado en el biométrico.")
+            return user_id  # Retornar el ID usado en el biométrico
         except Exception as e:
             print(f"❌ Error al crear/actualizar usuario: {e}")
+            return None
         finally:
             conn.enable_device()
             conn.disconnect()
+    return None
 
 
 def eliminar_usuario_biometrico(zk, user_id):
@@ -99,11 +110,17 @@ def eliminar_usuario_biometrico(zk, user_id):
 # 📥 Función principal de importación
 # ============================== #
 def importar_datos_dispositivo():
-    zk = ZK(os.getenv("BIOMETRICO_IP_ZKTECO"), port=os.getenv("BIOMETRICO_PUERTO_ZKTECO"), timeout=10, force_udp=False, ommit_ping=False)
+    ip = os.getenv("BIOMETRICO_IP_ZKTECO") or "192.168.0.23"
+    puerto_env = os.getenv("BIOMETRICO_PUERTO_ZKTECO")
+    try:
+        puerto = int(puerto_env) if puerto_env else 4370
+    except Exception:
+        puerto = 4370
+    zk = ZK(ip, port=puerto, timeout=10, force_udp=False, ommit_ping=False)
     nuevos = 0
 
     try:
-        print("🔌 [CONECTANDO] Verificando disponibilidad del dispositivo...")
+        print(f"🔌 [CONECTANDO] Verificando disponibilidad del dispositivo en {ip}:{puerto}...")
         conn = zk.connect()
         print("✅ [CONECTADO] Dispositivo ZKTeco en línea.")
 
