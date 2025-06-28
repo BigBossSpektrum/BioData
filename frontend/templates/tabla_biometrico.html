@@ -33,11 +33,11 @@
             <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ fecha_fin }}">
         </div>
 
-        <div class="col-md-2 align-self-end">
+        <div class="col-md-2 align-self-end d-flex gap-2">
             <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+            <a href="?" class="btn btn-secondary w-100">Limpiar</a>
         </div>
     </form>
-
 
     <h1 class="text-center mb-4">Historial de Asistencia</h1>
 
@@ -53,6 +53,7 @@
                     <th>Salida</th>
                     <th>Horas Trabajadas</th>
                     <th>Horas Extra</th>
+                    <th>Aprobado</th>
                 </tr>
             </thead>
             <tbody>
@@ -73,10 +74,10 @@
                         <td>{{ r.horas_trabajadas }}</td>
                         <td>{{ r.horas_extras }}</td>
                         <td>{{ r.aprobado }}</td>
-
                     </tr>
-                {% empty %}                    <tr>
-                        <td colspan="8" class="text-center text-muted">No hay registros.</td>
+                {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">No hay registros.</td>
                     </tr>
                 {% endfor %}
             </tbody>
