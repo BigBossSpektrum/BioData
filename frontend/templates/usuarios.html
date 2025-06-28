@@ -25,6 +25,7 @@
     </thead>
     <tbody>
       {% for usuario in usuarios %}
+      {% with activo_val=usuario.activo|yesno:"true,false" %}
       <tr>
         <td>{{ usuario.id }}</td>
         <td>{{ usuario.biometrico_id }}</td>
@@ -37,17 +38,30 @@
         <td class="text-danger">Inactivo</td>
         {% endif %}
         <td>
+          {% if request.user.rol == 'admin' or request.user.rol == 'rrhh' %}
           <!-- Botón para editar -->
-          <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#modalEditarUsuario"
-              onclick="abrirModalEditar('{{ usuario.id }}', '{{ usuario.biometrico_id|default_if_none:'' }}', '{{ usuario.nombre|escapejs }}', '{{ usuario.dni|escapejs }}', '{{ usuario.estacion.id }}', '{{ usuario.activo|yesno:'true,false' }}')">
+          <button class='btn btn-sm btn-warning' data-bs-toggle='modal' data-bs-target='#modalEditarUsuario'
+            onclick='abrirModalEditar(
+              "{{ usuario.id }}",
+              "{{ usuario.biometrico_id|default_if_none:'' }}",
+              "{{ usuario.nombre|escapejs }}",
+              "{{ usuario.dni|escapejs }}",
+              "{{ usuario.estacion.id }}",
+              "{{ activo_val }}"
+            )'>
             Editar
           </button>
-          <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalEliminar"
-                  onclick="confirmarEliminacion('{{ usuario.id }}', '{{ usuario.nombre|escapejs }}')">
+          {% endif %}
+          <!-- Botón para eliminar -->
+          {% if request.user.rol == 'admin' %}
+          <button class='btn btn-danger btn-sm' data-bs-toggle='modal' data-bs-target='#modalEliminar'
+            onclick='confirmarEliminacion("{{ usuario.id }}", "{{ usuario.nombre|escapejs }}")'>
             Eliminar
           </button>
+          {% endif %}
         </td>
       </tr>
+      {% endwith %}
       {% endfor %}
     </tbody>
   </table>
@@ -178,17 +192,18 @@
     document.getElementById("formEliminar").action = `/api/usuarios/eliminar/${id}/`;
     new bootstrap.Modal(document.getElementById('modalEliminar')).show();
   }
+  // Mostrar alertas SweetAlert para mensajes de Django
+  document.addEventListener('DOMContentLoaded', function() {
+    {% if messages %}
+      {% for message in messages %}
+        Swal.fire({
+          icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% else %}info{% endif %}',
+          title: '{{ message|escapejs }}',
+          showConfirmButton: false,
+          timer: 2500
+        });
+      {% endfor %}
+    {% endif %}
+  });
 </script>
-{% if messages %}
-  {% for message in messages %}
-    <script>
-      Swal.fire({
-        icon: '{% if message.tags == "success" %}success{% elif message.tags == "error" %}error{% else %}info{% endif %}',
-        title: '{{ message|escapejs }}',
-        showConfirmButton: false,
-        timer: 2500
-      });
-    </script>
-  {% endfor %}
-{% endif %}
 {% endblock %}
