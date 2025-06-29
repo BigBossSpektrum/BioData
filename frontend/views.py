@@ -388,32 +388,20 @@ def resumen_asistencias_diarias(request):
     for usuario, dias in asistencia_por_usuario_fecha.items():
         for fecha, registros_dia in dias.items():
             registros_dia.sort(key=lambda r: r.timestamp)
-            entradas = []
-            salidas = []
-            total_trabajado = timedelta()
-            pares = []
-            i = 0
-            while i < len(registros_dia):
-                if registros_dia[i].tipo == 'entrada':
-                    entradas.append(localtime(registros_dia[i].timestamp).strftime('%H:%M'))
-                    # Buscar la siguiente salida
-                    salida_time = None
-                    for j in range(i + 1, len(registros_dia)):
-                        if registros_dia[j].tipo == 'salida':
-                            salida_time = registros_dia[j].timestamp
-                            salidas.append(localtime(registros_dia[j].timestamp).strftime('%H:%M'))
-                            # Calcular horas trabajadas para este par
-                            entrada_time = registros_dia[i].timestamp
-                            if salida_time < entrada_time:
-                                salida_time += timedelta(days=1)
-                            total_trabajado += (salida_time - entrada_time)
-                            i = j
-                            break
-                    else:
-                        i += 1
-                        continue
-                i += 1
-            horas_trabajadas = round(total_trabajado.total_seconds() / 3600, 2)
+            entrada = None
+            salida = None
+            for reg in registros_dia:
+                if reg.tipo == 'entrada' and entrada is None:
+                    entrada = localtime(reg.timestamp)
+                if reg.tipo == 'salida':
+                    salida = localtime(reg.timestamp)  # se queda con la última salida
+            # Calcular horas trabajadas
+            horas_trabajadas = 0.0
+            if entrada and salida:
+                delta = salida - entrada
+                if delta.total_seconds() < 0:
+                    delta += timedelta(days=1)
+                horas_trabajadas = round(delta.total_seconds() / 3600, 2)
             # Turno y estación
             turno_nombre = usuario.turno.nombre if usuario.turno else None
             estacion_nombre = usuario.estacion.nombre if usuario.estacion else None
@@ -434,8 +422,8 @@ def resumen_asistencias_diarias(request):
                 'nombre': usuario.nombre,
                 'estacion': estacion_nombre,
                 'turno': turno_nombre,
-                'entradas': entradas,
-                'salidas': salidas,
+                'entrada': entrada,
+                'salida': salida,
                 'horas_trabajadas': horas_trabajadas,
                 'horas_extra': horas_extra,
                 'aprobado': None,  # Ajusta si tienes este campo
