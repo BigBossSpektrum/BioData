@@ -16,7 +16,7 @@
             <select name="usuario" id="usuario" class="form-select">
                 <option value="">Todos</option>
                 {% for u in usuarios %}
-                    <option value="{{ u.user_id }}" {% if usuario_id == u.user_id %}selected{% endif %}>
+                    <option value="{{ u.id }}" {% if usuario_id == u.id|stringformat:'s' %}selected{% endif %}>
                         {{ u.nombre }}
                     </option>
                 {% endfor %}
@@ -46,14 +46,12 @@
             <thead class="table-light">
                 <tr>
                     <th>#</th>
-                    <th>Usuario</th>
+                    <th>ID Usuario</th>
                     <th>Nombre</th>
                     <th>Turno</th>
                     <th>Entrada</th>
                     <th>Salida</th>
                     <th>Horas Trabajadas</th>
-                    <th>Horas Extra</th>
-                    <th>Aprobado</th>
                 </tr>
             </thead>
             <tbody>
@@ -72,8 +70,6 @@
                             {% endif %}
                         </td>
                         <td>{{ r.horas_trabajadas }}</td>
-                        <td>{{ r.horas_extras }}</td>
-                        <td>{{ r.aprobado }}</td>
                     </tr>
                 {% empty %}
                     <tr>
