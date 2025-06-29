@@ -392,6 +392,7 @@ def resumen_asistencias_diarias(request):
             registros_dia.sort(key=lambda r: r.timestamp)
             entrada = None
             salida = None
+            aprobados = [r.aprobado for r in registros_dia]
             for reg in registros_dia:
                 if reg.tipo == 'entrada' and entrada is None:
                     entrada = localtime(reg.timestamp)
@@ -418,6 +419,15 @@ def resumen_asistencias_diarias(request):
                     horas_turno = (24 - inicio.hour + fin.hour) + (fin.minute - inicio.minute)/60
                 if horas_trabajadas > horas_turno:
                     horas_extra = round(horas_trabajadas - horas_turno, 2)
+            # Estado de aprobación real
+            aprobado = None
+            if aprobados:
+                if all(a is True for a in aprobados):
+                    aprobado = True
+                elif any(a is False for a in aprobados):
+                    aprobado = False
+                else:
+                    aprobado = None
             registros.append({
                 'dia': fecha.strftime('%Y-%m-%d'),
                 'usuario_id': usuario.id,
@@ -428,7 +438,7 @@ def resumen_asistencias_diarias(request):
                 'salida': salida,
                 'horas_trabajadas': horas_trabajadas,
                 'horas_extra': horas_extra,
-                'aprobado': None,  # Ajusta si tienes este campo
+                'aprobado': aprobado,
             })
     return render(request, 'resumen_asistencias_diarias.html', {'registros': registros})
 
@@ -438,11 +448,27 @@ def aprobar_horas_extra(request, usuario_id, dia):
         try:
             usuario = UsuarioBiometrico.objects.get(id=usuario_id, jefe=request.user)
         except UsuarioBiometrico.DoesNotExist:
+            print("[APROBACION] Usuario no autorizado para este jefe de patio")
             return HttpResponseForbidden("No autorizado para este usuario")
         fecha = datetime.strptime(dia, '%Y-%m-%d').date()
-        RegistroAsistencia.objects.filter(
-            usuario=usuario,
-            timestamp__date=fecha
-        ).update(aprobado=True)
-        return HttpResponseRedirect(reverse('resumen_asistencias_diarias'))
+        from datetime import time
+        from django.utils.timezone import make_aware
+        inicio_dia = make_aware(datetime.combine(fecha, time.min))
+        fin_dia = make_aware(datetime.combine(fecha, time.max))
+        # Log de todos los registros de ese usuario
+        registros = RegistroAsistencia.objects.filter(usuario_id=usuario_id)
+        for r in registros:
+            print(f"[APROBACION-DEBUG] Registro: {r.id}, fecha: {r.timestamp.date()}, aprobado: {r.aprobado}")
+        qs = RegistroAsistencia.objects.filter(
+            usuario_id=int(usuario_id),
+            timestamp__gte=inicio_dia,
+            timestamp__lte=fin_dia
+        )
+        print(f"[APROBACION] Registros encontrados para usuario {usuario_id} en {fecha}: {qs.count()}")
+        for r in qs:
+            print(f"[APROBACION-ENCONTRADO] Registro: {r.id}, fecha: {r.timestamp.date()}, aprobado: {r.aprobado}")
+        updated = qs.update(aprobado=True)
+        print(f"[APROBACION] Registros actualizados para usuario {usuario_id} en {fecha}: {updated}")
+        return HttpResponseRedirect(reverse('resumen_asistencias_diarias') + '?aprobado=1')
+    print("[APROBACION] Intento de acceso no autorizado o método incorrecto")
     return HttpResponseForbidden("No autorizado")
