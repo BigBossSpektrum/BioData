@@ -84,7 +84,22 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% if r.aprobado is defined %}{{ r.aprobado }}{% else %}<span class="text-muted">-</span>{% endif %}
+                    {% if r.horas_extra > 0 %}
+                        {% if r.aprobado is True %}
+                            <span class="badge bg-success">Aprobado</span>
+                        {% elif r.aprobado is False %}
+                            <span class="badge bg-danger">Rechazado</span>
+                        {% elif request.user.rol == 'jefe_patio' %}
+                            <form method="post" action="{% url 'aprobar_horas_extra' r.usuario_id r.dia %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success">Aprobar</button>
+                            </form>
+                        {% else %}
+                            <span class="badge bg-secondary">Pendiente</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
                 </td>
             </tr>
         {% empty %}

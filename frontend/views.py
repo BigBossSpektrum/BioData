@@ -7,6 +7,8 @@ from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
 from django.utils import timezone
 from .utils import obtener_rango_semana
+from django.http import HttpResponseForbidden, HttpResponseRedirect
+from django.urls import reverse
 
 @login_required
 def home_biometrico(request):
@@ -429,3 +431,18 @@ def resumen_asistencias_diarias(request):
                 'aprobado': None,  # Ajusta si tienes este campo
             })
     return render(request, 'resumen_asistencias_diarias.html', {'registros': registros})
+
+@login_required
+def aprobar_horas_extra(request, usuario_id, dia):
+    if request.method == 'POST' and hasattr(request.user, 'rol') and request.user.rol == 'jefe_patio':
+        try:
+            usuario = UsuarioBiometrico.objects.get(id=usuario_id, jefe=request.user)
+        except UsuarioBiometrico.DoesNotExist:
+            return HttpResponseForbidden("No autorizado para este usuario")
+        fecha = datetime.strptime(dia, '%Y-%m-%d').date()
+        RegistroAsistencia.objects.filter(
+            usuario=usuario,
+            timestamp__date=fecha
+        ).update(aprobado=True)
+        return HttpResponseRedirect(reverse('resumen_asistencias_diarias'))
+    return HttpResponseForbidden("No autorizado")

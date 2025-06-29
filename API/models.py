@@ -99,15 +99,21 @@ class RegistroAsistencia(models.Model):
     usuario = models.ForeignKey(
         UsuarioBiometrico,
         on_delete=models.CASCADE
-        )
+    )
     timestamp = models.DateTimeField(
         default=timezone.now
-        )
+    )
     tipo = models.CharField(
         max_length=10, choices=(
             ('entrada', 'Entrada'),
             ('salida', 'Salida'))
-        )
+    )
+    aprobado = models.BooleanField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Aprobación de horas extra por el jefe de patio"
+    )
 
 
 
