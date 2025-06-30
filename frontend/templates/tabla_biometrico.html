@@ -65,11 +65,21 @@
                         <td>
                             {% if r.salida %}
                                 {{ r.salida|date:"Y-m-d H:i:s" }}
+                            {% elif r.en_turno %}
+                                <span class="text-warning">En turno</span>
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}
                         </td>
-                        <td>{{ r.horas_trabajadas }}</td>
+                        <td>
+                            {% if r.horas_trabajadas is not None %}
+                                {{ r.horas_trabajadas }}
+                            {% elif r.en_turno %}
+                                <span class="text-warning">En turno</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% empty %}
                     <tr>

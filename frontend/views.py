@@ -155,90 +155,67 @@ def historial_asistencia(request):
     registros = RegistroAsistencia.objects.select_related('usuario')
 
     usuario_id = request.GET.get('usuario')
-    fecha_str = request.GET.get('fecha')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
 
     if usuario_id:
-        registros = registros.filter(usuario__user_id=usuario_id)
-
-    if fecha_str:
-        inicio_semana, fin_semana = obtener_rango_semana(fecha_str)
-        registros = registros.filter(timestamp__date__range=(inicio_semana, fin_semana))
+        registros = registros.filter(usuario__id=usuario_id)
+    if fecha_inicio:
+        registros = registros.filter(timestamp__date__gte=fecha_inicio)
+    if fecha_fin:
+        registros = registros.filter(timestamp__date__lte=fecha_fin)
 
     registros = registros.order_by('usuario__id', 'timestamp')
-    
     asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
     for r in registros:
-        fecha = r.timestamp.date()  # ✅ No usamos localtime
+        fecha = r.timestamp.date()
         asistencia_por_usuario_fecha[r.usuario][fecha].append(r)
 
     registros_combinados = []
-    for dias in asistencia_por_usuario_fecha.values():
+    for usuario, dias in asistencia_por_usuario_fecha.items():
         for fecha, registros_dia in dias.items():
             registros_dia.sort(key=lambda r: r.timestamp)
-            i = 0
-            while i < len(registros_dia):
-                entrada = registros_dia[i]
-                if entrada.tipo != 'entrada':
-                    i += 1
-                    continue  # Solo nos interesan las entradas
-
-                # Busca la siguiente salida
-                salida = None
-                for j in range(i + 1, len(registros_dia)):
-                    if registros_dia[j].tipo == 'salida':
-                        salida = registros_dia[j]
-                        break
-
-                if salida:
+            stack_entradas = []
+            for reg in registros_dia:
+                if reg.tipo == 'entrada':
+                    stack_entradas.append(reg)
+                elif reg.tipo == 'salida' and stack_entradas:
+                    entrada = stack_entradas.pop(0)
                     entrada_time = entrada.timestamp
-                    salida_time = salida.timestamp
+                    salida_time = reg.timestamp
+                    turno_detectado = detectar_turno(entrada_time)
                     if salida_time < entrada_time:
                         salida_time += timedelta(days=1)
                     duracion = salida_time - entrada_time
                     horas = round(duracion.total_seconds() / 3600, 2)
-
-                    # ✅ Detectar turno automáticamente
-                    turno_detectado = detectar_turno(entrada_time)
-
-                    # ✅ Cálculo de horas extra por turno
-                    horas_extra = 0.0
-                    if turno_detectado == "Turno 1":
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(6, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
-                    elif turno_detectado == "Turno 2":
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
-                    else:  # Turno 3
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date() + timedelta(days=1), time(6, 0)))                    
-
-                    horas_extra_timedelta = timedelta(0)
-                    if entrada_time < turno_inicio:
-                        horas_extra_timedelta += turno_inicio - entrada_time
-                    if salida_time > turno_fin:
-                        horas_extra_timedelta += salida_time - turno_fin
-
-                    horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
-
                     registros_combinados.append({
-                        'usuario_id': entrada.usuario.id,  # Cambiado de user_id a id
+                        'usuario_id': entrada.usuario.id,
                         'nombre': entrada.usuario.nombre,
+                        'turno': turno_detectado,
                         'entrada': entrada_time,
                         'salida': salida_time,
                         'horas_trabajadas': horas,
-                        'horas_extra': horas_extra,
-                        'turno': turno_detectado,
                     })
-
-                    i += 2
-                else:
-                    i += 1
+            # Si quedan entradas sin salida
+            for entrada in stack_entradas:
+                entrada_time = entrada.timestamp
+                turno_detectado = detectar_turno(entrada_time)
+                registros_combinados.append({
+                    'usuario_id': entrada.usuario.id,
+                    'nombre': entrada.usuario.nombre,
+                    'turno': turno_detectado,
+                    'entrada': entrada_time,
+                    'salida': None,
+                    'horas_trabajadas': None,
+                    'en_turno': True,
+                })
 
     context = {
         'registros': registros_combinados,
         'usuarios': UsuarioBiometrico.objects.all(),
         'usuario_id': usuario_id,
-        'fecha_seleccionada': fecha_str,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
     }
     return render(request, 'tabla_biometrico.html', context)
 
