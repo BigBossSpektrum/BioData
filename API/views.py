@@ -104,7 +104,7 @@ def no_autorizado(request):
 def eliminar_usuario(request, user_id):
     print(f"[DEBUG] Ingresando a eliminar_usuario con user_id={user_id}")
     usuario = get_object_or_404(UsuarioBiometrico, id=user_id)
-    print(f"[DEBUG] Usuario encontrado: id={usuario.id}, nombre={usuario.nombre}, biometrico_id={usuario.biometrico_id}, user={usuario.user}, dni={usuario.dni}")
+    print(f"[DEBUG] Usuario encontrado: id={usuario.id}, nombre={usuario.nombre}, biometrico_id={usuario.biometrico_id}, dni={usuario.dni}")
     print(f"[DEBUG] Rol del usuario autenticado: {request.user.rol}")
     if request.user.rol != 'admin':
         print("[DEBUG] Usuario no autorizado para eliminar.")
