@@ -122,7 +122,6 @@ def filtrar_asistencias(request):
                         'salida': salida_time,
                         'horas_trabajadas': horas,
                         'horas_extra': horas_extra,
-                        'turno': turno_detectado,
                     })
                     # Salta al registro después de la salida encontrada
                     i = registros_dia.index(salida) + 1
@@ -172,42 +171,59 @@ def historial_asistencia(request):
     for usuario, dias in asistencia_por_usuario_fecha.items():
         for fecha, registros_dia in dias.items():
             registros_dia.sort(key=lambda r: r.timestamp)
-            stack_entradas = []
-            for reg in registros_dia:
-                if reg.tipo == 'entrada':
-                    stack_entradas.append(reg)
-                elif reg.tipo == 'salida' and stack_entradas:
-                    entrada = stack_entradas.pop(0)
-                    entrada_time = entrada.timestamp
-                    salida_time = reg.timestamp
-                    if salida_time < entrada_time:
-                        salida_time += timedelta(days=1)
-                    duracion = salida_time - entrada_time
-                    horas = round(duracion.total_seconds() / 3600, 2)
-                    registros_combinados.append({
-                        'usuario_id': entrada.usuario.id,
-                        'nombre': entrada.usuario.nombre,
-                        'entrada': entrada_time,
-                        'salida': salida_time,
-                        'horas_trabajadas': horas,
-                        'dni': entrada.usuario.dni,
-                        'estacion': entrada.usuario.estacion.nombre if entrada.usuario.estacion else '',
-                    })
-            # Si quedan entradas sin salida
-            for entrada in stack_entradas:
-                entrada_time = entrada.timestamp
-                turno_detectado = detectar_turno(entrada_time)
+            entradas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'entrada']
+            salidas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'salida']
+            # Emparejar entradas y salidas correctamente, incluso si la salida es al día siguiente
+            i, j = 0, 0
+            while i < len(entradas):
+                entrada = entradas[i]
+                salida = None
+                # Buscar la primera salida después de la entrada (puede ser al día siguiente)
+                for k in range(j, len(salidas)):
+                    posible_salida = salidas[k]
+                    # Turno nocturno: entrada >= 22:00 y salida al día siguiente entre 0:00 y 12:00
+                    if entrada.hour >= 22 and posible_salida > entrada and (
+                        posible_salida.date() == (entrada + timedelta(days=1)).date() and posible_salida.hour <= 12
+                    ):
+                        salida = posible_salida
+                        j = k + 1
+                        break
+                    # Lógica normal: salida después de entrada
+                    elif posible_salida > entrada:
+                        salida = posible_salida
+                        j = k + 1
+                        break
+                horas_trabajadas = 0.0
+                if salida:
+                    delta = salida - entrada
+                    if delta.total_seconds() < 0:
+                        delta += timedelta(days=1)
+                    horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+                horas_extra = 0.0
+                if horas_trabajadas > 8:
+                    horas_extra = round(horas_trabajadas - 8, 2)
+                aprobados = [r.aprobado for r in registros_dia]
+                aprobado = None
+                if aprobados:
+                    if all(a is True for a in aprobados):
+                        aprobado = True
+                    elif any(a is False for a in aprobados):
+                        aprobado = False
+                    else:
+                        aprobado = None
                 registros_combinados.append({
-                    'usuario_id': entrada.usuario.id,
-                    'nombre': entrada.usuario.nombre,
-                    'turno': turno_detectado,
-                    'entrada': entrada_time,
-                    'salida': None,
-                    'horas_trabajadas': None,
-                    'en_turno': True,
-                    'dni': entrada.usuario.dni,
-                    'estacion': entrada.usuario.estacion.nombre if entrada.usuario.estacion else '',
+                    'dia': entrada.date().strftime('%Y-%m-%d'),
+                    'usuario_id': usuario.id,
+                    'nombre': usuario.nombre,
+                    'dni': usuario.dni,
+                    'estacion': usuario.estacion.nombre if usuario.estacion else '',
+                    'entrada': entrada,
+                    'salida': salida,
+                    'horas_trabajadas': horas_trabajadas if salida else None,
+                    'horas_extra': horas_extra if salida else None,
+                    'aprobado': aprobado,
                 })
+                i += 1
 
     context = {
         'registros': registros_combinados,
@@ -365,59 +381,75 @@ def resumen_asistencias_diarias(request):
 
     registros = []
     for usuario, dias in asistencia_por_usuario_fecha.items():
-        for fecha, registros_dia in dias.items():
+        fechas_ordenadas = sorted(dias.keys())
+        for idx, fecha in enumerate(fechas_ordenadas):
+            registros_dia = dias[fecha]
             registros_dia.sort(key=lambda r: r.timestamp)
-            entrada = None
-            salida = None
-            aprobados = [r.aprobado for r in registros_dia]
-            for reg in registros_dia:
-                if reg.tipo == 'entrada' and entrada is None:
-                    entrada = localtime(reg.timestamp)
-                if reg.tipo == 'salida':
-                    salida = localtime(reg.timestamp)  # se queda con la última salida
-            # Calcular horas trabajadas
-            horas_trabajadas = 0.0
-            if entrada and salida:
-                delta = salida - entrada
-                if delta.total_seconds() < 0:
-                    delta += timedelta(days=1)
-                horas_trabajadas = round(delta.total_seconds() / 3600, 2)
-            # Turno y estación
-            turno_nombre = usuario.turno.nombre if usuario.turno else None
-            estacion_nombre = usuario.estacion.nombre if usuario.estacion else None
-            # Calcular horas extra (si hay turno asignado)
-            horas_extra = 0.0
-            if usuario.turno:
-                inicio = usuario.turno.hora_inicio
-                fin = usuario.turno.hora_fin
-                if inicio < fin:
-                    horas_turno = (fin.hour - inicio.hour) + (fin.minute - inicio.minute)/60
-                else:
-                    horas_turno = (24 - inicio.hour + fin.hour) + (fin.minute - inicio.minute)/60
-                if horas_trabajadas > horas_turno:
-                    horas_extra = round(horas_trabajadas - horas_turno, 2)
-            # Estado de aprobación real
-            aprobado = None
-            if aprobados:
-                if all(a is True for a in aprobados):
-                    aprobado = True
-                elif any(a is False for a in aprobados):
-                    aprobado = False
-                else:
-                    aprobado = None
-            registros.append({
-                'dia': fecha.strftime('%Y-%m-%d'),
-                'usuario_id': usuario.id,
-                'nombre': usuario.nombre,
-                'dni': usuario.dni,
-                'estacion': estacion_nombre,
-                'turno': turno_nombre,
-                'entrada': entrada,
-                'salida': salida,
-                'horas_trabajadas': horas_trabajadas,
-                'horas_extra': horas_extra,
-                'aprobado': aprobado,
-            })
+            entradas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'entrada']
+            salidas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'salida']
+            # Para turnos nocturnos, también buscar salidas en el siguiente día
+            if idx + 1 < len(fechas_ordenadas):
+                next_fecha = fechas_ordenadas[idx + 1]
+                next_registros_dia = dias[next_fecha]
+                salidas += [localtime(r.timestamp) for r in next_registros_dia if r.tipo == 'salida']
+            i, j = 0, 0
+            while i < len(entradas):
+                entrada = entradas[i]
+                salida = None
+                while j < len(salidas):
+                    posible_salida = salidas[j]
+                    # Lógica especial para turnos nocturnos: si entrada >= 22:00 y salida <= 12:00 del día siguiente
+                    if entrada.hour >= 22 and (
+                        (posible_salida.date() == (entrada + timedelta(days=1)).date() and posible_salida.hour <= 12)
+                    ):
+                        salida = posible_salida
+                        j += 1
+                        break
+                    elif posible_salida > entrada:
+                        salida = posible_salida
+                        j += 1
+                        break
+                    j += 1
+                horas_trabajadas = 0.0
+                if salida:
+                    delta = salida - entrada
+                    if delta.total_seconds() < 0:
+                        delta += timedelta(days=1)
+                    horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+                horas_extra = 0.0
+                if horas_trabajadas > 8:
+                    horas_extra = round(horas_trabajadas - 8, 2)
+                aprobados = [r.aprobado for r in registros_dia]
+                aprobado = None
+                if aprobados:
+                    if all(a is True for a in aprobados):
+                        aprobado = True
+                    elif any(a is False for a in aprobados):
+                        aprobado = False
+                    else:
+                        aprobado = None
+                registros.append({
+                    'dia': entrada.date().strftime('%Y-%m-%d'),
+                    'usuario_id': usuario.id,
+                    'nombre': usuario.nombre,
+                    'dni': usuario.dni,
+                    'estacion': usuario.estacion.nombre if usuario.estacion else '',
+                    'entrada': entrada,
+                    'salida': salida,
+                    'horas_trabajadas': horas_trabajadas if salida else None,
+                    'horas_extra': horas_extra if salida else None,
+                    'aprobado': aprobado,
+                })
+                i += 1
+
+    context = {
+        'registros': registros,
+        'nombre': nombre,
+        'dni': dni,
+        'estacion': estacion,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+    }
     return render(request, 'resumen_asistencias_diarias.html', {'registros': registros, 'nombre': nombre, 'dni': dni, 'estacion': estacion, 'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin})
 
 @login_required

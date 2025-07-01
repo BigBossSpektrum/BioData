@@ -28,7 +28,6 @@
                 <th>ID Usuario</th>
                 <th>Nombre</th>
                 <th>Estación</th>
-                <th>Turno de Horario</th>
                 <th>Entrada</th>
                 <th>Salida</th>
                 <th>Horas Trabajadas</th>
@@ -48,13 +47,6 @@
                         {{ r.estacion }}
                     {% else %}
                         <span class="text-muted">-</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if r.turno %}
-                        {{ r.turno }}
-                    {% else %}
-                        <span class="text-muted">Sin turno</span>
                     {% endif %}
                 </td>
                 <td>
@@ -104,7 +96,7 @@
             </tr>
         {% empty %}
             <tr>
-                <td colspan="11" class="text-center">No hay registros para mostrar.</td>
+                <td colspan="10" class="text-center">No hay registros para mostrar.</td>
             </tr>
         {% endfor %}
         </tbody>
