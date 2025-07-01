@@ -46,5 +46,6 @@ class RegistroAsistenciaAdmin(admin.ModelAdmin):
 # ---------- Admin EstacionServico ----------
 @admin.register(EstacionServicio)
 class EstacionServicoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'direccion')
-    search_fields = ('nombre', 'direccion')
+    list_display = ('nombre', 'direccion', 'jefe')
+    search_fields = ('nombre', 'direccion', 'jefe__username')
+    autocomplete_fields = ['jefe']

@@ -43,6 +43,13 @@ class JornadaLaboral(models.Model):
 class EstacionServicio(models.Model):
     nombre = models.CharField(max_length=100)
     direccion = models.CharField(max_length=200)
+    jefe = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='jefe_de_patio'
+    )
 
     def __str__(self):
         return self.nombre
