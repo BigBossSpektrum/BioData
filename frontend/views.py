@@ -142,15 +142,6 @@ def filtrar_asistencias(request):
 
     return render(request, 'tabla_biometrico.html', context)
 
-def detectar_turno(entrada_time):
-    hora = entrada_time.time()
-    if time(6, 0) <= hora < time(14, 0):
-        return "Turno 1"
-    elif time(14, 0) <= hora < time(22, 0):
-        return "Turno 2"
-    else:
-        return "Turno 3"
-
 def historial_asistencia(request):
     nombre = request.GET.get('nombre')
     dni = request.GET.get('dni')
@@ -189,7 +180,6 @@ def historial_asistencia(request):
                     entrada = stack_entradas.pop(0)
                     entrada_time = entrada.timestamp
                     salida_time = reg.timestamp
-                    turno_detectado = detectar_turno(entrada_time)
                     if salida_time < entrada_time:
                         salida_time += timedelta(days=1)
                     duracion = salida_time - entrada_time
@@ -197,7 +187,6 @@ def historial_asistencia(request):
                     registros_combinados.append({
                         'usuario_id': entrada.usuario.id,
                         'nombre': entrada.usuario.nombre,
-                        'turno': turno_detectado,
                         'entrada': entrada_time,
                         'salida': salida_time,
                         'horas_trabajadas': horas,
@@ -258,26 +247,6 @@ def determinar_estado_por_turno(usuario, timestamp):
 
     return 0  # fallback
 
-
-"""FUNCION PARA DETECTAR EL TURNOS DE ACUERDO A LA HORA"""
-def detectar_turno_por_hora(hora: time) -> str:
-    """
-    Detecta automáticamente el turno laboral según la hora proporcionada.
-
-    Parámetros:
-        hora (datetime.time): Hora de entrada o salida.
-
-    Retorna:
-        str: Nombre del turno detectado.
-    """
-    if time(6, 0) <= hora < time(14, 0):
-        return "Turno Mañana"
-    elif time(14, 0) <= hora < time(22, 0):
-        return "Turno Tarde"
-    elif hora >= time(22, 0) or hora < time(6, 0):
-        return "Turno Noche"
-    else:
-        return "Desconocido"
 
 
 """FUNCION PARA CONSIDERAR LOS TURNOS DE LOS USUARIOS COMO PRIORIDAD"""

@@ -61,7 +61,6 @@
                     <th>Nombre</th>
                     <th>DNI</th>
                     <th>Estación</th>
-                    <th>Turno</th>
                     <th>Entrada</th>
                     <th>Salida</th>
                     <th>Horas Trabajadas</th>
@@ -75,7 +74,6 @@
                         <td>{{ r.nombre }}</td>
                         <td>{{ r.dni }}</td>
                         <td>{{ r.estacion }}</td>
-                        <td>{{ r.turno }}</td>
                         <td>
                             {% if r.entrada %}
                                 {{ r.entrada|date:"Y-m-d H:i:s" }}
