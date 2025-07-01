@@ -5,6 +5,7 @@ from datetime import datetime
 from django.utils.timezone import make_aware
 from zk import ZK
 from dotenv import load_dotenv
+from django.conf import settings
 
 load_dotenv()
 
@@ -110,8 +111,9 @@ def eliminar_usuario_biometrico(zk, user_id):
 # 📥 Función principal de importación
 # ============================== #
 def importar_datos_dispositivo():
-    ip = os.getenv("BIOMETRICO_IP_ZKTECO") or "192.168.0.23"
-    puerto_env = os.getenv("BIOMETRICO_PUERTO_ZKTECO")
+    # Usar la IP y puerto definidos en settings.py
+    ip = getattr(settings, 'BIOMETRIC_DEVICE_IP', None) or os.getenv("BIOMETRICO_DEVICE_IP")
+    puerto_env = getattr(settings, 'BIOMETRIC_DEVICE_PORT', None) or os.getenv("BIOMETRICO_PUERTO_ZKTECO")
     try:
         puerto = int(puerto_env) if puerto_env else 4370
     except Exception:

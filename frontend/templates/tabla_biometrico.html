@@ -23,14 +23,25 @@
             </select>
         </div>
 
-        <div class="col-md-3">
-            <label for="fecha_inicio" class="form-label">Fecha Inicio:</label>
-            <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
+        <div class="col-md-2">
+            <label for="nombre" class="form-label">Nombre:</label>
+            <input type="text" name="nombre" id="nombre" class="form-control" value="{{ nombre|default:'' }}">
         </div>
-
-        <div class="col-md-3">
+        <div class="col-md-2">
+            <label for="dni" class="form-label">DNI:</label>
+            <input type="text" name="dni" id="dni" class="form-control" value="{{ dni|default:'' }}">
+        </div>
+        <div class="col-md-2">
+            <label for="estacion" class="form-label">Estación:</label>
+            <input type="text" name="estacion" id="estacion" class="form-control" value="{{ estacion|default:'' }}">
+        </div>
+        <div class="col-md-2">
+            <label for="fecha_inicio" class="form-label">Fecha Inicio:</label>
+            <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="{{ fecha_inicio|default:'' }}">
+        </div>
+        <div class="col-md-2">
             <label for="fecha_fin" class="form-label">Fecha Fin:</label>
-            <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ fecha_fin }}">
+            <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="{{ fecha_fin|default:'' }}">
         </div>
 
         <div class="col-md-2 align-self-end d-flex gap-2">

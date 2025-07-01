@@ -152,14 +152,20 @@ def detectar_turno(entrada_time):
         return "Turno 3"
 
 def historial_asistencia(request):
-    registros = RegistroAsistencia.objects.select_related('usuario')
-
-    usuario_id = request.GET.get('usuario')
+    nombre = request.GET.get('nombre')
+    dni = request.GET.get('dni')
+    estacion = request.GET.get('estacion')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
 
-    if usuario_id:
-        registros = registros.filter(usuario__id=usuario_id)
+    registros = RegistroAsistencia.objects.select_related('usuario', 'usuario__estacion').all()
+
+    if nombre:
+        registros = registros.filter(usuario__nombre__icontains=nombre)
+    if dni:
+        registros = registros.filter(usuario__dni__icontains=dni)
+    if estacion:
+        registros = registros.filter(usuario__estacion__nombre__icontains=estacion)
     if fecha_inicio:
         registros = registros.filter(timestamp__date__gte=fecha_inicio)
     if fecha_fin:
@@ -195,6 +201,8 @@ def historial_asistencia(request):
                         'entrada': entrada_time,
                         'salida': salida_time,
                         'horas_trabajadas': horas,
+                        'dni': entrada.usuario.dni,
+                        'estacion': entrada.usuario.estacion.nombre if entrada.usuario.estacion else '',
                     })
             # Si quedan entradas sin salida
             for entrada in stack_entradas:
@@ -208,12 +216,16 @@ def historial_asistencia(request):
                     'salida': None,
                     'horas_trabajadas': None,
                     'en_turno': True,
+                    'dni': entrada.usuario.dni,
+                    'estacion': entrada.usuario.estacion.nombre if entrada.usuario.estacion else '',
                 })
 
     context = {
         'registros': registros_combinados,
         'usuarios': UsuarioBiometrico.objects.all(),
-        'usuario_id': usuario_id,
+        'nombre': nombre,
+        'dni': dni,
+        'estacion': estacion,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
     }
@@ -357,7 +369,26 @@ def calcular_horas_trabajadas():
 
 @login_required
 def resumen_asistencias_diarias(request):
-    registros_qs = RegistroAsistencia.objects.select_related('usuario', 'usuario__turno', 'usuario__estacion').order_by('usuario__id', 'timestamp')
+    nombre = request.GET.get('nombre')
+    dni = request.GET.get('dni')
+    estacion = request.GET.get('estacion')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    registros_qs = RegistroAsistencia.objects.select_related('usuario', 'usuario__turno', 'usuario__estacion').all()
+
+    if nombre:
+        registros_qs = registros_qs.filter(usuario__nombre__icontains=nombre)
+    if dni:
+        registros_qs = registros_qs.filter(usuario__dni__icontains=dni)
+    if estacion:
+        registros_qs = registros_qs.filter(usuario__estacion__nombre__icontains=estacion)
+    if fecha_inicio:
+        registros_qs = registros_qs.filter(timestamp__date__gte=fecha_inicio)
+    if fecha_fin:
+        registros_qs = registros_qs.filter(timestamp__date__lte=fecha_fin)
+
+    registros_qs = registros_qs.order_by('usuario__id', 'timestamp')
     asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
     for r in registros_qs:
         fecha = localtime(r.timestamp).date()
@@ -409,6 +440,7 @@ def resumen_asistencias_diarias(request):
                 'dia': fecha.strftime('%Y-%m-%d'),
                 'usuario_id': usuario.id,
                 'nombre': usuario.nombre,
+                'dni': usuario.dni,
                 'estacion': estacion_nombre,
                 'turno': turno_nombre,
                 'entrada': entrada,
@@ -417,7 +449,7 @@ def resumen_asistencias_diarias(request):
                 'horas_extra': horas_extra,
                 'aprobado': aprobado,
             })
-    return render(request, 'resumen_asistencias_diarias.html', {'registros': registros})
+    return render(request, 'resumen_asistencias_diarias.html', {'registros': registros, 'nombre': nombre, 'dni': dni, 'estacion': estacion, 'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin})
 
 @login_required
 def aprobar_horas_extra(request, usuario_id, dia):
