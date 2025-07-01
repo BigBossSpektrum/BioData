@@ -59,6 +59,8 @@
                     <th>#</th>
                     <th>ID Usuario</th>
                     <th>Nombre</th>
+                    <th>DNI</th>
+                    <th>Estación</th>
                     <th>Turno</th>
                     <th>Entrada</th>
                     <th>Salida</th>
@@ -71,8 +73,16 @@
                         <td>{{ forloop.counter }}</td>
                         <td>{{ r.usuario_id }}</td>
                         <td>{{ r.nombre }}</td>
+                        <td>{{ r.dni }}</td>
+                        <td>{{ r.estacion }}</td>
                         <td>{{ r.turno }}</td>
-                        <td>{{ r.entrada|date:"Y-m-d H:i:s" }}</td>
+                        <td>
+                            {% if r.entrada %}
+                                {{ r.entrada|date:"Y-m-d H:i:s" }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if r.salida %}
                                 {{ r.salida|date:"Y-m-d H:i:s" }}

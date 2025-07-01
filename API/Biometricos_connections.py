@@ -6,6 +6,8 @@ from django.utils.timezone import make_aware
 from zk import ZK
 from dotenv import load_dotenv
 from django.conf import settings
+import requests
+from decouple import config
 
 load_dotenv()
 
@@ -110,17 +112,23 @@ def eliminar_usuario_biometrico(zk, user_id):
 # ============================== #
 # 📥 Función principal de importación
 # ============================== #
-def importar_datos_dispositivo():
+def importar_datos_dispositivo(enviar_a_clevercloud=False, clevercloud_url=None, token=None):
     # Usar la IP y puerto definidos en settings.py
     ip = getattr(settings, 'BIOMETRIC_DEVICE_IP', None) or os.getenv("BIOMETRICO_DEVICE_IP")
     puerto_env = getattr(settings, 'BIOMETRIC_DEVICE_PORT', None) or os.getenv("BIOMETRICO_PUERTO_ZKTECO")
+    # Leer Clever Cloud info del .env si no se pasa por parámetro
+    if enviar_a_clevercloud:
+        if not clevercloud_url:
+            clevercloud_url = config('CLEVERCLOUD_URL', default=None)
+        if not token:
+            token = config('CLEVERCLOUD_TOKEN', default=None)
     try:
         puerto = int(puerto_env) if puerto_env else 4370
     except Exception:
         puerto = 4370
     zk = ZK(ip, port=puerto, timeout=10, force_udp=False, ommit_ping=False)
     nuevos = 0
-
+    registros_json = []
     try:
         print(f"🔌 [CONECTANDO] Verificando disponibilidad del dispositivo en {ip}:{puerto}...")
         conn = zk.connect()
@@ -182,15 +190,30 @@ def importar_datos_dispositivo():
             if created_default or created_local:
                 nuevos += 1
                 print(f"🧾 Registro - Usuario: {user_default.nombre}, Hora: {timestamp}, Estado: {tipo.capitalize()}")
+            # Agregar a la lista para enviar
+            registros_json.append({
+                'user_id': user_default.biometrico_id,
+                'nombre': user_default.nombre,
+                'timestamp': timestamp.isoformat(),
+                'tipo': tipo
+            })
 
         print(f"📊 Total nuevos registros importados: {nuevos}")
         conn.clear_attendance()
         print("🧹 Registros de asistencia eliminados del dispositivo.")
         conn.disconnect()
         print("🔌 Conexión cerrada.")
-
+        # Enviar a Clever Cloud si se solicita
+        if enviar_a_clevercloud and clevercloud_url and token:
+            print(f"🌐 Enviando registros a Clever Cloud: {clevercloud_url}")
+            headers = {'Authorization': f'Token {token}', 'Content-Type': 'application/json'}
+            response = requests.post(clevercloud_url, json=registros_json, headers=headers)
+            print(f"[CLEVER CLOUD] Status: {response.status_code}, Response: {response.text}")
+            return response.status_code, response.text
+        return registros_json
     except Exception as e:
         print(f"❌ Error de conexión o procesamiento: {e}")
+        return None
 
 
 # ============================== #
