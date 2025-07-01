@@ -58,15 +58,18 @@ def obtener_estado_alternado(usuario, timestamp):
 # ============================== #
 def conectar_dispositivo(ip=None, puerto=None, timeout=10):
     """
-    Intenta conectar con el dispositivo ZKTeco usando IP y puerto de argumentos o variables de entorno.
+    Intenta conectar con el dispositivo ZKTeco usando IP y puerto de argumentos, settings.py o variables de entorno.
     Muestra sugerencias si la conexión falla.
     """
-    ip = ip or os.getenv("BIOMETRICO_IP_ZKTECO") or "192.168.0.23"
-    puerto_env = puerto or os.getenv("BIOMETRICO_PUERTO_ZKTECO")
-    try:
-        puerto = int(puerto_env) if puerto_env else 4370
-    except Exception:
-        puerto = 4370
+    # Prioridad: argumento > settings.py > variable de entorno > default
+    if not ip:
+        ip = getattr(settings, 'BIOMETRIC_DEVICE_IP', None) or os.getenv("BIOMETRICO_IP_ZKTECO")
+    if not puerto:
+        puerto_env = getattr(settings, 'BIOMETRIC_DEVICE_PORT', None) or os.getenv("BIOMETRICO_PUERTO_ZKTECO")
+        try:
+            puerto = int(puerto_env) if puerto_env else 4370
+        except Exception:
+            puerto = 4370
     try:
         print(f"🔌 [CONECTANDO] Verificando disponibilidad del dispositivo en {ip}:{puerto}...")
         zk = ZK(ip, port=puerto, timeout=timeout, password='0', force_udp=False, ommit_ping=False)
