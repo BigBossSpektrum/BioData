@@ -86,6 +86,10 @@
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-outline-success">Aprobar</button>
                             </form>
+                            <form method="post" action="{% url 'rechazar_horas_extra' r.usuario_id r.dia %}" style="display:inline; margin-left: 4px;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
+                            </form>
                         {% else %}
                             <span class="badge bg-secondary">Pendiente</span>
                         {% endif %}

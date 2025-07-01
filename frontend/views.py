@@ -456,29 +456,52 @@ def resumen_asistencias_diarias(request):
 def aprobar_horas_extra(request, usuario_id, dia):
     if request.method == 'POST' and hasattr(request.user, 'rol') and request.user.rol == 'jefe_patio':
         try:
-            usuario = UsuarioBiometrico.objects.get(id=usuario_id, jefe=request.user)
+            usuario = UsuarioBiometrico.objects.get(id=usuario_id)
+            if not usuario.estacion or usuario.estacion.jefe_id != request.user.id:
+                print("[APROBACION] Usuario no autorizado para este jefe de patio")
+                return HttpResponseForbidden("No autorizado para este usuario")
         except UsuarioBiometrico.DoesNotExist:
-            print("[APROBACION] Usuario no autorizado para este jefe de patio")
-            return HttpResponseForbidden("No autorizado para este usuario")
+            print("[APROBACION] Usuario no encontrado")
+            return HttpResponseForbidden("Usuario no encontrado")
         fecha = datetime.strptime(dia, '%Y-%m-%d').date()
         from datetime import time
         from django.utils.timezone import make_aware
         inicio_dia = make_aware(datetime.combine(fecha, time.min))
         fin_dia = make_aware(datetime.combine(fecha, time.max))
-        # Log de todos los registros de ese usuario
-        registros = RegistroAsistencia.objects.filter(usuario_id=usuario_id)
-        for r in registros:
-            print(f"[APROBACION-DEBUG] Registro: {r.id}, fecha: {r.timestamp.date()}, aprobado: {r.aprobado}")
         qs = RegistroAsistencia.objects.filter(
             usuario_id=int(usuario_id),
             timestamp__gte=inicio_dia,
             timestamp__lte=fin_dia
         )
-        print(f"[APROBACION] Registros encontrados para usuario {usuario_id} en {fecha}: {qs.count()}")
-        for r in qs:
-            print(f"[APROBACION-ENCONTRADO] Registro: {r.id}, fecha: {r.timestamp.date()}, aprobado: {r.aprobado}")
         updated = qs.update(aprobado=True)
         print(f"[APROBACION] Registros actualizados para usuario {usuario_id} en {fecha}: {updated}")
         return HttpResponseRedirect(reverse('resumen_asistencias_diarias') + '?aprobado=1')
     print("[APROBACION] Intento de acceso no autorizado o método incorrecto")
+    return HttpResponseForbidden("No autorizado")
+
+@login_required
+def rechazar_horas_extra(request, usuario_id, dia):
+    if request.method == 'POST' and hasattr(request.user, 'rol') and request.user.rol == 'jefe_patio':
+        try:
+            usuario = UsuarioBiometrico.objects.get(id=usuario_id)
+            if not usuario.estacion or usuario.estacion.jefe_id != request.user.id:
+                print("[RECHAZO] Usuario no autorizado para este jefe de patio")
+                return HttpResponseForbidden("No autorizado para este usuario")
+        except UsuarioBiometrico.DoesNotExist:
+            print("[RECHAZO] Usuario no encontrado")
+            return HttpResponseForbidden("Usuario no encontrado")
+        fecha = datetime.strptime(dia, '%Y-%m-%d').date()
+        from datetime import time
+        from django.utils.timezone import make_aware
+        inicio_dia = make_aware(datetime.combine(fecha, time.min))
+        fin_dia = make_aware(datetime.combine(fecha, time.max))
+        qs = RegistroAsistencia.objects.filter(
+            usuario_id=int(usuario_id),
+            timestamp__gte=inicio_dia,
+            timestamp__lte=fin_dia
+        )
+        updated = qs.update(aprobado=False)
+        print(f"[RECHAZO] Registros actualizados para usuario {usuario_id} en {fecha}: {updated}")
+        return HttpResponseRedirect(reverse('resumen_asistencias_diarias') + '?aprobado=0')
+    print("[RECHAZO] Intento de acceso no autorizado o método incorrecto")
     return HttpResponseForbidden("No autorizado")
