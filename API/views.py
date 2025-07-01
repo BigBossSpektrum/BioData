@@ -13,6 +13,7 @@ from django.utils.dateparse import parse_datetime
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
+from .serializers import RegistroAsistenciaSerializer
 User = get_user_model()
 
 class RegistroAsistenciaListView(generics.ListAPIView):
@@ -212,3 +213,12 @@ def editar_usuario(request, user_id):
         messages.success(request, "Usuario biométrico editado correctamente.")
         return redirect('lista_usuarios')
     return redirect('lista_usuarios')
+
+@csrf_exempt
+def api_sincronizar_biometrico(request):
+    if request.method == 'POST':
+        # En vez de importar, lee los registros existentes
+        registros = RegistroAsistencia.objects.all()
+        serializer = RegistroAsistenciaSerializer(registros, many=True)
+        return JsonResponse({'registros': serializer.data}, safe=False)
+    return JsonResponse({'error': 'Método no permitido'}, status=405)

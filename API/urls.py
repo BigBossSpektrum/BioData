@@ -13,4 +13,6 @@ urlpatterns = [
     path("recibir-datos-biometrico/", views.recibir_datos_biometrico, name="recibir_datos_biometrico"),
 
     path('no-autorizado/', views.no_autorizado, name='no_autorizado'),
+    
+    path('api_sincronizar_biometrico/', views.api_sincronizar_biometrico, name='api_sincronizar_biometrico'),
 ]

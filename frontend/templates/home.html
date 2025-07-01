@@ -16,7 +16,7 @@
             {% endif %}
 
             <p class="card-text fs-5 text-center">
-                Resumen de asistencias del día: <span class="fw-bold">{{ asistencias_hoy.count }}</span>
+                Resumen de asistencias del día: <span class="fw-bold" id="asistencias-hoy-count">0</span>
             </p>
 
             <div class="table-responsive mt-4">
@@ -29,33 +29,10 @@
                             <th>Turno</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for registro in asistencias_hoy %}
-                            <tr>
-                                <td>{{ registro.usuario.nombre }}</td>
-                                <td>
-                                    <span class="badge
-                                        {% if registro.tipo == 'entrada' %} bg-primary
-                                        {% elif registro.tipo == 'salida' %} bg-danger
-                                        {% else %} bg-secondary
-                                        {% endif %}">
-                                        {{ registro.tipo|capfirst }}
-                                    </span>
-                                </td>
-                                <td>{{ registro.timestamp|date:"H:i:s" }}</td>
-                                <td>
-                                    {% if registro.usuario.turno %}
-                                        {{ registro.usuario.turno.nombre }}
-                                    {% else %}
-                                        <span class="text-muted">No asignado</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="4" class="text-center text-muted">No hay asistencias registradas hoy.</td>
-                            </tr>
-                        {% endfor %}
+                    <tbody id="tabla-asistencias-body">
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Cargando asistencias...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -88,4 +65,37 @@ document.getElementById('btn-sincronizar').addEventListener('click', function() 
 });
 </script>
 {% endif %}
+
+<script>
+function pad(n) { return n < 10 ? '0' + n : n; }
+function hoyISO() {
+    const hoy = new Date();
+    return hoy.getFullYear() + '-' + pad(hoy.getMonth()+1) + '-' + pad(hoy.getDate());
+}
+
+async function cargarAsistenciasHoy() {
+    const response = await fetch('/api/api_sincronizar_biometrico/', { method: 'POST' });
+    const data = await response.json();
+    const registros = (data.registros || []).filter(r => {
+        // Solo entradas del día actual
+        return r.tipo === 'entrada' && r.timestamp.startsWith(hoyISO());
+    });
+    let html = '';
+    if (registros.length === 0) {
+        html = '<tr><td colspan="4" class="text-center text-muted">No hay asistencias registradas hoy.</td></tr>';
+    } else {
+        registros.forEach(r => {
+            html += `<tr>
+                <td>${r.usuario.nombre}</td>
+                <td><span class="badge bg-primary">Entrada</span></td>
+                <td>${r.timestamp.substring(11,19)}</td>
+                <td>${r.usuario.turno ? r.usuario.turno.nombre : '<span class=\"text-muted\">No asignado</span>'}</td>
+            </tr>`;
+        });
+    }
+    document.getElementById('tabla-asistencias-body').innerHTML = html;
+    document.getElementById('asistencias-hoy-count').textContent = registros.length;
+}
+window.onload = cargarAsistenciasHoy;
+</script>
 {% endblock %}

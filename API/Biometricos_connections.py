@@ -220,4 +220,8 @@ def importar_datos_dispositivo(enviar_a_clevercloud=False, clevercloud_url=None,
 # ▶️ Ejecución directa
 # ============================== #
 if __name__ == "__main__":
-    importar_datos_dispositivo()
+    # Ejecuta la importación y muestra los datos en consola como JSON
+    datos = importar_datos_dispositivo()
+    import json
+    print("\n=== DATOS ENVIADOS AL FRONT ===")
+    print(json.dumps(datos, indent=2, ensure_ascii=False))
