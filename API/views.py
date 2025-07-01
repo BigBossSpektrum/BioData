@@ -145,15 +145,30 @@ def recibir_datos_biometrico(request):
     print(f"[DEBUG] Body (JSON): {request.data}")
     datos = request.data
     nuevos = 0
+    from django.utils import timezone
     for registro in datos:
         user_id = registro.get("user_id")
         nombre = registro.get("nombre")
         timestamp = parse_datetime(registro.get("timestamp"))
-        tipo = registro.get("tipo")
-        print(f"[DEBUG] Procesando registro: user_id={user_id}, nombre={nombre}, timestamp={timestamp}, tipo={tipo}")
+        if not timestamp:
+            print(f"[ERROR] Timestamp inválido: {registro.get('timestamp')}")
+            continue
+        fecha = timestamp.date()
         user, _ = UsuarioBiometrico.objects.get_or_create(biometrico_id=user_id, defaults={"nombre": nombre})
-        RegistroAsistencia.objects.get_or_create(usuario=user, timestamp=timestamp, tipo=tipo)
-        nuevos += 1
+        # Buscar registros de ese usuario en ese día
+        registros_dia = RegistroAsistencia.objects.filter(usuario=user, timestamp__date=fecha).order_by('timestamp')
+        if not registros_dia.filter(tipo='entrada').exists():
+            # No hay entrada, este es la entrada
+            RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='entrada')
+            nuevos += 1
+            print(f"[DEBUG] Registrada ENTRADA para usuario {user} en {timestamp}")
+        elif not registros_dia.filter(tipo='salida').exists():
+            # Ya hay entrada, este es la salida
+            RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='salida')
+            nuevos += 1
+            print(f"[DEBUG] Registrada SALIDA para usuario {user} en {timestamp}")
+        else:
+            print(f"[DEBUG] Ya existen entrada y salida para usuario {user} en {fecha}, se ignora registro adicional.")
     print(f"[DEBUG] Registros importados: {nuevos}")
     return Response({"status": "ok", "registros_importados": nuevos})
 

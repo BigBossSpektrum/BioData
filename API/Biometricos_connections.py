@@ -164,39 +164,46 @@ def importar_datos_dispositivo(enviar_a_clevercloud=False, clevercloud_url=None,
         print("⏱️ [ASISTENCIA] Descargando registros de asistencia...")
         asistencia = conn.get_attendance()
 
+        # Agrupar todos los registros por usuario y día
+        from collections import defaultdict
+        registros_por_usuario_fecha = defaultdict(list)
         for record in asistencia:
             user_default = UsuarioBiometrico.objects.using('default').filter(biometrico_id=record.user_id).first()
             user_local = UsuarioBiometrico.objects.using('local').filter(biometrico_id=record.user_id).first()
             if not user_default or not user_local:
                 continue
-
             timestamp = record.timestamp
             if not timestamp.tzinfo:
                 timestamp = make_aware(timestamp)
+            fecha = timestamp.date()
+            registros_por_usuario_fecha[(record.user_id, fecha)].append((timestamp, user_default, user_local))
 
-            estado_num = obtener_estado_alternado(user_default, timestamp)
-            tipo = 'entrada' if estado_num == 0 else 'salida'
-
-            _, created_default = RegistroAsistencia.objects.using('default').get_or_create(
-                usuario=user_default,
-                timestamp=timestamp,
-                tipo=tipo,
-            )
-            _, created_local = RegistroAsistencia.objects.using('local').get_or_create(
-                usuario=user_local,
-                timestamp=timestamp,
-                tipo=tipo,
-            )
-            if created_default or created_local:
-                nuevos += 1
-                print(f"🧾 Registro - Usuario: {user_default.nombre}, Hora: {timestamp}, Estado: {tipo.capitalize()}")
-            # Agregar a la lista para enviar
-            registros_json.append({
-                'user_id': user_default.biometrico_id,
-                'nombre': user_default.nombre,
-                'timestamp': timestamp.isoformat(),
-                'tipo': tipo
-            })
+        for (user_id, fecha), registros in registros_por_usuario_fecha.items():
+            # Ordenar por hora
+            registros.sort(key=lambda x: x[0])
+            for idx, (timestamp, user_default, user_local) in enumerate(registros):
+                tipo = 'entrada' if idx % 2 == 0 else 'salida'
+                # Guardar en default
+                _, created_default = RegistroAsistencia.objects.using('default').get_or_create(
+                    usuario=user_default,
+                    timestamp=timestamp,
+                    tipo=tipo,
+                )
+                # Guardar en local
+                _, created_local = RegistroAsistencia.objects.using('local').get_or_create(
+                    usuario=user_local,
+                    timestamp=timestamp,
+                    tipo=tipo,
+                )
+                if created_default or created_local:
+                    nuevos += 1
+                    print(f"🧾 Registro - Usuario: {user_default.nombre}, Hora: {timestamp}, Estado: {tipo.capitalize()}")
+                registros_json.append({
+                    'user_id': user_default.biometrico_id,
+                    'nombre': user_default.nombre,
+                    'timestamp': timestamp.isoformat(),
+                    'tipo': tipo
+                })
 
         print(f"📊 Total nuevos registros importados: {nuevos}")
         conn.clear_attendance()
