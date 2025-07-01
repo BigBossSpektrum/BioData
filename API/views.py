@@ -28,12 +28,12 @@ class RegistroUsuariosView(generics.ListAPIView):
 def lista_usuarios(request):
     print(f"[DEBUG] Entrando a lista_usuarios. Usuario autenticado: {request.user}, rol: {getattr(request.user, 'rol', None)}")
     rol = request.user.rol
-    if rol == 'admin':
+    if rol == 'admin' or rol == 'rrhh':
         usuarios_biometricos = UsuarioBiometrico.objects.all()
-    elif rol == 'rrhh':
-        usuarios_biometricos = UsuarioBiometrico.objects.filter(activo=True)
     elif rol == 'jefe_patio':
-        usuarios_biometricos = UsuarioBiometrico.objects.filter(jefe=request.user)
+        # Solo usuarios biométricos asignados a la misma estación que el jefe de patio
+        estaciones_jefe = EstacionServicio.objects.filter(jefe=request.user)
+        usuarios_biometricos = UsuarioBiometrico.objects.filter(estacion__in=estaciones_jefe)
     else:
         usuarios_biometricos = UsuarioBiometrico.objects.none()
     estaciones = EstacionServicio.objects.all()
