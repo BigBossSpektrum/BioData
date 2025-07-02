@@ -26,7 +26,7 @@
                             <th>Nombre</th>
                             <th>Tipo</th>
                             <th>Hora</th>
-                            <th>Turno</th>
+                            <th>Estación</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-asistencias-body">
@@ -89,7 +89,7 @@ async function cargarAsistenciasHoy() {
                 <td>${r.usuario.nombre}</td>
                 <td><span class="badge bg-primary">Entrada</span></td>
                 <td>${r.timestamp.substring(11,19)}</td>
-                <td>${r.usuario.turno ? r.usuario.turno.nombre : '<span class=\"text-muted\">No asignado</span>'}</td>
+                <td>${r.usuario.estacion ? r.usuario.estacion.nombre : '<span class=\"text-muted\">No asignada</span>'}</td>
             </tr>`;
         });
     }
