@@ -1,56 +1,72 @@
 {% extends "layout/base.html" %}
 
 {% load widget_tweaks %}
-
+{% load static %}
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 <div class="container mt-5">
-  <div class="row justify-content-center">
-    <div class="col-md-6 col-lg-4">
-      <div class="card shadow">
-        <div class="card-header text-center">
-          <h4>Iniciar sesión</h4>
-        </div>
-        <div class="card-body">
-          <form method="post" novalidate class="text-center">
-            {% csrf_token %}
+  <div class="row justify-content-center align-items-center">
+    <div class="col-lg-10">
+      <div class="card shadow-lg">
+        <div class="row g-0">
 
-            {% for field in form %}
-              <div class="mb-3 text-start">
-                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+          <!-- Columna izquierda: Imagen + Texto -->
+          <div class="col-md-6 d-none d-md-block bg-light p-4 text-center">
+            <img src="{% static 'img/zkteco_logo.png' %}" alt="Bienvenido" class="img-fluid mb-4" style="max-height: 250px;">
+            <h5 class="fw-bold">¡Bienvenido a Entreredes Access!</h5>
+            <p class="text-muted">
+              Gestiona la asistencia del personal de forma eficiente y segura. 
+              Solo usuarios autorizados pueden ingresar.
+            </p>
+          </div>
 
-                {% if field.field.widget.input_type == "password" %}
-                  <div class="input-group">
-                    {{ field|add_class:"form-control text-center" }}
-                    <button type="button" class="btn btn-outline-secondary" id="togglePassword">
-                      <i class="bi bi-eye-slash" id="toggleIcon"></i>
-                    </button>
-                  </div>
-                {% else %}
-                  {{ field|add_class:"form-control text-center" }}
-                {% endif %}
-
-                {% if field.errors %}
-                  <div class="text-danger small">
-                    {{ field.errors|striptags }}
-                  </div>
-                {% endif %}
-              </div>
-            {% endfor %}
-
-            <button type="submit" class="btn btn-primary w-100">Entrar</button>
-          </form>
-
-          {% if form.non_field_errors %}
-            <div class="alert alert-danger mt-3" role="alert">
-              Usuario o contraseña incorrectos.
+          <!-- Columna derecha: Login -->
+          <div class="col-md-6 p-4">
+            <div class="text-center mb-4">
+              <h4>Iniciar sesión</h4>
             </div>
-          {% endif %}
+            <form method="post" novalidate class="text-center">
+              {% csrf_token %}
+
+              {% for field in form %}
+                <div class="mb-3 text-start">
+                  <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+
+                  {% if field.field.widget.input_type == "password" %}
+                    <div class="input-group">
+                      {{ field|add_class:"form-control text-center" }}
+                      <button type="button" class="btn btn-outline-secondary" id="togglePassword">
+                        <i class="bi bi-eye-slash" id="toggleIcon"></i>
+                      </button>
+                    </div>
+                  {% else %}
+                    {{ field|add_class:"form-control text-center" }}
+                  {% endif %}
+
+                  {% if field.errors %}
+                    <div class="text-danger small">
+                      {{ field.errors|striptags }}
+                    </div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+
+              <button type="submit" class="btn btn-primary w-100">Entrar</button>
+            </form>
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger mt-3" role="alert">
+                Usuario o contraseña incorrectos.
+              </div>
+            {% endif %}
+          </div>
+
         </div>
       </div>
     </div>
-  </div> 
+  </div>
 </div>
+
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
