@@ -46,6 +46,7 @@
                                 <a class="nav-link" href="{% url 'historial_asistencia' %}">Historial</a>
                             </li>
 
+
                         {% elif user.rol == 'rrhh' %}
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'lista_usuarios' %}">Usuarios activos</a>
@@ -66,6 +67,14 @@
                         <li>
                             <a class="nav-link" href="{% url 'resumen_asistencias_diarias' %}">Resumen Asistencias Diarias</a>
                         </li>
+                        
+                        {% if user.rol == 'admin' %}
+                            <li class="nav-item">
+                                <a class="nav-link text-warning fw-bold" href="http://{{ request.get_host }}/admin/" target="_blank">
+                                    <i class="bi bi-gear-fill"></i> Admin SuperUsuario
+                                </a>
+                            </li>
+                        {% endif %}
 
                         <!-- Cerrar sesión -->
                         <li class="nav-item">

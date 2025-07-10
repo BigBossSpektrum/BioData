@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'API',
     'frontend',
     'accounts',
+    'widget_tweaks',
 ]
 
 REST_FRAMEWORK = {
