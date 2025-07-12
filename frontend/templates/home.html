@@ -9,11 +9,7 @@
         <div class="card-body">
             <h1 class="card-title text-center mb-4">Bienvenido, {{ request.user.username }}</h1>
 
-            {% if request.user.rol == "admin" %}
-                <div class="text-center mb-3">
-                    <button id="btn-sincronizar" class="btn btn-primary">Sincronizar Biométrico</button>
-                </div>
-            {% endif %}
+
 
             <p class="card-text fs-5 text-center">
                 Resumen de asistencias del día: <span class="fw-bold" id="asistencias-hoy-count">0</span>
@@ -40,31 +36,7 @@
     </div>
 </div>
 
-{% if request.user.rol == "admin" %}
-<script>
-document.getElementById('btn-sincronizar').addEventListener('click', function() {
-    fetch("{% url 'sincronizar_biometrico' %}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}',
-        },
-        body: JSON.stringify({})
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message || "Sincronización completada.");
-        if (data.success) {
-            location.reload();
-        }
-    })
-    .catch(error => {
-        alert("Error al sincronizar");
-        console.error(error);
-    });
-});
-</script>
-{% endif %}
+
 
 <script>
 function pad(n) { return n < 10 ? '0' + n : n; }

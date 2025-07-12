@@ -99,11 +99,19 @@
         </li>
       {% endif %}
 
-      <li class="nav-item">
-        <a class="nav-link text-white d-flex align-items-center" href="{% url 'resumen_asistencias_diarias' %}">
-          <i class="bi bi-calendar-check me-2"></i><span class="sidebar-text">Resumen Diario</span>
-        </a>
-      </li>
+      {% if request.user.rol == "admin" %}
+        <li class="nav-item">
+          <button id="btn-sincronizar" class="nav-link text-primary d-flex align-items-center w-100 bg-transparent border-0">
+            <i class="bi bi-arrow-repeat me-2"></i><span class="sidebar-text">Sincronizar Biométrico</span>
+          </button>
+        </li>
+
+        <li class="nav-item">
+          <a class="nav-link text-white d-flex align-items-center" href="{% url 'resumen_asistencias_diarias' %}">
+            <i class="bi bi-calendar-check me-2"></i><span class="sidebar-text">Resumen Diario</span>
+          </a>
+        </li>
+      {% endif %}
 
       <li class="nav-item mt-3">
         <form method="post" action="{% url 'logout' %}">
@@ -167,6 +175,32 @@
     }
   });
 </script>
+
+{% if request.user.rol == "admin" %}
+<script>
+document.getElementById('btn-sincronizar').addEventListener('click', function() {
+    fetch("{% url 'sincronizar_biometrico' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message || "Sincronización completada.");
+        if (data.success) {
+            location.reload();
+        }
+    })
+    .catch(error => {
+        alert("Error al sincronizar");
+        console.error(error);
+    });
+});
+</script>
+{% endif %}
 
 {% block extra_js %}{% endblock %}
 </body>
