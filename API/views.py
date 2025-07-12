@@ -52,10 +52,10 @@ def crear_usuario(request):
         return redirect('no_autorizado')
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
-        dni = request.POST.get('dni')
+        cedula = request.POST.get('cedula')
         estacion_id = request.POST.get('estacion_id')
-        print(f"[DEBUG] Datos recibidos: nombre={nombre}, dni={dni}, estacion_id={estacion_id}")
-        if not nombre or not dni or not estacion_id:
+        print(f"[DEBUG] Datos recibidos: nombre={nombre}, cedula={cedula}, estacion_id={estacion_id}")
+        if not nombre or not cedula or not estacion_id:
             print("[ERROR] Faltan campos obligatorios.")
             messages.error(request, "Todos los campos son obligatorios.")
             return redirect('lista_usuarios')
@@ -66,13 +66,13 @@ def crear_usuario(request):
             print("[ERROR] Estación no válida.")
             messages.error(request, "Estación no válida.")
             return redirect('lista_usuarios')
-        if UsuarioBiometrico.objects.filter(dni=dni).exists():
-            print("[ERROR] Usuario biométrico duplicado por DNI.")
-            messages.error(request, "Ya existe un usuario biométrico con este DNI.")
+        if UsuarioBiometrico.objects.filter(cedula=cedula).exists():
+            print("[ERROR] Usuario biométrico duplicado por Cedula.")
+            messages.error(request, "Ya existe un usuario biométrico con esta Cedula.")
             return redirect('lista_usuarios')
         usuario_bio = UsuarioBiometrico.objects.create(
             nombre=nombre,
-            dni=dni,
+            cedula=cedula,
             estacion=estacion
         )
         print(f"[DEBUG] Usuario biométrico creado en BD: {usuario_bio}")
@@ -104,7 +104,7 @@ def no_autorizado(request):
 def eliminar_usuario(request, user_id):
     print(f"[DEBUG] Ingresando a eliminar_usuario con user_id={user_id}")
     usuario = get_object_or_404(UsuarioBiometrico, id=user_id)
-    print(f"[DEBUG] Usuario encontrado: id={usuario.id}, nombre={usuario.nombre}, biometrico_id={usuario.biometrico_id}, dni={usuario.dni}")
+    print(f"[DEBUG] Usuario encontrado: id={usuario.id}, nombre={usuario.nombre}, biometrico_id={usuario.biometrico_id}, cedula={usuario.cedula}")
     print(f"[DEBUG] Rol del usuario autenticado: {request.user.rol}")
     if request.user.rol != 'admin':
         print("[DEBUG] Usuario no autorizado para eliminar.")
@@ -203,11 +203,11 @@ def editar_usuario(request, user_id):
         return redirect('no_autorizado')
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
-        dni = request.POST.get('dni')
+        cedula = request.POST.get('cedula')
         estacion_id = request.POST.get('estacion_id')
         activo = request.POST.get('activo') == 'on' or request.POST.get('activo') == 'true'
-        print(f"[DEBUG] Datos recibidos para editar: nombre={nombre}, dni={dni}, estacion_id={estacion_id}, activo={activo}")
-        if not nombre or not dni or not estacion_id:
+        print(f"[DEBUG] Datos recibidos para editar: nombre={nombre}, cedula={cedula}, estacion_id={estacion_id}, activo={activo}")
+        if not nombre or not cedula or not estacion_id:
             print("[ERROR] Faltan campos obligatorios en edición.")
             messages.error(request, "Todos los campos son obligatorios.")
             return redirect('lista_usuarios')
@@ -219,7 +219,7 @@ def editar_usuario(request, user_id):
             messages.error(request, "Estación no válida.")
             return redirect('lista_usuarios')
         usuario.nombre = nombre
-        usuario.dni = dni
+        usuario.cedula = cedula
         usuario.estacion = estacion
         usuario.activo = activo
         usuario.save()

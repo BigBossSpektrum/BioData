@@ -39,7 +39,7 @@
         <td>{{ usuario.id }}</td>
         <td>{{ usuario.biometrico_id }}</td>
         <td>{{ usuario.nombre }}</td>
-        <td>{{ usuario.dni }}</td>
+        <td>{{ usuario.cedula }}</td>
         <td>{{ usuario.estacion }}</td>
         {% if usuario.activo %}
         <td class="text-success">Activo</td>
@@ -54,7 +54,7 @@
               "{{ usuario.id }}",
               "{{ usuario.biometrico_id|default_if_none:'' }}",
               "{{ usuario.nombre|escapejs }}",
-              "{{ usuario.dni|escapejs }}",
+              "{{ usuario.cedula|escapejs }}",
               "{{ usuario.estacion.id }}",
               "{{ activo_val }}"
             )'>
@@ -92,8 +92,8 @@
             <input type="text" class="form-control" name="nombre" id="input_nombre" required>
           </div>
           <div class="mb-3">
-            <label for="input_dni" class="form-label">DNI</label>
-            <input type="text" class="form-control" name="dni" id="input_dni" required>
+            <label for="input_cedula" class="form-label">Cedula</label>
+            <input type="text" class="form-control" name="cedula" id="input_cedula" required>
           </div>
           <div class="mb-3">
             <label for="input_estacion_id" class="form-label">Estación de Servicio</label>
@@ -133,8 +133,8 @@
             <input type="text" class="form-control" id="input_nombre_editar" name="nombre">
           </div>
           <div class="mb-3">
-            <label for="input_dni_editar" class="form-label">DNI</label>
-            <input type="text" class="form-control" id="input_dni_editar" name="dni">
+            <label for="input_cedula_editar" class="form-label">Cedula</label>
+            <input type="text" class="form-control" id="input_cedula_editar" name="cedula">
           </div>
           <div class="mb-3">
             <label for="input_estacion_id_editar" class="form-label">Estación de Servicio</label>
