@@ -43,18 +43,18 @@ class JornadaLaboral(models.Model):
 class EstacionServicio(models.Model):
     nombre = models.CharField(max_length=100)
     direccion = models.CharField(max_length=200)
+    jefe = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='jefe_de_patio'
+    )
 
     def __str__(self):
         return self.nombre
 
 class UsuarioBiometrico(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='perfil_biometrico'
-    )
     biometrico_id = models.IntegerField(
         null=True,
         blank=True
@@ -99,22 +99,28 @@ class UsuarioBiometrico(models.Model):
     )
 
     def __str__(self):
-        return f"{self.nombre} ({self.user})"
+        return f"{self.nombre}"
 
 
 class RegistroAsistencia(models.Model):
     usuario = models.ForeignKey(
         UsuarioBiometrico,
         on_delete=models.CASCADE
-        )
+    )
     timestamp = models.DateTimeField(
         default=timezone.now
-        )
+    )
     tipo = models.CharField(
         max_length=10, choices=(
             ('entrada', 'Entrada'),
             ('salida', 'Salida'))
-        )
+    )
+    aprobado = models.BooleanField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Aprobación de horas extra por el jefe de patio"
+    )
 
 
 

@@ -74,3 +74,8 @@ nav {
         width: 100%;
     }
 }
+
+#sidebar .nav-link:hover {
+  background-color: #495057;
+  border-radius: 0.375rem;
+}

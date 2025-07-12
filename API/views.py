@@ -13,6 +13,7 @@ from django.utils.dateparse import parse_datetime
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
+from .serializers import RegistroAsistenciaSerializer
 User = get_user_model()
 
 class RegistroAsistenciaListView(generics.ListAPIView):
@@ -27,12 +28,12 @@ class RegistroUsuariosView(generics.ListAPIView):
 def lista_usuarios(request):
     print(f"[DEBUG] Entrando a lista_usuarios. Usuario autenticado: {request.user}, rol: {getattr(request.user, 'rol', None)}")
     rol = request.user.rol
-    if rol == 'admin':
+    if rol == 'admin' or rol == 'rrhh':
         usuarios_biometricos = UsuarioBiometrico.objects.all()
-    elif rol == 'rrhh':
-        usuarios_biometricos = UsuarioBiometrico.objects.filter(activo=True)
     elif rol == 'jefe_patio':
-        usuarios_biometricos = UsuarioBiometrico.objects.filter(jefe=request.user)
+        # Solo usuarios biométricos asignados a la misma estación que el jefe de patio
+        estaciones_jefe = EstacionServicio.objects.filter(jefe=request.user)
+        usuarios_biometricos = UsuarioBiometrico.objects.filter(estacion__in=estaciones_jefe)
     else:
         usuarios_biometricos = UsuarioBiometrico.objects.none()
     estaciones = EstacionServicio.objects.all()
@@ -79,9 +80,13 @@ def crear_usuario(request):
             try:
                 biometrico_id = crear_o_actualizar_usuario_biometrico(usuario_bio.id, nombre)
                 print(f"[DEBUG] ID biométrico retornado por dispositivo: {biometrico_id}")
-                usuario_bio.biometrico_id = biometrico_id
-                usuario_bio.save()
-                messages.success(request, "Usuario biométrico creado correctamente.")
+                if biometrico_id is not None:
+                    usuario_bio.biometrico_id = biometrico_id
+                    usuario_bio.save()
+                    messages.success(request, "Usuario biométrico creado correctamente.")
+                else:
+                    print("[ERROR] No se pudo crear el usuario en el biométrico.")
+                    messages.error(request, "No se pudo crear el usuario en el biométrico.")
             except Exception as e:
                 print(f"[ERROR] Error al crear usuario en dispositivo: {e}")
                 messages.error(request, f"Error al crear el usuario biométrico en el dispositivo: {e}")
@@ -99,7 +104,7 @@ def no_autorizado(request):
 def eliminar_usuario(request, user_id):
     print(f"[DEBUG] Ingresando a eliminar_usuario con user_id={user_id}")
     usuario = get_object_or_404(UsuarioBiometrico, id=user_id)
-    print(f"[DEBUG] Usuario encontrado: id={usuario.id}, nombre={usuario.nombre}, biometrico_id={usuario.biometrico_id}, user={usuario.user}, dni={usuario.dni}")
+    print(f"[DEBUG] Usuario encontrado: id={usuario.id}, nombre={usuario.nombre}, biometrico_id={usuario.biometrico_id}, dni={usuario.dni}")
     print(f"[DEBUG] Rol del usuario autenticado: {request.user.rol}")
     if request.user.rol != 'admin':
         print("[DEBUG] Usuario no autorizado para eliminar.")
@@ -138,18 +143,32 @@ def recibir_datos_biometrico(request):
     print(f"[DEBUG] Recibiendo datos biométrico. PATH: {request.get_full_path()}")
     print(f"[DEBUG] Headers: {request.headers}")
     print(f"[DEBUG] Body (JSON): {request.data}")
-    print(f"[DEBUG] Body (RAW): {request.body}")
     datos = request.data
     nuevos = 0
+    from django.utils import timezone
     for registro in datos:
         user_id = registro.get("user_id")
         nombre = registro.get("nombre")
         timestamp = parse_datetime(registro.get("timestamp"))
-        tipo = registro.get("tipo")
-        print(f"[DEBUG] Procesando registro: user_id={user_id}, nombre={nombre}, timestamp={timestamp}, tipo={tipo}")
+        if not timestamp:
+            print(f"[ERROR] Timestamp inválido: {registro.get('timestamp')}")
+            continue
+        fecha = timestamp.date()
         user, _ = UsuarioBiometrico.objects.get_or_create(biometrico_id=user_id, defaults={"nombre": nombre})
-        RegistroAsistencia.objects.get_or_create(usuario=user, timestamp=timestamp, tipo=tipo)
-        nuevos += 1
+        # Buscar registros de ese usuario en ese día
+        registros_dia = RegistroAsistencia.objects.filter(usuario=user, timestamp__date=fecha).order_by('timestamp')
+        if not registros_dia.filter(tipo='entrada').exists():
+            # No hay entrada, este es la entrada
+            RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='entrada')
+            nuevos += 1
+            print(f"[DEBUG] Registrada ENTRADA para usuario {user} en {timestamp}")
+        elif not registros_dia.filter(tipo='salida').exists():
+            # Ya hay entrada, este es la salida
+            RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='salida')
+            nuevos += 1
+            print(f"[DEBUG] Registrada SALIDA para usuario {user} en {timestamp}")
+        else:
+            print(f"[DEBUG] Ya existen entrada y salida para usuario {user} en {fecha}, se ignora registro adicional.")
     print(f"[DEBUG] Registros importados: {nuevos}")
     return Response({"status": "ok", "registros_importados": nuevos})
 
@@ -209,3 +228,12 @@ def editar_usuario(request, user_id):
         messages.success(request, "Usuario biométrico editado correctamente.")
         return redirect('lista_usuarios')
     return redirect('lista_usuarios')
+
+@csrf_exempt
+def api_sincronizar_biometrico(request):
+    if request.method == 'POST':
+        # En vez de importar, lee los registros existentes
+        registros = RegistroAsistencia.objects.all()
+        serializer = RegistroAsistenciaSerializer(registros, many=True)
+        return JsonResponse({'registros': serializer.data}, safe=False)
+    return JsonResponse({'error': 'Método no permitido'}, status=405)

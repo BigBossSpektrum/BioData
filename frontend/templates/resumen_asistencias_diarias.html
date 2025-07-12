@@ -1,0 +1,126 @@
+{% extends 'layout/base.html' %}
+{% block title %}Resumen de Asistencias Diarias{% endblock %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ENjdO4Dr2bkBIFxQpeoA6DQD5NnQ4p6B9F1Q1r1rV0C1lv5+pGdfu/CtY7Qp6k5t" crossorigin="anonymous">
+
+<div class="container mt-4">
+    <h2 class="mb-4">Resumen de Asistencias Diarias</h2>
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-3">
+            <label for="usuario_id" class="form-label">Usuario</label>
+            <input type="text" class="form-control" id="usuario_id" name="usuario_id" value="{{ request.GET.usuario_id|default:'' }}" placeholder="ID Usuario o Nombre">
+        </div>
+        <div class="col-md-3">
+            <label for="fecha" class="form-label">Fecha</label>
+            <input type="date" class="form-control" id="fecha" name="fecha" value="{{ request.GET.fecha|default:'' }}">
+        </div>
+        <div class="col-md-3 align-self-end">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="?" class="btn btn-secondary">Limpiar</a>
+        </div>
+    </form>
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Día</th>
+                <th>ID Usuario</th>
+                <th>Nombre</th>
+                <th>Estación</th>
+                <th>Entrada</th>
+                <th>Salida</th>
+                <th>Horas Trabajadas</th>
+                <th>Horas Extras</th>
+                <th>Aprobado</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for r in registros %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ r.dia }}</td>
+                <td>{{ r.usuario_id }}</td>
+                <td>{{ r.nombre }}</td>
+                <td>
+                    {% if r.estacion %}
+                        {{ r.estacion }}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if r.entradas %}
+                        {{ r.entradas|join:', ' }}
+                    {% elif r.entrada %}
+                        {{ r.entrada|date:"H:i" }}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if r.salidas %}
+                        {{ r.salidas|join:', ' }}
+                    {% elif r.salida %}
+                        {{ r.salida|date:"H:i" }}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>{{ r.horas_trabajadas }}</td>
+                <td>
+                    {% if r.horas_extra > 0 %}
+                        <span class="badge bg-warning text-dark">{{ r.horas_extra }}</span>
+                    {% else %}
+                        <span>{{ r.horas_extra }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if r.horas_extra > 0 %}
+                        {% if r.aprobado is True %}
+                            <span class="badge bg-success">Aprobado</span>
+                        {% elif r.aprobado is False %}
+                            <span class="badge bg-danger">Rechazado</span>
+                        {% elif request.user.rol == 'jefe_patio' %}
+                            <form method="post" action="{% url 'aprobar_horas_extra' r.usuario_id r.dia %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-success">Aprobar</button>
+                            </form>
+                            <form method="post" action="{% url 'rechazar_horas_extra' r.usuario_id r.dia %}" style="display:inline; margin-left: 4px;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
+                            </form>
+                        {% else %}
+                            <span class="badge bg-secondary">Pendiente</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="10" class="text-center">No hay registros para mostrar.</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-qQ2iX+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% if request.GET.aprobado %}
+<script>
+    Swal.fire({
+        icon: 'success',
+        title: '¡Horas extra aprobadas!',
+        text: 'Las horas extra han sido aprobadas correctamente.',
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: 'OK'
+    });
+</script>
+{% endif %}
+{% endblock %}

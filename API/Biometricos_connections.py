@@ -5,6 +5,9 @@ from datetime import datetime
 from django.utils.timezone import make_aware
 from zk import ZK
 from dotenv import load_dotenv
+from django.conf import settings
+import requests
+from decouple import config
 
 load_dotenv()
 
@@ -52,24 +55,35 @@ def obtener_estado_alternado(usuario, timestamp):
 
 # ============================== #
 # 🔌 Funciones de conexión
-# ============================== #def conectar_dispositivo(ip='192.168.0.11', puerto=None):
-def conectar_dispositivo(ip=os.getenv("BIOMETRICO_IP_ZKTECO"), puerto=None):
+# ============================== #
+def conectar_dispositivo(ip=None, puerto=None, timeout=10):
+    """
+    Intenta conectar con el dispositivo ZKTeco usando IP y puerto de argumentos, settings.py o variables de entorno.
+    Muestra sugerencias si la conexión falla.
+    """
+    # Prioridad: argumento > settings.py > variable de entorno > default
+    if not ip:
+        ip = getattr(settings, 'BIOMETRIC_DEVICE_IP', None) or os.getenv("BIOMETRICO_IP_ZKTECO")
+    if not puerto:
+        puerto_env = getattr(settings, 'BIOMETRIC_DEVICE_PORT', None) or os.getenv("BIOMETRICO_PUERTO_ZKTECO")
+        try:
+            puerto = int(puerto_env) if puerto_env else 4370
+        except Exception:
+            puerto = 4370
     try:
-        if puerto is None:
-            print("⚠️ Puerto no especificado. Usando 4370 por defecto.")
-            puerto = os.getenv
-        else:
-            puerto = int(puerto)  # Esto lanza error si no es convertible
-
         print(f"🔌 [CONECTANDO] Verificando disponibilidad del dispositivo en {ip}:{puerto}...")
-        zk = ZK(ip, port=puerto, timeout=10, password='0', force_udp=False, ommit_ping=False)
+        zk = ZK(ip, port=puerto, timeout=timeout, password='0', force_udp=False, ommit_ping=False)
         conn = zk.connect()
         conn.disable_device()
         print("✅ [CONECTADO] Dispositivo ZKTeco en línea.")
         return conn
-
     except Exception as e:
         print(f"❌ Error al conectar con el dispositivo: {e}")
+        print("ℹ️ Sugerencias:")
+        print("- Verifica que el biométrico esté encendido y conectado a la red.")
+        print(f"- Haz ping a {ip} desde tu PC para comprobar conectividad.")
+        print(f"- Asegúrate de que el puerto {puerto} esté abierto (puedes usar telnet o nmap).")
+        print("- Revisa la configuración de red del dispositivo.")
         return None
 
 # ============================== #
@@ -81,11 +95,14 @@ def crear_o_actualizar_usuario_biometrico(user_id, nombre):
         try:
             conn.set_user(uid=int(user_id), name=nombre, privilege=0, password='', group_id='', user_id=str(user_id))
             print(f"✅ Usuario {nombre} (ID {user_id}) creado/actualizado en el biométrico.")
+            return user_id  # Retornar el ID usado en el biométrico
         except Exception as e:
             print(f"❌ Error al crear/actualizar usuario: {e}")
+            return None
         finally:
             conn.enable_device()
             conn.disconnect()
+    return None
 
 
 def eliminar_usuario_biometrico(zk, user_id):
@@ -98,12 +115,25 @@ def eliminar_usuario_biometrico(zk, user_id):
 # ============================== #
 # 📥 Función principal de importación
 # ============================== #
-def importar_datos_dispositivo():
-    zk = ZK(os.getenv("BIOMETRICO_IP_ZKTECO"), port=os.getenv("BIOMETRICO_PUERTO_ZKTECO"), timeout=10, force_udp=False, ommit_ping=False)
-    nuevos = 0
-
+def importar_datos_dispositivo(enviar_a_clevercloud=False, clevercloud_url=None, token=None):
+    # Usar la IP y puerto definidos en settings.py
+    ip = getattr(settings, 'BIOMETRIC_DEVICE_IP', None) or os.getenv("BIOMETRICO_DEVICE_IP")
+    puerto_env = getattr(settings, 'BIOMETRIC_DEVICE_PORT', None) or os.getenv("BIOMETRICO_PUERTO_ZKTECO")
+    # Leer Clever Cloud info del .env si no se pasa por parámetro
+    if enviar_a_clevercloud:
+        if not clevercloud_url:
+            clevercloud_url = config('CLEVERCLOUD_URL', default=None)
+        if not token:
+            token = config('CLEVERCLOUD_TOKEN', default=None)
     try:
-        print("🔌 [CONECTANDO] Verificando disponibilidad del dispositivo...")
+        puerto = int(puerto_env) if puerto_env else 4370
+    except Exception:
+        puerto = 4370
+    zk = ZK(ip, port=puerto, timeout=10, force_udp=False, ommit_ping=False)
+    nuevos = 0
+    registros_json = []
+    try:
+        print(f"🔌 [CONECTANDO] Verificando disponibilidad del dispositivo en {ip}:{puerto}...")
         conn = zk.connect()
         print("✅ [CONECTADO] Dispositivo ZKTeco en línea.")
 
@@ -111,54 +141,97 @@ def importar_datos_dispositivo():
         print("📋 [USUARIOS] Leyendo usuarios desde el dispositivo...")
         for user in conn.get_users():
             activo = not getattr(user, 'disabled', False)
-            obj, creado = UsuarioBiometrico.objects.update_or_create(
-                user_id=user.user_id,
-                defaults={
-                    'nombre': user.name.strip() if user.name else 'N/A',
-                    'privilegio': user.privilege,
-                    'activo': activo
-                }
+            # Ya no se asocia con CustomUser
+            defaults_default = {
+                'nombre': user.name.strip() if user.name else 'N/A',
+                'privilegio': user.privilege,
+                'activo': activo
+            }
+            obj, creado = UsuarioBiometrico.objects.using('default').update_or_create(
+                biometrico_id=user.uid,  # Cambiado de user_id a biometrico_id
+                defaults=defaults_default
             )
-            print(f"🔍 ID: {user.user_id}, Nombre: {user.name}, Privilegio: {user.privilege}, Activo: {activo}")
-            print(f"✅ Usuario {'creado' if creado else 'actualizado'} en BD: {obj.nombre} ({obj.user_id})")
+            defaults_local = {
+                'nombre': user.name.strip() if user.name else 'N/A',
+                'privilegio': user.privilege,
+                'activo': activo
+            }
+            obj_local, creado_local = UsuarioBiometrico.objects.using('local').update_or_create(
+                biometrico_id=user.uid,  # Cambiado de user_id a biometrico_id
+                defaults=defaults_local
+            )
+            print(f"🔍 ID: {user.uid}, Nombre: {user.name}, Privilegio: {user.privilege}, Activo: {activo}")
+            print(f"✅ Usuario {'creado' if creado else 'actualizado'} en BD: {obj.nombre} ({obj.biometrico_id})")
 
         # Asistencia
         print("⏱️ [ASISTENCIA] Descargando registros de asistencia...")
         asistencia = conn.get_attendance()
 
+        # Agrupar todos los registros por usuario y día
+        from collections import defaultdict
+        registros_por_usuario_fecha = defaultdict(list)
         for record in asistencia:
-            user = UsuarioBiometrico.objects.filter(user_id=record.user_id).first()
-            if not user:
+            user_default = UsuarioBiometrico.objects.using('default').filter(biometrico_id=record.user_id).first()
+            user_local = UsuarioBiometrico.objects.using('local').filter(biometrico_id=record.user_id).first()
+            if not user_default or not user_local:
                 continue
-
             timestamp = record.timestamp
             if not timestamp.tzinfo:
                 timestamp = make_aware(timestamp)
+            fecha = timestamp.date()
+            registros_por_usuario_fecha[(record.user_id, fecha)].append((timestamp, user_default, user_local))
 
-            estado_num = obtener_estado_alternado(user, timestamp)
-            tipo = 'entrada' if estado_num == 0 else 'salida'
-
-            _, created = RegistroAsistencia.objects.get_or_create(
-                usuario=user,
-                timestamp=timestamp,
-                tipo=tipo,
-            )
-            if created:
-                nuevos += 1
-                print(f"🧾 Registro - Usuario: {user.nombre}, Hora: {timestamp}, Estado: {tipo.capitalize()}")
+        for (user_id, fecha), registros in registros_por_usuario_fecha.items():
+            # Ordenar por hora
+            registros.sort(key=lambda x: x[0])
+            for idx, (timestamp, user_default, user_local) in enumerate(registros):
+                tipo = 'entrada' if idx % 2 == 0 else 'salida'
+                # Guardar en default
+                _, created_default = RegistroAsistencia.objects.using('default').get_or_create(
+                    usuario=user_default,
+                    timestamp=timestamp,
+                    tipo=tipo,
+                )
+                # Guardar en local
+                _, created_local = RegistroAsistencia.objects.using('local').get_or_create(
+                    usuario=user_local,
+                    timestamp=timestamp,
+                    tipo=tipo,
+                )
+                if created_default or created_local:
+                    nuevos += 1
+                    print(f"🧾 Registro - Usuario: {user_default.nombre}, Hora: {timestamp}, Estado: {tipo.capitalize()}")
+                registros_json.append({
+                    'user_id': user_default.biometrico_id,
+                    'nombre': user_default.nombre,
+                    'timestamp': timestamp.isoformat(),
+                    'tipo': tipo
+                })
 
         print(f"📊 Total nuevos registros importados: {nuevos}")
         conn.clear_attendance()
         print("🧹 Registros de asistencia eliminados del dispositivo.")
         conn.disconnect()
         print("🔌 Conexión cerrada.")
-
+        # Enviar a Clever Cloud si se solicita
+        if enviar_a_clevercloud and clevercloud_url and token:
+            print(f"🌐 Enviando registros a Clever Cloud: {clevercloud_url}")
+            headers = {'Authorization': f'Token {token}', 'Content-Type': 'application/json'}
+            response = requests.post(clevercloud_url, json=registros_json, headers=headers)
+            print(f"[CLEVER CLOUD] Status: {response.status_code}, Response: {response.text}")
+            return response.status_code, response.text
+        return registros_json
     except Exception as e:
         print(f"❌ Error de conexión o procesamiento: {e}")
+        return None
 
 
 # ============================== #
 # ▶️ Ejecución directa
 # ============================== #
 if __name__ == "__main__":
-    importar_datos_dispositivo()
+    # Ejecuta la importación y muestra los datos en consola como JSON
+    datos = importar_datos_dispositivo()
+    import json
+    print("\n=== DATOS ENVIADOS AL FRONT ===")
+    print(json.dumps(datos, indent=2, ensure_ascii=False))

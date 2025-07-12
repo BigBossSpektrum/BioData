@@ -7,6 +7,8 @@ from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
 from django.utils import timezone
 from .utils import obtener_rango_semana
+from django.http import HttpResponseForbidden, HttpResponseRedirect
+from django.urls import reverse
 
 @login_required
 def home_biometrico(request):
@@ -78,23 +80,40 @@ def filtrar_asistencias(request):
                     duracion = salida_time - entrada_time
                     horas = round(duracion.total_seconds() / 3600, 2)
                     turno_detectado = detectar_turno(entrada_time)
+
                     # Cálculo de horas extra por turno (igual que antes)
                     horas_extra = 0.0
-                    if turno_detectado == "Turno 1":
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(6, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
-                    elif turno_detectado == "Turno 2":
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
-                    else:  # Turno 3
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date() + timedelta(days=1), time(6, 0)))
-                    horas_extra_timedelta = timedelta(0)
-                    if entrada_time < turno_inicio:
-                        horas_extra_timedelta += turno_inicio - entrada_time
-                    if salida_time > turno_fin:
-                        horas_extra_timedelta += salida_time - turno_fin
-                    horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
+                    # Nuevo cálculo basado en el turno asignado al usuario
+                    if entrada.usuario.turno:
+                        turno_inicio = entrada.usuario.turno.hora_inicio
+                        turno_fin = entrada.usuario.turno.hora_fin
+                        # Duración del turno en horas
+                        if turno_inicio < turno_fin:
+                            duracion_turno = (datetime.combine(entrada_time.date(), turno_fin) - datetime.combine(entrada_time.date(), turno_inicio)).total_seconds() / 3600
+                        else:
+                            # Turno nocturno (ej: 22:00 a 06:00)
+                            duracion_turno = ((datetime.combine(entrada_time.date(), time(23,59,59)) - datetime.combine(entrada_time.date(), turno_inicio)).total_seconds() + (datetime.combine(entrada_time.date() + timedelta(days=1), turno_fin) - datetime.combine(entrada_time.date() + timedelta(days=1), time(0,0,0))).total_seconds() + 1) / 3600
+                        if horas > duracion_turno:
+                            horas_extra = round(horas - duracion_turno, 2)
+                        else:
+                            horas_extra = 0.0
+                    else:
+                        # Si no tiene turno asignado, usar el cálculo anterior por horario
+                        if turno_detectado == "Turno 1":
+                            turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(6, 0)))
+                            turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
+                        elif turno_detectado == "Turno 2":
+                            turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
+                            turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
+                        else:  # Turno 3
+                            turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
+                            turno_fin = timezone.make_aware(datetime.combine(entrada_time.date() + timedelta(days=1), time(6, 0)))
+                        horas_extra_timedelta = timedelta(0)
+                        if entrada_time < turno_inicio:
+                            horas_extra_timedelta += turno_inicio - entrada_time
+                        if salida_time > turno_fin:
+                            horas_extra_timedelta += salida_time - turno_fin
+                        horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
 
                     registros_combinados.append({
                         'usuario_id': entrada.usuario.user_id,
@@ -103,7 +122,6 @@ def filtrar_asistencias(request):
                         'salida': salida_time,
                         'horas_trabajadas': horas,
                         'horas_extra': horas_extra,
-                        'turno': turno_detectado,
                     })
                     # Salta al registro después de la salida encontrada
                     i = registros_dia.index(salida) + 1
@@ -123,103 +141,98 @@ def filtrar_asistencias(request):
 
     return render(request, 'tabla_biometrico.html', context)
 
-def detectar_turno(entrada_time):
-    hora = entrada_time.time()
-    if time(6, 0) <= hora < time(14, 0):
-        return "Turno 1"
-    elif time(14, 0) <= hora < time(22, 0):
-        return "Turno 2"
-    else:
-        return "Turno 3"
-
 def historial_asistencia(request):
-    registros = RegistroAsistencia.objects.select_related('usuario')
+    nombre = request.GET.get('nombre')
+    dni = request.GET.get('dni')
+    estacion = request.GET.get('estacion')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
 
-    usuario_id = request.GET.get('usuario')
-    fecha_str = request.GET.get('fecha')
+    registros = RegistroAsistencia.objects.select_related('usuario', 'usuario__estacion').all()
 
-    if usuario_id:
-        registros = registros.filter(usuario__user_id=usuario_id)
-
-    if fecha_str:
-        inicio_semana, fin_semana = obtener_rango_semana(fecha_str)
-        registros = registros.filter(timestamp__date__range=(inicio_semana, fin_semana))
+    if nombre:
+        registros = registros.filter(usuario__nombre__icontains=nombre)
+    if dni:
+        registros = registros.filter(usuario__dni__icontains=dni)
+    if estacion:
+        registros = registros.filter(usuario__estacion__nombre__icontains=estacion)
+    if fecha_inicio:
+        registros = registros.filter(timestamp__date__gte=fecha_inicio)
+    if fecha_fin:
+        registros = registros.filter(timestamp__date__lte=fecha_fin)
 
     registros = registros.order_by('usuario__id', 'timestamp')
-    
     asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
     for r in registros:
-        fecha = r.timestamp.date()  # ✅ No usamos localtime
+        fecha = r.timestamp.date()
         asistencia_por_usuario_fecha[r.usuario][fecha].append(r)
 
     registros_combinados = []
-    for dias in asistencia_por_usuario_fecha.values():
+    for usuario, dias in asistencia_por_usuario_fecha.items():
         for fecha, registros_dia in dias.items():
             registros_dia.sort(key=lambda r: r.timestamp)
-            i = 0
-            while i < len(registros_dia):
-                entrada = registros_dia[i]
-                if entrada.tipo != 'entrada':
-                    i += 1
-                    continue  # Solo nos interesan las entradas
-
-                # Busca la siguiente salida
+            entradas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'entrada']
+            salidas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'salida']
+            # Emparejar entradas y salidas correctamente, incluso si la salida es al día siguiente
+            i, j = 0, 0
+            while i < len(entradas):
+                entrada = entradas[i]
                 salida = None
-                for j in range(i + 1, len(registros_dia)):
-                    if registros_dia[j].tipo == 'salida':
-                        salida = registros_dia[j]
+                # Buscar la primera salida después de la entrada (puede ser al día siguiente)
+                for k in range(j, len(salidas)):
+                    posible_salida = salidas[k]
+                    # Turno nocturno: entrada >= 22:00 y salida al día siguiente entre 0:00 y 12:00
+                    if entrada.hour >= 22 and posible_salida > entrada and (
+                        posible_salida.date() == (entrada + timedelta(days=1)).date() and posible_salida.hour <= 12
+                    ):
+                        salida = posible_salida
+                        j = k + 1
                         break
-
+                    # Lógica normal: salida después de entrada
+                    elif posible_salida > entrada:
+                        salida = posible_salida
+                        j = k + 1
+                        break
+                horas_trabajadas = 0.0
                 if salida:
-                    entrada_time = entrada.timestamp
-                    salida_time = salida.timestamp
-                    if salida_time < entrada_time:
-                        salida_time += timedelta(days=1)
-                    duracion = salida_time - entrada_time
-                    horas = round(duracion.total_seconds() / 3600, 2)
-
-                    # ✅ Detectar turno automáticamente
-                    turno_detectado = detectar_turno(entrada_time)
-
-                    # ✅ Cálculo de horas extra por turno
-                    horas_extra = 0.0
-                    if turno_detectado == "Turno 1":
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(6, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
-                    elif turno_detectado == "Turno 2":
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
-                    else:  # Turno 3
-                        turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
-                        turno_fin = timezone.make_aware(datetime.combine(entrada_time.date() + timedelta(days=1), time(6, 0)))                    
-
-                    horas_extra_timedelta = timedelta(0)
-                    if entrada_time < turno_inicio:
-                        horas_extra_timedelta += turno_inicio - entrada_time
-                    if salida_time > turno_fin:
-                        horas_extra_timedelta += salida_time - turno_fin
-
-                    horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
-
-                    registros_combinados.append({
-                        'usuario_id': entrada.usuario.user_id,
-                        'nombre': entrada.usuario.nombre,
-                        'entrada': entrada_time,
-                        'salida': salida_time,
-                        'horas_trabajadas': horas,
-                        'horas_extra': horas_extra,
-                        'turno': turno_detectado,
-                    })
-
-                    i += 2
-                else:
-                    i += 1
+                    delta = salida - entrada
+                    if delta.total_seconds() < 0:
+                        delta += timedelta(days=1)
+                    horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+                horas_extra = 0.0
+                if horas_trabajadas > 8:
+                    horas_extra = round(horas_trabajadas - 8, 2)
+                aprobados = [r.aprobado for r in registros_dia]
+                aprobado = None
+                if aprobados:
+                    if all(a is True for a in aprobados):
+                        aprobado = True
+                    elif any(a is False for a in aprobados):
+                        aprobado = False
+                    else:
+                        aprobado = None
+                registros_combinados.append({
+                    'dia': entrada.date().strftime('%Y-%m-%d'),
+                    'usuario_id': usuario.id,
+                    'nombre': usuario.nombre,
+                    'dni': usuario.dni,
+                    'estacion': usuario.estacion.nombre if usuario.estacion else '',
+                    'entrada': entrada,
+                    'salida': salida,
+                    'horas_trabajadas': horas_trabajadas if salida else None,
+                    'horas_extra': horas_extra if salida else None,
+                    'aprobado': aprobado,
+                })
+                i += 1
 
     context = {
         'registros': registros_combinados,
         'usuarios': UsuarioBiometrico.objects.all(),
-        'usuario_id': usuario_id,
-        'fecha_seleccionada': fecha_str,
+        'nombre': nombre,
+        'dni': dni,
+        'estacion': estacion,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
     }
     return render(request, 'tabla_biometrico.html', context)
 
@@ -250,26 +263,6 @@ def determinar_estado_por_turno(usuario, timestamp):
 
     return 0  # fallback
 
-
-"""FUNCION PARA DETECTAR EL TURNOS DE ACUERDO A LA HORA"""
-def detectar_turno_por_hora(hora: time) -> str:
-    """
-    Detecta automáticamente el turno laboral según la hora proporcionada.
-
-    Parámetros:
-        hora (datetime.time): Hora de entrada o salida.
-
-    Retorna:
-        str: Nombre del turno detectado.
-    """
-    if time(6, 0) <= hora < time(14, 0):
-        return "Turno Mañana"
-    elif time(14, 0) <= hora < time(22, 0):
-        return "Turno Tarde"
-    elif hora >= time(22, 0) or hora < time(6, 0):
-        return "Turno Noche"
-    else:
-        return "Desconocido"
 
 
 """FUNCION PARA CONSIDERAR LOS TURNOS DE LOS USUARIOS COMO PRIORIDAD"""
@@ -358,3 +351,157 @@ def calcular_horas_trabajadas():
             })
 
     return resumen_horas
+
+@login_required
+def resumen_asistencias_diarias(request):
+    nombre = request.GET.get('nombre')
+    dni = request.GET.get('dni')
+    estacion = request.GET.get('estacion')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+
+    registros_qs = RegistroAsistencia.objects.select_related('usuario', 'usuario__turno', 'usuario__estacion').all()
+
+    if nombre:
+        registros_qs = registros_qs.filter(usuario__nombre__icontains=nombre)
+    if dni:
+        registros_qs = registros_qs.filter(usuario__dni__icontains=dni)
+    if estacion:
+        registros_qs = registros_qs.filter(usuario__estacion__nombre__icontains=estacion)
+    if fecha_inicio:
+        registros_qs = registros_qs.filter(timestamp__date__gte=fecha_inicio)
+    if fecha_fin:
+        registros_qs = registros_qs.filter(timestamp__date__lte=fecha_fin)
+
+    registros_qs = registros_qs.order_by('usuario__id', 'timestamp')
+    asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
+    for r in registros_qs:
+        fecha = localtime(r.timestamp).date()
+        asistencia_por_usuario_fecha[r.usuario][fecha].append(r)
+
+    registros = []
+    for usuario, dias in asistencia_por_usuario_fecha.items():
+        fechas_ordenadas = sorted(dias.keys())
+        for idx, fecha in enumerate(fechas_ordenadas):
+            registros_dia = dias[fecha]
+            registros_dia.sort(key=lambda r: r.timestamp)
+            entradas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'entrada']
+            salidas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'salida']
+            # Para turnos nocturnos, también buscar salidas en el siguiente día
+            if idx + 1 < len(fechas_ordenadas):
+                next_fecha = fechas_ordenadas[idx + 1]
+                next_registros_dia = dias[next_fecha]
+                salidas += [localtime(r.timestamp) for r in next_registros_dia if r.tipo == 'salida']
+            i, j = 0, 0
+            while i < len(entradas):
+                entrada = entradas[i]
+                salida = None
+                while j < len(salidas):
+                    posible_salida = salidas[j]
+                    # Lógica especial para turnos nocturnos: si entrada >= 22:00 y salida <= 12:00 del día siguiente
+                    if entrada.hour >= 22 and (
+                        (posible_salida.date() == (entrada + timedelta(days=1)).date() and posible_salida.hour <= 12)
+                    ):
+                        salida = posible_salida
+                        j += 1
+                        break
+                    elif posible_salida > entrada:
+                        salida = posible_salida
+                        j += 1
+                        break
+                    j += 1
+                horas_trabajadas = 0.0
+                if salida:
+                    delta = salida - entrada
+                    if delta.total_seconds() < 0:
+                        delta += timedelta(days=1)
+                    horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+                horas_extra = 0.0
+                if horas_trabajadas > 8:
+                    horas_extra = round(horas_trabajadas - 8, 2)
+                aprobados = [r.aprobado for r in registros_dia]
+                aprobado = None
+                if aprobados:
+                    if all(a is True for a in aprobados):
+                        aprobado = True
+                    elif any(a is False for a in aprobados):
+                        aprobado = False
+                    else:
+                        aprobado = None
+                registros.append({
+                    'dia': entrada.date().strftime('%Y-%m-%d'),
+                    'usuario_id': usuario.id,
+                    'nombre': usuario.nombre,
+                    'dni': usuario.dni,
+                    'estacion': usuario.estacion.nombre if usuario.estacion else '',
+                    'entrada': entrada,
+                    'salida': salida,
+                    'horas_trabajadas': horas_trabajadas if salida else None,
+                    'horas_extra': horas_extra if salida else None,
+                    'aprobado': aprobado,
+                })
+                i += 1
+
+    context = {
+        'registros': registros,
+        'nombre': nombre,
+        'dni': dni,
+        'estacion': estacion,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+    }
+    return render(request, 'resumen_asistencias_diarias.html', {'registros': registros, 'nombre': nombre, 'dni': dni, 'estacion': estacion, 'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin})
+
+@login_required
+def aprobar_horas_extra(request, usuario_id, dia):
+    if request.method == 'POST' and hasattr(request.user, 'rol') and request.user.rol == 'jefe_patio':
+        try:
+            usuario = UsuarioBiometrico.objects.get(id=usuario_id)
+            if not usuario.estacion or usuario.estacion.jefe_id != request.user.id:
+                print("[APROBACION] Usuario no autorizado para este jefe de patio")
+                return HttpResponseForbidden("No autorizado para este usuario")
+        except UsuarioBiometrico.DoesNotExist:
+            print("[APROBACION] Usuario no encontrado")
+            return HttpResponseForbidden("Usuario no encontrado")
+        fecha = datetime.strptime(dia, '%Y-%m-%d').date()
+        from datetime import time
+        from django.utils.timezone import make_aware
+        inicio_dia = make_aware(datetime.combine(fecha, time.min))
+        fin_dia = make_aware(datetime.combine(fecha, time.max))
+        qs = RegistroAsistencia.objects.filter(
+            usuario_id=int(usuario_id),
+            timestamp__gte=inicio_dia,
+            timestamp__lte=fin_dia
+        )
+        updated = qs.update(aprobado=True)
+        print(f"[APROBACION] Registros actualizados para usuario {usuario_id} en {fecha}: {updated}")
+        return HttpResponseRedirect(reverse('resumen_asistencias_diarias') + '?aprobado=1')
+    print("[APROBACION] Intento de acceso no autorizado o método incorrecto")
+    return HttpResponseForbidden("No autorizado")
+
+@login_required
+def rechazar_horas_extra(request, usuario_id, dia):
+    if request.method == 'POST' and hasattr(request.user, 'rol') and request.user.rol == 'jefe_patio':
+        try:
+            usuario = UsuarioBiometrico.objects.get(id=usuario_id)
+            if not usuario.estacion or usuario.estacion.jefe_id != request.user.id:
+                print("[RECHAZO] Usuario no autorizado para este jefe de patio")
+                return HttpResponseForbidden("No autorizado para este usuario")
+        except UsuarioBiometrico.DoesNotExist:
+            print("[RECHAZO] Usuario no encontrado")
+            return HttpResponseForbidden("Usuario no encontrado")
+        fecha = datetime.strptime(dia, '%Y-%m-%d').date()
+        from datetime import time
+        from django.utils.timezone import make_aware
+        inicio_dia = make_aware(datetime.combine(fecha, time.min))
+        fin_dia = make_aware(datetime.combine(fecha, time.max))
+        qs = RegistroAsistencia.objects.filter(
+            usuario_id=int(usuario_id),
+            timestamp__gte=inicio_dia,
+            timestamp__lte=fin_dia
+        )
+        updated = qs.update(aprobado=False)
+        print(f"[RECHAZO] Registros actualizados para usuario {usuario_id} en {fecha}: {updated}")
+        return HttpResponseRedirect(reverse('resumen_asistencias_diarias') + '?aprobado=0')
+    print("[RECHAZO] Intento de acceso no autorizado o método incorrecto")
+    return HttpResponseForbidden("No autorizado")

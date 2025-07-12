@@ -12,7 +12,7 @@ class UsuarioBiometricoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UsuarioBiometrico
-        fields = ['user_id', 'nombre', 'privilegio', 'activo', 'turno']
+        fields = ['biometrico_id', 'nombre', 'privilegio', 'activo', 'turno']
 
 class RegistroAsistenciaSerializer(serializers.ModelSerializer):
     usuario = UsuarioBiometricoSerializer()

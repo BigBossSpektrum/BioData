@@ -9,65 +9,65 @@
         <div class="card-body">
             <h1 class="card-title text-center mb-4">Bienvenido, {{ request.user.username }}</h1>
 
-            {% if request.user.rol == "admin" %}
-                <div class="text-center mb-3">
-                    <button id="btn-sincronizar" class="btn btn-primary">Sincronizar Biométrico</button>
-                </div>
-            {% endif %}
+
 
             <p class="card-text fs-5 text-center">
-                Resumen de asistencias del día: <span class="fw-bold">{{ asistencias_hoy.count }}</span>
+                Resumen de asistencias del día: <span class="fw-bold" id="asistencias-hoy-count">0</span>
             </p>
 
-            <ul class="list-group mt-4">
-                {% for registro in asistencias_hoy %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span><strong>{{ registro.usuario.nombre }}</strong></span>
-                        <span class="badge rounded-pill 
-                            {% if registro.tipo == 'entrada' %}
-                                bg-primary
-                            {% elif registro.tipo == 'salida' %}
-                                bg-danger
-                            {% else %}
-                                bg-secondary
-                            {% endif %}
-                        ">
-                            {{ registro.tipo|capfirst }} - {{ registro.timestamp|date:"H:i:s" }}
-                        </span>
-                    </li>
-                {% empty %}
-                    <li class="list-group-item text-center text-muted">
-                        No hay asistencias registradas hoy.
-                    </li>
-                {% endfor %}
-            </ul>
+            <div class="table-responsive mt-4">
+                <table class="table table-bordered table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Hora</th>
+                            <th>Estación</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-asistencias-body">
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Cargando asistencias...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
-{% if request.user.rol == "admin" %}
+
+
 <script>
-document.getElementById('btn-sincronizar').addEventListener('click', function() {
-    fetch("{% url 'recibir_datos_biometrico' %}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}',
-        },
-        body: JSON.stringify({})
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message || "Sincronización completada.");
-        if (data.success) {
-            location.reload();
-        }
-    })
-    .catch(error => {
-        alert("Error al sincronizar");
-        console.error(error);
+function pad(n) { return n < 10 ? '0' + n : n; }
+function hoyISO() {
+    const hoy = new Date();
+    return hoy.getFullYear() + '-' + pad(hoy.getMonth()+1) + '-' + pad(hoy.getDate());
+}
+
+async function cargarAsistenciasHoy() {
+    const response = await fetch('/api/api_sincronizar_biometrico/', { method: 'POST' });
+    const data = await response.json();
+    const registros = (data.registros || []).filter(r => {
+        // Solo entradas del día actual
+        return r.tipo === 'entrada' && r.timestamp.startsWith(hoyISO());
     });
-});
+    let html = '';
+    if (registros.length === 0) {
+        html = '<tr><td colspan="4" class="text-center text-muted">No hay asistencias registradas hoy.</td></tr>';
+    } else {
+        registros.forEach(r => {
+            html += `<tr>
+                <td>${r.usuario.nombre}</td>
+                <td><span class="badge bg-primary">Entrada</span></td>
+                <td>${r.timestamp.substring(11,19)}</td>
+                <td>${r.usuario.estacion ? r.usuario.estacion.nombre : '<span class=\"text-muted\">No asignada</span>'}</td>
+            </tr>`;
+        });
+    }
+    document.getElementById('tabla-asistencias-body').innerHTML = html;
+    document.getElementById('asistencias-hoy-count').textContent = registros.length;
+}
+window.onload = cargarAsistenciasHoy;
 </script>
-{% endif %}
 {% endblock %}
