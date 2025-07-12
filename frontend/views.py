@@ -143,7 +143,7 @@ def filtrar_asistencias(request):
 
 def historial_asistencia(request):
     nombre = request.GET.get('nombre')
-    dni = request.GET.get('dni')
+    cedula = request.GET.get('cedula')
     estacion = request.GET.get('estacion')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
@@ -152,8 +152,8 @@ def historial_asistencia(request):
 
     if nombre:
         registros = registros.filter(usuario__nombre__icontains=nombre)
-    if dni:
-        registros = registros.filter(usuario__dni__icontains=dni)
+    if cedula:
+        registros = registros.filter(usuario__cedula__icontains=cedula)
     if estacion:
         registros = registros.filter(usuario__estacion__nombre__icontains=estacion)
     if fecha_inicio:
@@ -215,7 +215,7 @@ def historial_asistencia(request):
                     'dia': entrada.date().strftime('%Y-%m-%d'),
                     'usuario_id': usuario.id,
                     'nombre': usuario.nombre,
-                    'dni': usuario.dni,
+                    'cedula': usuario.cedula,
                     'estacion': usuario.estacion.nombre if usuario.estacion else '',
                     'entrada': entrada,
                     'salida': salida,
@@ -229,7 +229,7 @@ def historial_asistencia(request):
         'registros': registros_combinados,
         'usuarios': UsuarioBiometrico.objects.all(),
         'nombre': nombre,
-        'dni': dni,
+        'cedula': cedula,
         'estacion': estacion,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
@@ -355,7 +355,7 @@ def calcular_horas_trabajadas():
 @login_required
 def resumen_asistencias_diarias(request):
     nombre = request.GET.get('nombre')
-    dni = request.GET.get('dni')
+    cedula = request.GET.get('cedula')
     estacion = request.GET.get('estacion')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
@@ -364,8 +364,8 @@ def resumen_asistencias_diarias(request):
 
     if nombre:
         registros_qs = registros_qs.filter(usuario__nombre__icontains=nombre)
-    if dni:
-        registros_qs = registros_qs.filter(usuario__dni__icontains=dni)
+    if cedula:
+        registros_qs = registros_qs.filter(usuario__cedula__icontains=cedula)
     if estacion:
         registros_qs = registros_qs.filter(usuario__estacion__nombre__icontains=estacion)
     if fecha_inicio:
@@ -432,7 +432,7 @@ def resumen_asistencias_diarias(request):
                     'dia': entrada.date().strftime('%Y-%m-%d'),
                     'usuario_id': usuario.id,
                     'nombre': usuario.nombre,
-                    'dni': usuario.dni,
+                    'cedula': usuario.cedula,
                     'estacion': usuario.estacion.nombre if usuario.estacion else '',
                     'entrada': entrada,
                     'salida': salida,
@@ -445,12 +445,12 @@ def resumen_asistencias_diarias(request):
     context = {
         'registros': registros,
         'nombre': nombre,
-        'dni': dni,
+        'cedula': cedula,
         'estacion': estacion,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
     }
-    return render(request, 'resumen_asistencias_diarias.html', {'registros': registros, 'nombre': nombre, 'dni': dni, 'estacion': estacion, 'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin})
+    return render(request, 'resumen_asistencias_diarias.html', {'registros': registros, 'nombre': nombre, 'cedula': cedula, 'estacion': estacion, 'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin})
 
 @login_required
 def aprobar_horas_extra(request, usuario_id, dia):

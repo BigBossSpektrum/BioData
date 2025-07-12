@@ -65,7 +65,7 @@ class UsuarioBiometrico(models.Model):
         blank=True,
         null=True
     )
-    dni = models.CharField(
+    cedula = models.CharField(
         max_length=20,
         unique=True,
         blank=True,
