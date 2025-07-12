@@ -4,18 +4,26 @@
 {% block title %}Historial de Asistencia{% endblock %}
 
 {% block content %}
-<!-- Bootstrap CDN -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <div class="container py-4">
     <h1 class="text-center mb-4">Historial de Asistencia</h1>
 
+    <!-- Filtros -->
     <div class="row mb-3">
-        <div class="col-md-6 offset-md-3">
-            <input type="text" id="filtroUsuarios" class="form-control" placeholder="Buscar por nombre, DNI, estación...">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" id="filtroUsuarios" class="form-control" placeholder="Buscar por nombre, cédula, estación...">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <input type="date" id="filtroDesde" class="form-control" placeholder="Desde">
+        </div>
+        <div class="col-md-3">
+            <input type="date" id="filtroHasta" class="form-control" placeholder="Hasta">
         </div>
     </div>
-    
 
     <div class="table-responsive">
         <table class="table table-bordered table-hover align-middle text-center">
@@ -24,7 +32,7 @@
                     <th>#</th>
                     <th>ID Usuario</th>
                     <th>Nombre</th>
-                    <th>Cedula</th>
+                    <th>Cédula</th>
                     <th>Estación</th>
                     <th>Entrada</th>
                     <th>Salida</th>
@@ -39,7 +47,7 @@
                         <td>{{ r.nombre }}</td>
                         <td>{{ r.cedula }}</td>
                         <td>{{ r.estacion }}</td>
-                        <td>
+                        <td class="col-entrada">
                             {% if r.entrada %}
                                 {{ r.entrada|date:"Y-m-d H:i:s" }}
                             {% else %}
@@ -67,29 +75,53 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center text-muted">No hay registros.</td>
+                        <td colspan="8" class="text-center text-muted">No hay registros.</td>
                     </tr>
                 {% endfor %}
+                <tr id="sinCoincidencias" style="display: none;">
+                    <td colspan="8" class="text-center text-muted">No se encontraron resultados con el filtro aplicado.</td>
+                </tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- Optional Bootstrap JS (if needed) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const filtroInput = document.getElementById('filtroUsuarios');
-      const filas = document.querySelectorAll('table tbody tr');
-  
-      filtroInput.addEventListener('keyup', function () {
-        const filtro = this.value.toLowerCase();
-  
-        filas.forEach(function (fila) {
-          const textoFila = fila.textContent.toLowerCase();
-          fila.style.display = textoFila.includes(filtro) ? '' : 'none';
+document.addEventListener('DOMContentLoaded', function () {
+    const inputTexto = document.getElementById('filtroUsuarios');
+    const inputDesde = document.getElementById('filtroDesde');
+    const inputHasta = document.getElementById('filtroHasta');
+    const filas = Array.from(document.querySelectorAll('tbody tr')).filter(f => !f.id);
+    const sinCoincidencias = document.getElementById('sinCoincidencias');
+
+    function aplicarFiltros() {
+        const texto = inputTexto.value.toLowerCase();
+        const desde = inputDesde.value;
+        const hasta = inputHasta.value;
+        let visibles = 0;
+
+        filas.forEach(fila => {
+            const textoFila = fila.textContent.toLowerCase();
+            const entrada = fila.querySelector('.col-entrada')?.textContent?.trim()?.substring(0, 10) || '';
+
+            let visible = true;
+
+            if (texto && !textoFila.includes(texto)) visible = false;
+            if (desde && entrada < desde) visible = false;
+            if (hasta && entrada > hasta) visible = false;
+
+            fila.style.display = visible ? '' : 'none';
+            if (visible) visibles++;
         });
-      });
-    });
-  </script>
+
+        sinCoincidencias.style.display = visibles === 0 ? '' : 'none';
+    }
+
+    inputTexto.addEventListener('input', aplicarFiltros);
+    inputDesde.addEventListener('change', aplicarFiltros);
+    inputHasta.addEventListener('change', aplicarFiltros);
+});
+</script>
 {% endblock %}
