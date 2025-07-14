@@ -1,6 +1,6 @@
 {% extends 'layout/base.html' %}
 {% block title %}Resumen de Asistencias Diarias{% endblock %}
-
+{% load static %}
 {% block content %}
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
@@ -121,49 +121,5 @@
 {% endif %}
 
 <!-- Filtro dinámico -->
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const inputTexto = document.getElementById('filtroUsuarios');
-    const inputDesde = document.getElementById('filtroDesde');
-    const inputHasta = document.getElementById('filtroHasta');
-    const filas = Array.from(document.querySelectorAll('tbody tr')).filter(f => !f.id);
-    const sinCoincidencias = document.getElementById('sinCoincidencias');
-
-    function aplicarFiltros() {
-        const texto = inputTexto.value.toLowerCase();
-        const desde = inputDesde.value;
-        const hasta = inputHasta.value;
-        let visibles = 0;
-
-        filas.forEach(fila => {
-            const textoFila = fila.textContent.toLowerCase();
-            const fechaTexto = fila.querySelector('.col-dia').textContent.trim();
-
-            let visible = true;
-
-            // Filtro de texto
-            if (texto && !textoFila.includes(texto)) {
-                visible = false;
-            }
-
-            // Filtro por fecha
-            if (desde && fechaTexto < desde) {
-                visible = false;
-            }
-            if (hasta && fechaTexto > hasta) {
-                visible = false;
-            }
-
-            fila.style.display = visible ? '' : 'none';
-            if (visible) visibles++;
-        });
-
-        sinCoincidencias.style.display = visibles === 0 ? '' : 'none';
-    }
-
-    inputTexto.addEventListener('input', aplicarFiltros);
-    inputDesde.addEventListener('change', aplicarFiltros);
-    inputHasta.addEventListener('change', aplicarFiltros);
-});
-</script>
+<script src="{% static 'js/frontend/components/filtro.js' %}"></script>
 {% endblock %}
