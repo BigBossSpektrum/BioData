@@ -10,17 +10,50 @@ from .utils import obtener_rango_semana
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.urls import reverse
 
+import logging
+
 @login_required
 def home_biometrico(request):
-    usuario = request.user
-    hoy = now().date()
+    logger = logging.getLogger(__name__)
+    hoy = localtime(now()).date()
+    logger.info(f"[ASISTENCIA] Fecha local detectada para filtro: {hoy}")
 
-    asistencias_hoy = RegistroAsistencia.objects.filter(timestamp__date=hoy).select_related('usuario')
+    try:
+        # Trae todos los registros y filtra por fecha local en Python
+        registros = RegistroAsistencia.objects.select_related('usuario').all()
+        registros_hoy = [r for r in registros if localtime(r.timestamp).date() == hoy]
+        logger.info(f"[ASISTENCIA] Total registros hoy (ajustado zona horaria): {len(registros_hoy)}")
 
-    return render(request, 'home.html', {
-        'usuario': request.user,
-        'asistencias_hoy': asistencias_hoy,
-    })
+        # Agrupa todos los registros del día por usuario
+        registros_por_usuario = {}
+        for r in registros_hoy:
+            if r.usuario not in registros_por_usuario:
+                registros_por_usuario[r.usuario] = []
+            registros_por_usuario[r.usuario].append(r)
+
+        # Prepara la lista para el template: [{'usuario': usuario, 'registros': [reg1, reg2, ...]}, ...]
+        registros_por_usuario_list = []
+        for usuario, lista_reg in registros_por_usuario.items():
+            # Ordenar los registros por hora ascendente
+            lista_reg.sort(key=lambda r: localtime(r.timestamp))
+            logger.info(f"[ASISTENCIA] Usuario: {usuario.nombre} - Registros hoy: {[str(localtime(r.timestamp)) + ' (' + r.tipo + ')' for r in lista_reg]}")
+            registros_por_usuario_list.append({'usuario': usuario, 'registros': lista_reg})
+
+        return render(request, 'home.html', {
+            'usuario': request.user,
+            'registros_por_usuario': registros_por_usuario_list,
+            'asistencias_hoy': registros_hoy,
+            'today': hoy,
+        })
+    except Exception as e:
+        logger.error(f"Error en home_biometrico: {e}")
+        return render(request, 'home.html', {
+            'usuario': request.user,
+            'registros_por_usuario': [],
+            'asistencias_hoy': [],
+            'today': hoy,
+            'error': str(e),
+        })
 
 def filtrar_asistencias(request):
     fecha_inicio = request.GET.get('fecha_inicio')
