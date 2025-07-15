@@ -19,10 +19,16 @@ def home_biometrico(request):
     logger.info(f"[ASISTENCIA] Fecha local detectada para filtro: {hoy}")
 
     try:
-        # Trae todos los registros y filtra por fecha local en Python
-        registros = RegistroAsistencia.objects.select_related('usuario').all()
+        # Filtrado según el rol del usuario
+        rol = getattr(request.user, 'rol', None)
+        registros = RegistroAsistencia.objects.select_related('usuario', 'usuario__estacion', 'usuario__estacion__jefe').all()
         registros_hoy = [r for r in registros if localtime(r.timestamp).date() == hoy]
         logger.info(f"[ASISTENCIA] Total registros hoy (ajustado zona horaria): {len(registros_hoy)}")
+
+        if rol == 'jefe_patio':
+            # Solo usuarios cuya estación tiene como jefe al usuario logueado
+            registros_hoy = [r for r in registros_hoy if r.usuario.estacion and hasattr(r.usuario.estacion, 'jefe') and r.usuario.estacion.jefe_id == request.user.id]
+            logger.info(f"[ASISTENCIA] Filtrado por jefe_patio: {len(registros_hoy)} registros")
 
         # Agrupa todos los registros del día por usuario
         registros_por_usuario = {}
@@ -181,7 +187,11 @@ def historial_asistencia(request):
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
 
-    registros = RegistroAsistencia.objects.select_related('usuario', 'usuario__estacion').all()
+    registros = RegistroAsistencia.objects.select_related('usuario', 'usuario__estacion', 'usuario__estacion__jefe').all()
+
+    rol = getattr(request.user, 'rol', None)
+    if rol == 'jefe_patio':
+        registros = registros.filter(usuario__estacion__jefe_id=request.user.id)
 
     if nombre:
         registros = registros.filter(usuario__nombre__icontains=nombre)
