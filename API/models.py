@@ -60,6 +60,14 @@ class UsuarioBiometrico(models.Model):
         blank=True
         )  # ID biométrico en el dispositivo
 
+    estacion = models.ForeignKey(
+        'EstacionServicio',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='UsuarioBiometrico'
+    )
+
     nombre = models.CharField(
         max_length=100,
         blank=True,

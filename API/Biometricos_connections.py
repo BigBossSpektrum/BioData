@@ -36,6 +36,11 @@ STATUS_MAP = {
     15: "Desconocido",
 }
 
+TURNOS = {
+    'diurno': {'inicio': 6, 'fin': 22},       # 06:00 a 21:59
+    'nocturno': {'inicio': 22, 'fin': 6},     # 22:00 a 05:59 del siguiente día
+}
+
 # ============================== #
 # 📘 Funciones auxiliares
 # ============================== #
@@ -52,6 +57,10 @@ def obtener_estado_alternado(usuario, timestamp):
     registros = RegistroAsistencia.objects.filter(usuario=usuario, timestamp__date=fecha)
     return 0 if registros.count() % 2 == 0 else 1  # 0=Entrada, 1=Salida
 
+def detectar_turno(hora):
+    if TURNOS['nocturno']['inicio'] <= hora or hora < TURNOS['nocturno']['fin']:
+        return 'nocturno'
+    return 'diurno'
 
 # ============================== #
 # 🔌 Funciones de conexión
@@ -245,6 +254,43 @@ def importar_datos_dispositivo(enviar_a_clevercloud=False, clevercloud_url=None,
         print(f"❌ Error de conexión o procesamiento: {e}")
         return None
 
+def calcular_horas_trabajadas_por_usuario(usuario):
+    registros = RegistroAsistencia.objects.filter(usuario=usuario).order_by('timestamp')
+    entrada = None
+    resultados = []
+
+    for registro in registros:
+        if registro.tipo == 'entrada':
+            entrada = registro.timestamp
+        elif registro.tipo == 'salida' and entrada:
+            salida = registro.timestamp
+            duracion = salida - entrada
+            horas_trabajadas = duracion.total_seconds() / 3600
+
+            turno = detectar_turno(entrada.hour)
+            horas_extras = max(0, horas_trabajadas - 8)  # Asumiendo 8 horas laborales
+
+            resultados.append({
+                'usuario': usuario.nombre,
+                'entrada': entrada,
+                'salida': salida,
+                'turno': turno,
+                'horas_trabajadas': round(horas_trabajadas, 2),
+                'horas_extras': round(horas_extras, 2),
+            })
+
+            entrada = None  # Reset entrada
+
+    return resultados
+
+def resumen_jornadas():
+    usuarios = UsuarioBiometrico.objects.all()
+    for usuario in usuarios:
+        jornadas = calcular_horas_trabajadas_por_usuario(usuario)
+        print(f"\n📊 Resumen de {usuario.nombre}:")
+        for j in jornadas:
+            print(f"Turno: {j['turno'].capitalize()} | Entrada: {j['entrada']} | Salida: {j['salida']} | "
+                  f"Horas Trabajadas: {j['horas_trabajadas']}h | Horas Extras: {j['horas_extras']}h")
 
 # ============================== #
 # ▶️ Ejecución directa
