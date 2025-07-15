@@ -14,7 +14,7 @@
 
   <!-- Filtro de búsqueda -->
   <div class="mb-3">
-    <input type="text" id="filtroUsuarios" class="form-control" placeholder="Buscar usuario por nombre, DNI o estación...">
+    <input type="text" id="filtroUsuarios" class="form-control" placeholder="Buscar usuario por nombre, cédula o estación...">
   </div>
 
   <!-- Tabla de usuarios -->
@@ -24,7 +24,7 @@
         <th>ID BD</th>
         <th>ID Biométrico</th>
         <th>Nombre</th>
-        <th>DNI</th>
+        <th>Cédula</th>
         <th>ESTACION</th>
         <th>ESTADO</th>
         {% if request.user.rol == 'admin' or request.user.rol == 'rrhh' %}
@@ -180,12 +180,12 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-  function abrirModalEditar(id, biometrico_id, nombre, dni, estacion_id, activo) {
+  function abrirModalEditar(id, biometrico_id, nombre, cedula, estacion_id, activo) {
     document.getElementById("formEditarUsuario").action = "/api/usuarios/editar/" + id + "/";
     document.getElementById("input_id_editar").value = id;
     document.getElementById("input_biometrico_id_editar").value = biometrico_id;
     document.getElementById("input_nombre_editar").value = nombre;
-    document.getElementById("input_dni_editar").value = dni;
+    document.getElementById("input_cedula_editar").value = cedula;
     const selectEstacion = document.getElementById("input_estacion_id_editar");
     if (selectEstacion && estacion_id) {
       selectEstacion.value = estacion_id;

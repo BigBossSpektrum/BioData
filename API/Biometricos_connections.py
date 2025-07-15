@@ -111,6 +111,24 @@ def eliminar_usuario_biometrico(zk, user_id):
     zk.enable_device()
     print(f"🗑️ Usuario con ID {user_id} eliminado del biométrico.")
 
+# ============================== #
+# 🧠 Logica de tipo de registro
+# ============================== #
+
+def obtener_tipo_registro(usuario, timestamp):
+    """
+    Determina si el registro es 'entrada' o 'salida' basado en el último registro anterior.
+    """
+    ultimo_registro = RegistroAsistencia.objects.using('default').filter(
+        usuario=usuario,
+        timestamp__lt=timestamp
+    ).order_by('-timestamp').first()
+
+    if not ultimo_registro:
+        return 'entrada'  # No hay registros previos
+
+    return 'salida' if ultimo_registro.tipo == 'entrada' else 'entrada'
+
 
 # ============================== #
 # 📥 Función principal de importación
@@ -182,10 +200,10 @@ def importar_datos_dispositivo(enviar_a_clevercloud=False, clevercloud_url=None,
             registros_por_usuario_fecha[(record.user_id, fecha)].append((timestamp, user_default, user_local))
 
         for (user_id, fecha), registros in registros_por_usuario_fecha.items():
-            # Ordenar por hora
-            registros.sort(key=lambda x: x[0])
-            for idx, (timestamp, user_default, user_local) in enumerate(registros):
-                tipo = 'entrada' if idx % 2 == 0 else 'salida'
+            registros.sort(key=lambda x: x[0])  # Orden por timestamp
+            for timestamp, user_default, user_local in registros:
+                tipo = obtener_tipo_registro(user_default, timestamp)
+
                 # Guardar en default
                 _, created_default = RegistroAsistencia.objects.using('default').get_or_create(
                     usuario=user_default,
@@ -198,9 +216,11 @@ def importar_datos_dispositivo(enviar_a_clevercloud=False, clevercloud_url=None,
                     timestamp=timestamp,
                     tipo=tipo,
                 )
+
                 if created_default or created_local:
                     nuevos += 1
                     print(f"🧾 Registro - Usuario: {user_default.nombre}, Hora: {timestamp}, Estado: {tipo.capitalize()}")
+
                 registros_json.append({
                     'user_id': user_default.biometrico_id,
                     'nombre': user_default.nombre,

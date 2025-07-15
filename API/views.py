@@ -14,6 +14,8 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from .serializers import RegistroAsistenciaSerializer
+from django.http import JsonResponse
+import json
 User = get_user_model()
 
 class RegistroAsistenciaListView(generics.ListAPIView):
@@ -236,4 +238,29 @@ def api_sincronizar_biometrico(request):
         registros = RegistroAsistencia.objects.all()
         serializer = RegistroAsistenciaSerializer(registros, many=True)
         return JsonResponse({'registros': serializer.data}, safe=False)
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+@csrf_exempt
+def recibir_logs(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+
+            for log in data:
+                usuario, _ = UsuarioBiometrico.objects.get_or_create(
+                    biometrico_id=log['biometrico_id']
+                )
+
+                RegistroAsistencia.objects.get_or_create(
+                    usuario=usuario,
+                    timestamp=log['timestamp'],
+                    defaults={
+                        'tipo': 'entrada' if log['punch'] == 0 else 'salida',
+                        'aprobado': True
+                    }
+                )
+
+            return JsonResponse({'status': 'success'}, status=200)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
     return JsonResponse({'error': 'Método no permitido'}, status=405)

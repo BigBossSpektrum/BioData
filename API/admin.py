@@ -40,7 +40,7 @@ class JornadaLaboralAdmin(admin.ModelAdmin):
 class RegistroAsistenciaAdmin(admin.ModelAdmin):
     list_display = ('usuario', 'timestamp', 'tipo')
     list_filter = ('tipo', 'timestamp')
-    search_fields = ('usuario__nombre', 'usuario__dni')
+    search_fields = ('usuario__nombre', 'usuario__cedula')
 
 
 # ---------- Admin EstacionServico ----------
