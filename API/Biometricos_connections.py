@@ -1,3 +1,6 @@
+import sys
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 import os
 import sys
 import django
@@ -15,7 +18,7 @@ load_dotenv()
 # ============================== #
 # ⚙️ Configuración del entorno Django
 # ============================== #
-sys.path.append("C:/Users/Entrecables y Redes/Documents/GitHub/BioData")
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "inverligol.settings")
 django.setup()
 
