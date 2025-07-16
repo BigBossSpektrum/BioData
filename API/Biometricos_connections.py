@@ -178,15 +178,7 @@ def importar_datos_dispositivo(enviar_a_clevercloud=False, clevercloud_url=None,
                 biometrico_id=user.uid,  # Cambiado de user_id a biometrico_id
                 defaults=defaults_default
             )
-            defaults_local = {
-                'nombre': user.name.strip() if user.name else 'N/A',
-                'privilegio': user.privilege,
-                'activo': activo
-            }
-            obj_local, creado_local = UsuarioBiometrico.objects.using('local').update_or_create(
-                biometrico_id=user.uid,  # Cambiado de user_id a biometrico_id
-                defaults=defaults_local
-            )
+
             print(f"🔍 ID: {user.uid}, Nombre: {user.name}, Privilegio: {user.privilege}, Activo: {activo}")
             print(f"✅ Usuario {'creado' if creado else 'actualizado'} en BD: {obj.nombre} ({obj.biometrico_id})")
 
@@ -199,18 +191,17 @@ def importar_datos_dispositivo(enviar_a_clevercloud=False, clevercloud_url=None,
         registros_por_usuario_fecha = defaultdict(list)
         for record in asistencia:
             user_default = UsuarioBiometrico.objects.using('default').filter(biometrico_id=record.user_id).first()
-            user_local = UsuarioBiometrico.objects.using('local').filter(biometrico_id=record.user_id).first()
-            if not user_default or not user_local:
+            if not user_default:
                 continue
             timestamp = record.timestamp
             if not timestamp.tzinfo:
                 timestamp = make_aware(timestamp)
             fecha = timestamp.date()
-            registros_por_usuario_fecha[(record.user_id, fecha)].append((timestamp, user_default, user_local))
+            registros_por_usuario_fecha[(record.user_id, fecha)].append((timestamp, user_default))
 
         for (user_id, fecha), registros in registros_por_usuario_fecha.items():
             registros.sort(key=lambda x: x[0])  # Orden por timestamp
-            for timestamp, user_default, user_local in registros:
+            for timestamp, user_default in [(x[0], x[1]) for x in registros]:
                 tipo = obtener_tipo_registro(user_default, timestamp)
 
                 # Guardar en default
@@ -219,14 +210,8 @@ def importar_datos_dispositivo(enviar_a_clevercloud=False, clevercloud_url=None,
                     timestamp=timestamp,
                     tipo=tipo,
                 )
-                # Guardar en local
-                _, created_local = RegistroAsistencia.objects.using('local').get_or_create(
-                    usuario=user_local,
-                    timestamp=timestamp,
-                    tipo=tipo,
-                )
 
-                if created_default or created_local:
+                if created_default:
                     nuevos += 1
                     print(f"🧾 Registro - Usuario: {user_default.nombre}, Hora: {timestamp}, Estado: {tipo.capitalize()}")
 
