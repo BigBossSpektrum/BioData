@@ -11,11 +11,14 @@ class CustomUserAdmin(UserAdmin):
     list_filter = ('rol', 'estacion', 'is_staff', 'is_superuser', 'is_active')
     search_fields = ('username', 'email', 'rol', 'estacion__nombre')
 
-    fieldsets = UserAdmin.fieldsets + (
-        ('Información adicional', {'fields': ('rol', 'estacion')}),
+    fieldsets = (
+        (None, {'fields': ('username', 'password', 'email', 'first_name', 'last_name', 'rol', 'estacion', 'is_staff', 'is_active', 'is_superuser')}),
     )
-    add_fieldsets = UserAdmin.add_fieldsets + (
-        ('Información adicional', {'fields': ('rol', 'estacion')}),
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('username', 'password1', 'password2', 'email', 'first_name', 'last_name', 'rol', 'estacion', 'is_staff', 'is_active', 'is_superuser'),
+        }),
     )
 
 
