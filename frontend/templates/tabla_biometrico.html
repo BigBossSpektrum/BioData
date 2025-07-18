@@ -47,13 +47,13 @@
                         <td>{{ r.nombre }}</td>
                         <td>{{ r.cedula }}</td>
                         <td>{{ r.estacion }}</td>
-                        <td class="col-entrada">
-                            {% if r.entrada %}
-                                {{ r.entrada|date:"Y-m-d H:i:s" }}
-                            {% else %}
-                                <span class="text-muted">-</span>
-                            {% endif %}
-                        </td>
+                        <td class="col-entrada col-dia">
+    {% if r.entrada %}
+        {{ r.entrada|date:"Y-m-d" }}
+    {% else %}
+        <span class="text-muted">-</span>
+    {% endif %}
+</td>
                         <td>
                             {% if r.salida %}
                                 {{ r.salida|date:"Y-m-d H:i:s" }}
@@ -87,43 +87,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-// document.addEventListener('DOMContentLoaded', function () {
-//     const inputTexto = document.getElementById('filtroUsuarios');
-//     const inputDesde = document.getElementById('filtroDesde');
-//     const inputHasta = document.getElementById('filtroHasta');
-//     const filas = Array.from(document.querySelectorAll('tbody tr')).filter(f => !f.id);
-//     const sinCoincidencias = document.getElementById('sinCoincidencias');
-
-//     function aplicarFiltros() {
-//         const texto = inputTexto.value.toLowerCase();
-//         const desde = inputDesde.value;
-//         const hasta = inputHasta.value;
-//         let visibles = 0;
-
-//         filas.forEach(fila => {
-//             const textoFila = fila.textContent.toLowerCase();
-//             const entrada = fila.querySelector('.col-entrada')?.textContent?.trim()?.substring(0, 10) || '';
-
-//             let visible = true;
-
-//             if (texto && !textoFila.includes(texto)) visible = false;
-//             if (desde && entrada < desde) visible = false;
-//             if (hasta && entrada > hasta) visible = false;
-
-//             fila.style.display = visible ? '' : 'none';
-//             if (visible) visibles++;
-//         });
-
-//         sinCoincidencias.style.display = visibles === 0 ? '' : 'none';
-//     }
-
-//     inputTexto.addEventListener('input', aplicarFiltros);
-//     inputDesde.addEventListener('change', aplicarFiltros);
-//     inputHasta.addEventListener('change', aplicarFiltros);
-// });
-</script>
 
 <script src="{% static 'js/frontend/components/filtro.js' %}"></script>
 {% endblock %}
