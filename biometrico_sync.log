@@ -10517,3 +10517,397 @@ Exception Value: fromisoformat: argument must be str
 2025-07-15 15:00:25,990 - INFO - No hay registros para enviar.
 2025-07-15 15:00:25,993 - INFO - Ciclo completado. Esperando 10 segundos para el siguiente intento.
 2025-07-15 15:00:27,160 - INFO - Sincronizaci�n interrumpida manualmente por el usuario.
+2025-07-19 13:52:01,142 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 13:52:01,151 - INFO - 🔧 Iniciando función principal
+2025-07-19 13:52:01,152 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 13:52:01,155 - ERROR - ❌ IP_BIOMETRICO no está definida en el archivo .env
+2025-07-19 13:52:01,156 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 13:52:18,334 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 13:52:18,337 - INFO - 🔧 Iniciando función principal
+2025-07-19 13:52:18,338 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 13:52:18,340 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 13:52:18,344 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 13:52:18,357 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 13:52:19,137 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 13:52:19,155 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 13:52:19,160 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 13:52:19,302 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 13:52:19,304 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 13:52:19,305 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 13:52:19,306 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 13:52:19,307 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 13:52:19,309 - INFO - 📤 Enviando datos al servidor...
+2025-07-19 13:52:19,772 - ERROR - ❌ Error de conexión al servidor
+2025-07-19 13:52:19,775 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 13:52:19,799 - INFO - 🔌 Cerrando conexión...
+2025-07-19 13:52:19,818 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 13:52:19,837 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:09:19,509 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:09:19,511 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:09:19,512 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:09:19,514 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:09:19,529 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:09:19,535 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:09:20,264 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:09:20,306 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:09:20,368 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:09:20,461 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:09:20,463 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:09:20,464 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:09:20,465 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:09:20,465 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:09:20,466 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:09:21,087 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:09:21,092 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:09:21,094 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:09:21,168 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:09:21,186 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:09:21,207 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:09:21,217 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:18:00,635 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:18:00,637 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:18:00,638 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:18:00,639 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:18:00,641 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:18:00,643 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:18:01,335 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:18:01,349 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:18:01,351 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:18:01,488 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:18:01,490 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:18:01,492 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:18:01,493 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:18:01,494 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:18:01,497 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:18:02,136 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:18:02,141 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:18:02,144 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:18:02,235 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:18:02,246 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:18:02,283 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:18:02,285 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:18:52,719 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:18:52,722 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:18:52,724 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:18:52,730 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:18:52,748 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:18:52,763 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:18:53,304 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:18:53,318 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:18:53,321 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:18:53,413 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:18:53,417 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:18:53,419 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:18:53,420 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:18:53,422 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:18:53,424 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:18:54,055 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:18:54,057 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:18:54,059 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:18:54,066 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:18:54,081 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:18:54,120 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:18:54,138 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:20:15,424 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:20:15,425 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:20:15,426 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:20:15,426 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:20:15,427 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:20:15,429 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:20:15,858 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:20:15,873 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:20:15,875 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:20:15,973 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:20:15,976 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:20:15,977 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:20:15,979 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:20:15,980 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:20:15,985 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:20:16,798 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:20:16,799 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:20:16,800 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:20:16,813 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:20:16,827 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:20:16,879 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:20:16,888 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:20:20,739 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:20:20,740 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:20:20,740 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:20:20,741 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:20:20,742 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:20:20,743 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:20:20,991 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:20:21,004 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:20:21,009 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:20:21,113 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:20:21,115 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:20:21,116 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:20:21,116 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:20:21,117 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:20:21,119 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:20:21,820 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:20:21,821 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:20:21,822 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:20:21,831 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:20:21,858 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:20:21,893 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:20:21,894 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:20:24,224 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:20:24,225 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:20:24,226 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:20:24,226 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:20:24,228 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:20:24,229 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:20:24,483 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:20:24,499 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:20:24,501 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:20:24,606 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:20:24,608 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:20:24,610 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:20:24,610 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:20:24,611 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:20:24,611 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:20:27,568 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:20:27,569 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:20:27,570 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:20:27,570 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:20:27,571 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:20:27,572 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:20:27,835 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:20:27,848 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:20:27,851 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:20:28,049 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:20:28,050 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:20:28,050 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:20:28,051 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:20:28,052 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:20:28,053 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:20:28,702 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:20:28,725 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:20:28,728 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:20:28,784 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:20:28,795 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:20:28,845 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:20:28,854 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:23:06,879 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:23:06,879 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:23:06,880 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:23:06,880 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:23:06,881 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:23:06,882 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:23:07,118 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:23:07,132 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:23:07,220 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:23:07,343 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:23:07,349 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:23:07,350 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:23:07,351 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:23:07,352 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:23:07,353 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:23:08,009 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:23:08,013 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:23:08,015 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:23:08,085 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:23:08,172 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:23:08,240 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:23:08,241 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:23:22,366 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:23:22,368 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:23:22,368 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:23:22,369 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:23:22,371 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:23:22,375 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:23:22,653 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:23:22,678 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:23:22,713 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:23:22,817 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:23:22,827 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:23:22,828 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:23:22,829 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:23:22,837 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:23:22,841 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:23:23,559 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:23:23,560 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:23:23,562 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:23:23,580 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:23:23,592 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:23:23,623 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:23:23,626 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:40:41,952 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:40:41,954 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:40:41,954 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:40:41,955 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:40:41,957 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:40:41,958 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:40:42,316 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:40:42,335 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:40:42,340 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:40:42,440 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:40:42,444 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:40:42,446 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:40:42,448 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:40:42,451 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:40:42,454 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:40:43,175 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:40:43,177 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:40:43,178 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:40:43,261 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:40:43,291 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:40:43,305 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:40:43,312 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:43:10,339 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:43:10,342 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:43:10,343 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:43:10,345 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:43:10,355 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:43:10,360 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:43:11,074 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:43:11,096 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:43:11,110 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:43:11,299 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:43:11,302 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:43:11,303 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:43:11,303 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:43:11,305 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:43:11,314 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:43:12,048 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:43:12,086 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:43:12,086 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:43:12,092 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:43:12,137 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:43:12,151 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:43:12,196 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:43:21,258 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:43:21,260 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:43:21,260 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:43:21,261 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:43:21,262 - CRITICAL - ❌ Error crítico en el programa principal: 'charmap' codec can't encode character '\U0001f4e1' in position 0: character maps to <undefined>
+2025-07-19 16:43:21,263 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:44:08,681 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:44:08,683 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:44:08,683 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:44:08,684 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:44:08,685 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:44:08,686 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:44:09,188 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:44:09,202 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:44:09,203 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:44:09,305 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:44:09,305 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:44:09,305 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:44:09,305 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:44:09,306 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:44:09,306 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:44:10,203 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:44:10,203 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:44:10,204 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:44:10,207 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:44:10,217 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:44:10,233 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:44:10,234 - INFO - 🏁 Finalizando script de sincronización biométrica
+2025-07-19 16:51:26,861 - INFO - 🚀 Iniciando script de sincronización biométrica
+2025-07-19 16:51:26,862 - INFO - 🔧 Iniciando función principal
+2025-07-19 16:51:26,863 - INFO - 📁 Cargando configuración del archivo .env
+2025-07-19 16:51:26,863 - INFO - 🎯 Configuración validada - IP: 192.168.0.3, Puerto: 4370, Estación: La Soledad
+2025-07-19 16:51:26,865 - INFO - 🔌 Intentando conectar al dispositivo biométrico en 192.168.0.3:4370
+2025-07-19 16:51:26,866 - INFO - 🔄 Estableciendo conexión...
+2025-07-19 16:51:27,191 - INFO - 🚫 Deshabilitando dispositivo para lectura segura...
+2025-07-19 16:51:27,207 - INFO - ✅ Conectado exitosamente al biométrico en 192.168.0.3:4370
+2025-07-19 16:51:27,209 - INFO - 📄 Obteniendo registros de asistencia de la estación: La Soledad
+2025-07-19 16:51:27,319 - INFO - 📥 Total registros leídos en La Soledad: 4
+2025-07-19 16:51:27,320 - INFO - ✅ Procesados 4 registros correctamente
+2025-07-19 16:51:27,321 - INFO - 📦 Preparando envío de 4 registros
+2025-07-19 16:51:27,321 - INFO - 🚀 Preparando envío de 4 registros al servidor
+2025-07-19 16:51:27,322 - INFO - 🌐 URL destino: https://rhligol.gventas.net/recibir-datos-biometrico/
+2025-07-19 16:51:27,322 - INFO - 📤 Enviando datos al servidor... (ignorando verificación SSL)
+2025-07-19 16:51:28,077 - INFO - 📊 Respuesta del servidor: Status 403
+2025-07-19 16:51:28,078 - ERROR - ❌ Error HTTP 403 al enviar datos
+2025-07-19 16:51:28,078 - ERROR - Respuesta del servidor: <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+
+2025-07-19 16:51:28,081 - INFO - 🔄 Habilitando dispositivo nuevamente...
+2025-07-19 16:51:28,106 - INFO - 🔌 Cerrando conexión...
+2025-07-19 16:51:28,175 - INFO - ✅ Proceso completado exitosamente
+2025-07-19 16:51:28,178 - INFO - 🏁 Finalizando script de sincronización biométrica

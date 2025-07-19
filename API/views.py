@@ -16,6 +16,9 @@ from django.contrib.auth import get_user_model
 from .serializers import RegistroAsistenciaSerializer
 from django.http import JsonResponse
 import json
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import AllowAny
 User = get_user_model()
 
 class RegistroAsistenciaListView(generics.ListAPIView):
@@ -141,6 +144,9 @@ def eliminar_usuario(request, user_id):
 
 @csrf_exempt
 @api_view(["POST"])
+@authentication_classes([TokenAuthentication])
+#@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def recibir_datos_biometrico(request):
     print(f"[DEBUG] Recibiendo datos biométrico. PATH: {request.get_full_path()}")
     print(f"[DEBUG] Headers: {request.headers}")
