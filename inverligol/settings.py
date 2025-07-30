@@ -31,7 +31,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ['.cleverapps.io', 'localhost', '127.0.0.1', '192.168.0.110']
+ALLOWED_HOSTS = ['.cleverapps.io', 'localhost', '127.0.0.1', '192.168.0.110', '186.31.35.24']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
