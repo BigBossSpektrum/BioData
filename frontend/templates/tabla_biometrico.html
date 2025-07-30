@@ -47,7 +47,7 @@
                         <td>{{ r.nombre }}</td>
                         <td>{{ r.cedula }}</td>
                         <td>{{ r.estacion }}</td>
-                        <td>
+                        <td class="col-dia">
                             {% if r.entrada %}
                                 {{ r.entrada|date:"Y-m-d H:i:s" }}
                             {% else %}
