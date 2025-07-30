@@ -146,46 +146,60 @@ def eliminar_usuario(request, user_id):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def recibir_datos_biometrico(request):
-    print(f"[DEBUG] 📥 Recibiendo datos biométrico. PATH: {request.get_full_path()}")
-    print(f"[DEBUG] Headers: {request.headers}")
-    print(f"[DEBUG] Body (JSON): {request.data}")
+    try:
+        print(f"[DEBUG] 📥 Recibiendo datos biométrico. PATH: {request.get_full_path()}")
+        print(f"[DEBUG] Headers: {request.headers}")
+        print(f"[DEBUG] Body (JSON): {request.data}")
 
-    datos = request.data
-    nuevos = 0
+        datos = request.data
 
-    for registro in datos:
-        user_id = registro.get("user_id")
-        timestamp_str = registro.get("timestamp")
-        estacion = registro.get("estacion")
-        status = registro.get("status")
+        # 🧱 Validación fundamental:
+        if not isinstance(datos, list):
+            print("[ERROR] ❌ request.data no es una lista. Tipo:", type(datos))
+            return Response({"error": "El cuerpo debe ser una lista de registros"}, status=400)
 
-        if not user_id or not timestamp_str:
-            print(f"[ERROR] ❌ Registro incompleto: {registro}")
-            continue
+        nuevos = 0
 
-        timestamp = parse_datetime(timestamp_str)
-        if not timestamp:
-            print(f"[ERROR] ❌ Timestamp inválido: {timestamp_str}")
-            continue
+        for registro in datos:
+            user_id = registro.get("user_id")
+            timestamp_str = registro.get("timestamp")
+            estacion = registro.get("estacion")
+            status = registro.get("status")
 
-        fecha = timestamp.date()
-        user, _ = UsuarioBiometrico.objects.get_or_create(biometrico_id=user_id)
-        registros_dia = RegistroAsistencia.objects.filter(usuario=user, timestamp__date=fecha).order_by('timestamp')
+            if not user_id or not timestamp_str:
+                print(f"[ERROR] ❌ Registro incompleto: {registro}")
+                continue
 
-        if not registros_dia.filter(tipo='entrada').exists():
-            RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='entrada', estacion=estacion)
-            print(f"[DEBUG] ✅ Registrada ENTRADA para usuario {user.biometrico_id} en {timestamp}")
-            nuevos += 1
-        elif not registros_dia.filter(tipo='salida').exists():
-            RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='salida', estacion=estacion)
-            print(f"[DEBUG] ✅ Registrada SALIDA para usuario {user.biometrico_id} en {timestamp}")
-            nuevos += 1
-        else:
-            print(f"[INFO] 🟡 Ya existen entrada y salida para usuario {user.biometrico_id} en {fecha}, se ignora registro adicional.")
+            timestamp = parse_datetime(timestamp_str)
+            if not timestamp:
+                print(f"[ERROR] ❌ Timestamp inválido: {timestamp_str}")
+                continue
 
-    print(f"[DEBUG] 🧾 Registros nuevos importados: {nuevos}")
-    return Response({"status": "ok", "registros_importados": nuevos})
+            fecha = timestamp.date()
 
+            user, _ = UsuarioBiometrico.objects.get_or_create(biometrico_id=user_id)
+            registros_dia = RegistroAsistencia.objects.filter(usuario=user, timestamp__date=fecha).order_by('timestamp')
+
+            if not registros_dia.filter(tipo='entrada').exists():
+                RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='entrada', estacion=estacion)
+                print(f"[DEBUG] ✅ Registrada ENTRADA para usuario {user.biometrico_id} en {timestamp}")
+                nuevos += 1
+            elif not registros_dia.filter(tipo='salida').exists():
+                RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='salida', estacion=estacion)
+                print(f"[DEBUG] ✅ Registrada SALIDA para usuario {user.biometrico_id} en {timestamp}")
+                nuevos += 1
+            else:
+                print(f"[INFO] 🟡 Ya existen entrada y salida para usuario {user.biometrico_id} en {fecha}, se ignora registro adicional.")
+
+        print(f"[DEBUG] 🧾 Registros nuevos importados: {nuevos}")
+        return Response({"status": "ok", "registros_importados": nuevos})
+
+    except Exception as e:
+        import traceback
+        print("[ERROR] ❌ Excepción no controlada:")
+        print(traceback.format_exc())
+        return Response({"error": str(e)}, status=500)
+    
 @api_view(["GET"])
 def obtener_datos_biometrico(request):
     print("[DEBUG] Obteniendo datos del dispositivo biométrico...")
