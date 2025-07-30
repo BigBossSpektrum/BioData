@@ -123,6 +123,12 @@ class RegistroAsistencia(models.Model):
             ('entrada', 'Entrada'),
             ('salida', 'Salida'))
     )
+    EstacionServicio = models.ForeignKey(
+        EstacionServicio,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
     aprobado = models.BooleanField(
         null=True,
         blank=True,
