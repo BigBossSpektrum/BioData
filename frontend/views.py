@@ -185,104 +185,65 @@ def filtrar_asistencias(request):
     return render(request, 'tabla_biometrico.html', context)
 
 def historial_asistencia(request):
-    nombre = request.GET.get('nombre')
-    cedula = request.GET.get('cedula')  
-    estacion = request.GET.get('estacion')
-    fecha_inicio = request.GET.get('fecha_inicio')
-    fecha_fin = request.GET.get('fecha_fin')
+    registros = RegistroAsistencia.objects.select_related('user', 'estacion_servicio').order_by('user_id', 'timestamp')
 
-    registros = RegistroAsistencia.objects.select_related('user', 'user__estacion', 'user__estacion__jefe').all()
+    data_por_usuario_dia = {}
 
-    rol = getattr(request.user, 'rol', None)
-    if rol == 'jefe_patio':
-        registros = registros.filter(user__estacion__jefe_id=request.user.id)
-
-    if nombre:
-        registros = registros.filter(user__nombre__icontains=nombre)
-    if cedula:
-        registros = registros.filter(user__cedula__icontains=cedula)
-    if estacion:
-        registros = registros.filter(user__estacion__nombre__icontains=estacion)
-    if fecha_inicio:
-        registros = registros.filter(timestamp__date__gte=fecha_inicio)
-    if fecha_fin:
-        registros = registros.filter(timestamp__date__lte=fecha_fin)
-
-    registros = registros.order_by('user__id', 'timestamp')
-
-    asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
     for r in registros:
-        fecha = r.timestamp.date()
-        asistencia_por_usuario_fecha[r.user][fecha].append(r)
+        user = r.user
+        fecha = localtime(r.timestamp).date()
 
-    registros_combinados = []
-    for usuario, dias in asistencia_por_usuario_fecha.items():
-        for fecha, registros_dia in dias.items():
-            registros_dia.sort(key=lambda r: r.timestamp)
-            entradas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'entrada']
-            salidas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'salida']
+        key = (user.id, fecha)
+        if key not in data_por_usuario_dia:
+            data_por_usuario_dia[key] = {
+                'user': user,
+                'fecha': fecha,
+                'registros': [],
+                'estacion': r.estacion_servicio.nombre if r.estacion_servicio else '-',
+            }
+        data_por_usuario_dia[key]['registros'].append(localtime(r.timestamp))
 
-            i, j = 0, 0
-            while i < len(entradas):
-                entrada = entradas[i]
+    resultados = []
+
+    for (user_id, fecha), info in data_por_usuario_dia.items():
+        registros_dia = sorted(info['registros'])
+        entrada = registros_dia[0]
+
+        # Turno nocturno: si entrada >= 22:00 buscar salida entre entrada y 06:00 del siguiente día
+        if entrada.time() >= time(22, 0):
+            siguiente_dia = fecha + timedelta(days=1)
+            salida = None
+            for ts in reversed(registros_dia):
+                if ts.date() == fecha and ts.time() >= entrada.time():
+                    salida = ts
+                    break
+                elif ts.date() == siguiente_dia and ts.time() <= time(6, 0):
+                    salida = ts
+                    break
+            if not salida:
                 salida = None
-                for k in range(j, len(salidas)):
-                    posible_salida = salidas[k]
-                    if entrada.hour >= 22 and posible_salida > entrada and (
-                        posible_salida.date() == (entrada + timedelta(days=1)).date() and posible_salida.hour <= 12
-                    ):
-                        salida = posible_salida
-                        j = k + 1
-                        break
-                    elif posible_salida > entrada:
-                        salida = posible_salida
-                        j = k + 1
-                        break
+        else:
+            salida = registros_dia[-1]
 
-                horas_trabajadas = 0.0
-                if salida:
-                    delta = salida - entrada
-                    if delta.total_seconds() < 0:
-                        delta += timedelta(days=1)
-                    horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+        horas_trabajadas = None
+        if salida:
+            delta = salida - entrada
+            horas_trabajadas = round(delta.total_seconds() / 3600, 2)
 
-                horas_extra = 0.0
-                if horas_trabajadas > 8:
-                    horas_extra = round(horas_trabajadas - 8, 2)
+        resultados.append({
+            'user_id': info['user'].id,
+            'nombre': info['user'].nombre,
+            'cedula': info['user'].cedula,
+            'estacion': info['estacion'],
+            'entrada': entrada,
+            'salida': salida,
+            'horas_trabajadas': horas_trabajadas,
+            'en_turno': salida is None,
+        })
 
-                aprobados = [r.aprobado for r in registros_dia]
-                aprobado = None
-                if aprobados:
-                    if all(a is True for a in aprobados):
-                        aprobado = True
-                    elif any(a is False for a in aprobados):
-                        aprobado = False
-
-                registros_combinados.append({
-                    'dia': entrada.date().strftime('%Y-%m-%d'),
-                    'usuario_id': usuario.id,
-                    'nombre': usuario.nombre,
-                    'cedula': usuario.cedula,
-                    'estacion': usuario.estacion.nombre if usuario.estacion else '',
-                    'entrada': entrada,
-                    'salida': salida,
-                    'horas_trabajadas': horas_trabajadas if salida else None,
-                    'horas_extra': horas_extra if salida else None,
-                    'aprobado': aprobado,
-                })
-                i += 1
-
-    context = {
-        'registros': registros_combinados,
-        'usuarios': UsuarioBiometrico.objects.all(),
-        'nombre': nombre,
-        'cedula': cedula,
-        'estacion': estacion,
-        'fecha_inicio': fecha_inicio,
-        'fecha_fin': fecha_fin,
-    }
+    context = {'registros': resultados}
     return render(request, 'tabla_biometrico.html', context)
-
+    
 """FUNCION PARA DETECTAR SI ES ENTRADA O SALIDA"""
 def determinar_estado_por_turno(usuario, timestamp):
     """
@@ -481,7 +442,7 @@ def resumen_asistencias_diarias(request):
 
                 registros.append({
                     'dia': entrada.date().strftime('%Y-%m-%d'),
-                    'usuario_id': usuario.id,
+                    'user_id': usuario.id,
                     'nombre': usuario.nombre,
                     'cedula': usuario.cedula,
                     'estacion': usuario.estacion.nombre if usuario.estacion else '',

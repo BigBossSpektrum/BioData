@@ -107,7 +107,11 @@ class UsuarioBiometrico(models.Model):
 class RegistroAsistencia(models.Model):
     user = models.ForeignKey('UsuarioBiometrico', on_delete=models.CASCADE)
     timestamp = models.DateTimeField(default=timezone.now)
-    
+    nombre = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
+    )
     estacion_servicio = models.ForeignKey(EstacionServicio, on_delete=models.CASCADE, null=True, blank=True)
 
     status = models.IntegerField(
