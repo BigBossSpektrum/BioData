@@ -16,9 +16,10 @@ from django.contrib.auth import get_user_model
 from .serializers import RegistroAsistenciaSerializer
 from django.http import JsonResponse
 import json
-from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import AllowAny
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from django.utils.dateparse import parse_datetime
 User = get_user_model()
 
 class RegistroAsistenciaListView(generics.ListAPIView):
@@ -142,10 +143,7 @@ def eliminar_usuario(request, user_id):
         print("[DEBUG] Redirigiendo a lista_usuarios")
         return redirect('lista_usuarios')
 
-@csrf_exempt
 @api_view(["POST"])
-@authentication_classes([TokenAuthentication])
-#@permission_classes([IsAuthenticated])
 @permission_classes([AllowAny])
 def recibir_datos_biometrico(request):
     print(f"[DEBUG] 📥 Recibiendo datos biométrico. PATH: {request.get_full_path()}")
@@ -171,14 +169,9 @@ def recibir_datos_biometrico(request):
             continue
 
         fecha = timestamp.date()
-
-        # Buscar o crear usuario biométrico sin nombre
         user, _ = UsuarioBiometrico.objects.get_or_create(biometrico_id=user_id)
-
-        # Buscar registros del mismo día
         registros_dia = RegistroAsistencia.objects.filter(usuario=user, timestamp__date=fecha).order_by('timestamp')
 
-        # Alternar entre entrada y salida según conteo
         if not registros_dia.filter(tipo='entrada').exists():
             RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='entrada', estacion=estacion)
             print(f"[DEBUG] ✅ Registrada ENTRADA para usuario {user.biometrico_id} en {timestamp}")
