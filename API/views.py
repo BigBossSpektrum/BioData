@@ -153,14 +153,18 @@ def recibir_datos_biometrico(request):
 
         datos = request.data
 
-        # 🧱 Validación fundamental:
+        # ✅ Validación de estructura
         if not isinstance(datos, list):
             print("[ERROR] ❌ request.data no es una lista. Tipo:", type(datos))
             return Response({"error": "El cuerpo debe ser una lista de registros"}, status=400)
 
         nuevos = 0
 
-        for registro in datos:
+        for i, registro in enumerate(datos):
+            if not isinstance(registro, dict):
+                print(f"[ERROR] ❌ Registro #{i} no es un dict válido. Tipo: {type(registro)}")
+                continue
+
             user_id = registro.get("user_id")
             timestamp_str = registro.get("timestamp")
             estacion = registro.get("estacion")
@@ -177,29 +181,34 @@ def recibir_datos_biometrico(request):
 
             fecha = timestamp.date()
 
+            # Crear o recuperar el usuario biométrico
             user, _ = UsuarioBiometrico.objects.get_or_create(biometrico_id=user_id)
+
+            # Buscar si ya tiene registros en ese día
             registros_dia = RegistroAsistencia.objects.filter(usuario=user, timestamp__date=fecha).order_by('timestamp')
 
             if not registros_dia.filter(tipo='entrada').exists():
                 RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='entrada', estacion=estacion)
-                print(f"[DEBUG] ✅ Registrada ENTRADA para usuario {user.biometrico_id} en {timestamp}")
+                print(f"[DEBUG] ✅ ENTRADA registrada para usuario {user.biometrico_id} a las {timestamp}")
                 nuevos += 1
             elif not registros_dia.filter(tipo='salida').exists():
                 RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='salida', estacion=estacion)
-                print(f"[DEBUG] ✅ Registrada SALIDA para usuario {user.biometrico_id} en {timestamp}")
+                print(f"[DEBUG] ✅ SALIDA registrada para usuario {user.biometrico_id} a las {timestamp}")
                 nuevos += 1
             else:
-                print(f"[INFO] 🟡 Ya existen entrada y salida para usuario {user.biometrico_id} en {fecha}, se ignora registro adicional.")
+                print(f"[INFO] 🟡 Ya existen entrada y salida para usuario {user.biometrico_id} en {fecha}. Registro ignorado.")
 
         print(f"[DEBUG] 🧾 Registros nuevos importados: {nuevos}")
         return Response({"status": "ok", "registros_importados": nuevos})
 
     except Exception as e:
-        import traceback
         print("[ERROR] ❌ Excepción no controlada:")
         print(traceback.format_exc())
-        return Response({"error": str(e)}, status=500)
-    
+        return Response({
+            "error": "Excepción inesperada en el servidor",
+            "detalle": str(e)
+        }, status=500)
+
 @api_view(["GET"])
 def obtener_datos_biometrico(request):
     print("[DEBUG] Obteniendo datos del dispositivo biométrico...")
