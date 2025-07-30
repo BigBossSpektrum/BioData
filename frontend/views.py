@@ -19,31 +19,34 @@ def home_biometrico(request):
     logger.info(f"[ASISTENCIA] Fecha local detectada para filtro: {hoy}")
 
     try:
-        # Filtrado según el rol del usuario
         rol = getattr(request.user, 'rol', None)
-        registros = RegistroAsistencia.objects.select_related('usuario', 'usuario__estacion', 'usuario__estacion__jefe').all()
+        # Cambiar 'usuario' por 'user' en select_related
+        registros = RegistroAsistencia.objects.select_related('user', 'user__estacion', 'user__estacion__jefe').all()
+
         registros_hoy = [r for r in registros if localtime(r.timestamp).date() == hoy]
         logger.info(f"[ASISTENCIA] Total registros hoy (ajustado zona horaria): {len(registros_hoy)}")
 
         if rol == 'jefe_patio':
-            # Solo usuarios cuya estación tiene como jefe al usuario logueado
-            registros_hoy = [r for r in registros_hoy if r.usuario.estacion and hasattr(r.usuario.estacion, 'jefe') and r.usuario.estacion.jefe_id == request.user.id]
+            # Filtrar registros donde el user tiene estación con jefe igual al usuario actual
+            registros_hoy = [
+                r for r in registros_hoy
+                if r.user.estacion and hasattr(r.user.estacion, 'jefe') and r.user.estacion.jefe_id == request.user.id
+            ]
             logger.info(f"[ASISTENCIA] Filtrado por jefe_patio: {len(registros_hoy)} registros")
 
-        # Agrupa todos los registros del día por usuario
+        # Agrupar registros por usuario
         registros_por_usuario = {}
         for r in registros_hoy:
-            if r.usuario not in registros_por_usuario:
-                registros_por_usuario[r.usuario] = []
-            registros_por_usuario[r.usuario].append(r)
+            if r.user not in registros_por_usuario:
+                registros_por_usuario[r.user] = []
+            registros_por_usuario[r.user].append(r)
 
-        # Prepara la lista para el template: [{'usuario': usuario, 'registros': [reg1, reg2, ...]}, ...]
+        # Preparar lista para plantilla con clave 'usuario'
         registros_por_usuario_list = []
-        for usuario, lista_reg in registros_por_usuario.items():
-            # Ordenar los registros por hora ascendente
+        for usuario_obj, lista_reg in registros_por_usuario.items():
             lista_reg.sort(key=lambda r: localtime(r.timestamp))
-            logger.info(f"[ASISTENCIA] Usuario: {usuario.nombre} - Registros hoy: {[str(localtime(r.timestamp)) + ' (' + r.tipo + ')' for r in lista_reg]}")
-            registros_por_usuario_list.append({'usuario': usuario, 'registros': lista_reg})
+            logger.info(f"[ASISTENCIA] Usuario: {usuario_obj.nombre} - Registros hoy: {[str(localtime(r.timestamp)) + ' (' + r.tipo + ')' for r in lista_reg]}")
+            registros_por_usuario_list.append({'usuario': usuario_obj, 'registros': lista_reg})
 
         return render(request, 'home.html', {
             'usuario': request.user,
@@ -51,6 +54,7 @@ def home_biometrico(request):
             'asistencias_hoy': registros_hoy,
             'today': hoy,
         })
+
     except Exception as e:
         logger.error(f"Error en home_biometrico: {e}")
         return render(request, 'home.html', {
@@ -60,7 +64,7 @@ def home_biometrico(request):
             'today': hoy,
             'error': str(e),
         })
-
+    
 def filtrar_asistencias(request):
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
@@ -182,33 +186,34 @@ def filtrar_asistencias(request):
 
 def historial_asistencia(request):
     nombre = request.GET.get('nombre')
-    cedula = request.GET.get('cedula')
+    cedula = request.GET.get('cedula')  
     estacion = request.GET.get('estacion')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
 
-    registros = RegistroAsistencia.objects.select_related('usuario', 'usuario__estacion', 'usuario__estacion__jefe').all()
+    registros = RegistroAsistencia.objects.select_related('user', 'user__estacion', 'user__estacion__jefe').all()
 
     rol = getattr(request.user, 'rol', None)
     if rol == 'jefe_patio':
-        registros = registros.filter(usuario__estacion__jefe_id=request.user.id)
+        registros = registros.filter(user__estacion__jefe_id=request.user.id)
 
     if nombre:
-        registros = registros.filter(usuario__nombre__icontains=nombre)
+        registros = registros.filter(user__nombre__icontains=nombre)
     if cedula:
-        registros = registros.filter(usuario__cedula__icontains=cedula)
+        registros = registros.filter(user__cedula__icontains=cedula)
     if estacion:
-        registros = registros.filter(usuario__estacion__nombre__icontains=estacion)
+        registros = registros.filter(user__estacion__nombre__icontains=estacion)
     if fecha_inicio:
         registros = registros.filter(timestamp__date__gte=fecha_inicio)
     if fecha_fin:
         registros = registros.filter(timestamp__date__lte=fecha_fin)
 
-    registros = registros.order_by('usuario__id', 'timestamp')
+    registros = registros.order_by('user__id', 'timestamp')
+
     asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
     for r in registros:
         fecha = r.timestamp.date()
-        asistencia_por_usuario_fecha[r.usuario][fecha].append(r)
+        asistencia_por_usuario_fecha[r.user][fecha].append(r)
 
     registros_combinados = []
     for usuario, dias in asistencia_por_usuario_fecha.items():
@@ -216,35 +221,35 @@ def historial_asistencia(request):
             registros_dia.sort(key=lambda r: r.timestamp)
             entradas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'entrada']
             salidas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'salida']
-            # Emparejar entradas y salidas correctamente, incluso si la salida es al día siguiente
+
             i, j = 0, 0
             while i < len(entradas):
                 entrada = entradas[i]
                 salida = None
-                # Buscar la primera salida después de la entrada (puede ser al día siguiente)
                 for k in range(j, len(salidas)):
                     posible_salida = salidas[k]
-                    # Turno nocturno: entrada >= 22:00 y salida al día siguiente entre 0:00 y 12:00
                     if entrada.hour >= 22 and posible_salida > entrada and (
                         posible_salida.date() == (entrada + timedelta(days=1)).date() and posible_salida.hour <= 12
                     ):
                         salida = posible_salida
                         j = k + 1
                         break
-                    # Lógica normal: salida después de entrada
                     elif posible_salida > entrada:
                         salida = posible_salida
                         j = k + 1
                         break
+
                 horas_trabajadas = 0.0
                 if salida:
                     delta = salida - entrada
                     if delta.total_seconds() < 0:
                         delta += timedelta(days=1)
                     horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+
                 horas_extra = 0.0
                 if horas_trabajadas > 8:
                     horas_extra = round(horas_trabajadas - 8, 2)
+
                 aprobados = [r.aprobado for r in registros_dia]
                 aprobado = None
                 if aprobados:
@@ -252,8 +257,7 @@ def historial_asistencia(request):
                         aprobado = True
                     elif any(a is False for a in aprobados):
                         aprobado = False
-                    else:
-                        aprobado = None
+
                 registros_combinados.append({
                     'dia': entrada.date().strftime('%Y-%m-%d'),
                     'usuario_id': usuario.id,
@@ -403,24 +407,25 @@ def resumen_asistencias_diarias(request):
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
 
-    registros_qs = RegistroAsistencia.objects.select_related('usuario', 'usuario__turno', 'usuario__estacion').all()
+    registros_qs = RegistroAsistencia.objects.select_related('user', 'user__estacion').all()
 
     if nombre:
-        registros_qs = registros_qs.filter(usuario__nombre__icontains=nombre)
+        registros_qs = registros_qs.filter(user__nombre__icontains=nombre)
     if cedula:
-        registros_qs = registros_qs.filter(usuario__cedula__icontains=cedula)
+        registros_qs = registros_qs.filter(user__cedula__icontains=cedula)
     if estacion:
-        registros_qs = registros_qs.filter(usuario__estacion__nombre__icontains=estacion)
+        registros_qs = registros_qs.filter(user__estacion__nombre__icontains=estacion)
     if fecha_inicio:
         registros_qs = registros_qs.filter(timestamp__date__gte=fecha_inicio)
     if fecha_fin:
         registros_qs = registros_qs.filter(timestamp__date__lte=fecha_fin)
 
-    registros_qs = registros_qs.order_by('usuario__id', 'timestamp')
+    registros_qs = registros_qs.order_by('user__id', 'timestamp')
+
     asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
     for r in registros_qs:
         fecha = localtime(r.timestamp).date()
-        asistencia_por_usuario_fecha[r.usuario][fecha].append(r)
+        asistencia_por_usuario_fecha[r.user][fecha].append(r)
 
     registros = []
     for usuario, dias in asistencia_por_usuario_fecha.items():
@@ -428,22 +433,23 @@ def resumen_asistencias_diarias(request):
         for idx, fecha in enumerate(fechas_ordenadas):
             registros_dia = dias[fecha]
             registros_dia.sort(key=lambda r: r.timestamp)
-            entradas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'entrada']
-            salidas = [localtime(r.timestamp) for r in registros_dia if r.tipo == 'salida']
+            entradas = [localtime(r.timestamp) for r in registros_dia if getattr(r, 'tipo', None) == 'entrada']
+            salidas = [localtime(r.timestamp) for r in registros_dia if getattr(r, 'tipo', None) == 'salida']
             # Para turnos nocturnos, también buscar salidas en el siguiente día
             if idx + 1 < len(fechas_ordenadas):
                 next_fecha = fechas_ordenadas[idx + 1]
                 next_registros_dia = dias[next_fecha]
-                salidas += [localtime(r.timestamp) for r in next_registros_dia if r.tipo == 'salida']
+                salidas += [localtime(r.timestamp) for r in next_registros_dia if getattr(r, 'tipo', None) == 'salida']
+
             i, j = 0, 0
             while i < len(entradas):
                 entrada = entradas[i]
                 salida = None
                 while j < len(salidas):
                     posible_salida = salidas[j]
-                    # Lógica especial para turnos nocturnos: si entrada >= 22:00 y salida <= 12:00 del día siguiente
+                    # Lógica especial para turnos nocturnos
                     if entrada.hour >= 22 and (
-                        (posible_salida.date() == (entrada + timedelta(days=1)).date() and posible_salida.hour <= 12)
+                        posible_salida.date() == (entrada + timedelta(days=1)).date() and posible_salida.hour <= 12
                     ):
                         salida = posible_salida
                         j += 1
@@ -453,15 +459,18 @@ def resumen_asistencias_diarias(request):
                         j += 1
                         break
                     j += 1
+
                 horas_trabajadas = 0.0
                 if salida:
                     delta = salida - entrada
                     if delta.total_seconds() < 0:
                         delta += timedelta(days=1)
                     horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+
                 horas_extra = 0.0
                 if horas_trabajadas > 8:
                     horas_extra = round(horas_trabajadas - 8, 2)
+
                 aprobados = [r.aprobado for r in registros_dia]
                 aprobado = None
                 if aprobados:
@@ -469,8 +478,7 @@ def resumen_asistencias_diarias(request):
                         aprobado = True
                     elif any(a is False for a in aprobados):
                         aprobado = False
-                    else:
-                        aprobado = None
+
                 registros.append({
                     'dia': entrada.date().strftime('%Y-%m-%d'),
                     'usuario_id': usuario.id,
@@ -493,7 +501,7 @@ def resumen_asistencias_diarias(request):
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
     }
-    return render(request, 'resumen_asistencias_diarias.html', {'registros': registros, 'nombre': nombre, 'cedula': cedula, 'estacion': estacion, 'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin})
+    return render(request, 'resumen_asistencias_diarias.html', context)
 
 @login_required
 def aprobar_horas_extra(request, usuario_id, dia):
