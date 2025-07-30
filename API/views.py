@@ -188,12 +188,12 @@ def recibir_datos_biometrico(request):
             # Buscar si ya tiene registros en ese día
             registros_dia = RegistroAsistencia.objects.filter(usuario=user, timestamp__date=fecha).order_by('timestamp')
 
-            if not registros_dia.filter(tipo='entrada').exists():
-                RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='entrada', estacion=estacion)
+            if not registros_dia.filter(estacion_servicio=estacion_obj).exists():
+                RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, estacion_servicio=estacion_obj)
                 print(f"[DEBUG] ✅ ENTRADA registrada para usuario {user.biometrico_id} a las {timestamp}")
                 nuevos += 1
-            elif not registros_dia.filter(tipo='salida').exists():
-                RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='salida', estacion=estacion)
+            elif not registros_dia.filter(estacion_servicio=estacion_obj).exists():
+                RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, estacion_servicio=estacion_obj)
                 print(f"[DEBUG] ✅ SALIDA registrada para usuario {user.biometrico_id} a las {timestamp}")
                 nuevos += 1
             else:

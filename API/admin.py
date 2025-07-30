@@ -41,8 +41,8 @@ class JornadaLaboralAdmin(admin.ModelAdmin):
 # ---------- Admin RegistroAsistencia ----------
 @admin.register(RegistroAsistencia)
 class RegistroAsistenciaAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'timestamp', 'estacion')
-    list_filter = ('estacion', 'timestamp')
+    list_display = ('usuario', 'timestamp', 'estacion_servicio')
+    list_filter = ('estacion_servicio', 'timestamp')
     search_fields = ('usuario__nombre', 'usuario__cedula')
 
 

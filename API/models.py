@@ -111,16 +111,10 @@ class UsuarioBiometrico(models.Model):
 
 
 class RegistroAsistencia(models.Model):
-    usuario = models.ForeignKey(
-        'UsuarioBiometrico',
-        on_delete=models.CASCADE
-    )
-
-    timestamp = models.DateTimeField(
-        default=timezone.now
-    )
-
-    estacion = models.ForeignKey(
+    usuario = models.ForeignKey('UsuarioBiometrico', on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(default=timezone.now)
+    
+    estacion_servicio = models.ForeignKey(
         'EstacionServicio',
         on_delete=models.SET_NULL,
         null=True,
@@ -135,7 +129,8 @@ class RegistroAsistencia(models.Model):
     )
 
     def __str__(self):
-        return f"{self.usuario} - {self.timestamp} - {self.estacion}"
+        return f"{self.usuario} - {self.timestamp}"
+
 
 
 
