@@ -1,4 +1,6 @@
 # API/views.py
+import json
+import traceback
 from django.shortcuts import render, redirect, get_object_or_404
 from .Biometricos_connections import crear_o_actualizar_usuario_biometrico, eliminar_usuario_biometrico, conectar_dispositivo, importar_datos_dispositivo
 from rest_framework import generics
@@ -15,7 +17,6 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from .serializers import RegistroAsistenciaSerializer
 from django.http import JsonResponse
-import json
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
