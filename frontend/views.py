@@ -16,51 +16,79 @@ import logging
 def home_biometrico(request):
     logger = logging.getLogger(__name__)
     hoy = localtime(now()).date()
-    logger.info(f"[ASISTENCIA] Fecha local detectada para filtro: {hoy}")
+    ayer = hoy - timedelta(days=1)
 
     try:
         rol = getattr(request.user, 'rol', None)
-        # Cambiar 'usuario' por 'user' en select_related
-        registros = RegistroAsistencia.objects.select_related('user', 'user__estacion', 'user__estacion__jefe').all()
+        registros = RegistroAsistencia.objects.select_related(
+            'user', 'user__estacion', 'user__estacion__jefe'
+        ).all()
 
-        registros_hoy = [r for r in registros if localtime(r.timestamp).date() == hoy]
-        logger.info(f"[ASISTENCIA] Total registros hoy (ajustado zona horaria): {len(registros_hoy)}")
+        # Agregar timestamp_local a cada registro
+        for r in registros:
+            r.timestamp_local = localtime(r.timestamp)
+
+        registros_hoy = [r for r in registros if r.timestamp_local.date() == hoy]
+        registros_ayer = [r for r in registros if r.timestamp_local.date() == ayer]
 
         if rol == 'jefe_patio':
-            # Filtrar registros donde el user tiene estación con jefe igual al usuario actual
             registros_hoy = [
                 r for r in registros_hoy
-                if r.user.estacion and hasattr(r.user.estacion, 'jefe') and r.user.estacion.jefe_id == request.user.id
+                if r.user.estacion and getattr(r.user.estacion, 'jefe_id', None) == request.user.id
             ]
-            logger.info(f"[ASISTENCIA] Filtrado por jefe_patio: {len(registros_hoy)} registros")
+            registros_ayer = [
+                r for r in registros_ayer
+                if r.user.estacion and getattr(r.user.estacion, 'jefe_id', None) == request.user.id
+            ]
 
-        # Agrupar registros por usuario
-        registros_por_usuario = {}
+        # Obtener primera entrada de hoy
+        entradas_hoy_por_usuario = {}
         for r in registros_hoy:
-            if r.user not in registros_por_usuario:
-                registros_por_usuario[r.user] = []
-            registros_por_usuario[r.user].append(r)
+            uid = r.user.id
+            if uid not in entradas_hoy_por_usuario or r.timestamp_local < entradas_hoy_por_usuario[uid].timestamp_local:
+                entradas_hoy_por_usuario[uid] = r
 
-        # Preparar lista para plantilla con clave 'usuario'
-        registros_por_usuario_list = []
-        for usuario_obj, lista_reg in registros_por_usuario.items():
-            lista_reg.sort(key=lambda r: localtime(r.timestamp))
-            logger.info(f"[ASISTENCIA] Usuario: {usuario_obj.nombre} - Registros hoy: {[str(localtime(r.timestamp)) + ' (' + r.tipo + ')' for r in lista_reg]}")
-            registros_por_usuario_list.append({'usuario': usuario_obj, 'registros': lista_reg})
+        # Última salida válida de ayer
+        salidas_ayer_por_usuario = {}
+        for r in registros_ayer:
+            uid = r.user.id
+            if uid not in salidas_ayer_por_usuario or r.timestamp_local > salidas_ayer_por_usuario[uid].timestamp_local:
+                salidas_ayer_por_usuario[uid] = r
+
+        usuarios_finales = []
+        for uid, entrada in entradas_hoy_por_usuario.items():
+            salida_ayer = salidas_ayer_por_usuario.get(uid)
+            entrada_time = entrada.timestamp_local
+
+            salida_valida = None
+            if salida_ayer:
+                salida_time = salida_ayer.timestamp_local
+                delta = entrada_time - salida_time
+                if timedelta(hours=0) <= delta <= timedelta(hours=8):
+                    salida_valida = salida_ayer
+
+            usuarios_finales.append({
+                'usuario': entrada.user,
+                'entrada': entrada,
+                'salida_ayer': salida_valida,  # Puede ser None
+                'estacion': entrada.estacion_servicio.nombre if entrada.estacion_servicio else None,
+
+            })
+
+        usuarios_finales.sort(key=lambda x: x['usuario'].nombre)
 
         return render(request, 'home.html', {
             'usuario': request.user,
-            'registros_por_usuario': registros_por_usuario_list,
-            'asistencias_hoy': registros_hoy,
+            'usuarios_finales': usuarios_finales,
             'today': hoy,
         })
 
     except Exception as e:
+        logger = logging.getLogger(__name__)
         logger.error(f"Error en home_biometrico: {e}")
         return render(request, 'home.html', {
             'usuario': request.user,
-            'registros_por_usuario': [],
-            'asistencias_hoy': [],
+            'usuarios_finales': [],
             'today': hoy,
             'error': str(e),
         })
