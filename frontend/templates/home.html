@@ -7,10 +7,8 @@
         <div class="card-body">
             <h1 class="card-title text-center mb-4">Bienvenido, {{ request.user.username }}</h1>
 
-
-
             <p class="card-text fs-5 text-center">
-                Resumen de asistencias del día: <span class="fw-bold" id="asistencias-hoy-count">0</span>
+                Resumen de primeras entradas del día: <span class="fw-bold">{{ usuarios_finales|length }}</span>
             </p>
 
             <div class="table-responsive mt-4">
@@ -23,39 +21,50 @@
                             <th>Estación</th>
                         </tr>
                     </thead>
-                    <tbody id="tabla-asistencias-body">
-    {% if error %}
-    <tr>
-        <td colspan="4" class="text-center text-danger">Error: {{ error }}</td>
-    </tr>
-{% elif registros_por_usuario %}
-    {% for item in registros_por_usuario %}
-        {% for reg in item.registros %}
-        <tr>
-            {% if forloop.first %}
-                <td rowspan="{{ item.registros|length }}">{{ item.usuario.nombre }}</td>
-            {% endif %}
-            <td>{{ reg.tipo|capfirst }}</td>
-            <td>{{ reg.timestamp|time:"H:i" }}</td>
-            {% if forloop.first %}
-                <td rowspan="{{ item.registros|length }}">{% if item.usuario.estacion %}{{ item.usuario.estacion.nombre }}{% else %}-{% endif %}</td>
-            {% endif %}
-        </tr>
-        {% endfor %}
-    {% endfor %}
-{% else %}
-    <tr>
-        <td colspan="4" class="text-center text-muted">Sin asistencias hoy.</td>
-    </tr>
-{% endif %}
-</tbody>
+                    <tbody>
+                        {% if error %}
+                            <tr>
+                                <td colspan="4" class="text-center text-danger">Error: {{ error }}</td>
+                            </tr>
+                        {% elif usuarios_finales %}
+                            {% for item in usuarios_finales %}
+                                {% if item.salida_ayer %}
+                                    <tr>
+                                        <td rowspan="2">{{ item.usuario.nombre }}</td>
+                                        <td>Salida (ayer)</td>
+                                        <td>{{ item.salida_ayer.timestamp_local|time:"H:i" }}</td>
+                                        <td>
+                                            {{ item.usuario.estacion.nombre|default:"-" }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Entrada</td>
+                                        <td>{{ item.entrada.timestamp_local|time:"H:i" }}</td>
+                                        <td>
+                                            {{ item.usuario.estacion.nombre|default:"-" }}
+                                        </td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td>{{ item.usuario.nombre }}</td>
+                                        <td>Entrada</td>
+                                        <td>{{ item.entrada.timestamp_local|time:"H:i" }}</td>
+                                        <td>
+                                            {{ item.usuario.estacion.nombre|default:"-" }}
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">Sin asistencias hoy.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
-
-
-
 <script src="{% static 'js/frontend/components/filtro.js' %}"></script>
 {% endblock %}

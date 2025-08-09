@@ -11,13 +11,7 @@ class CustomUser(AbstractUser):
         ('admin', 'Administrador'),
         ('rrhh', 'Recursos Humanos'),
         ('jefe_patio', 'Jefe de Patio'),
-        ('Vendedor', 'Vendedor'),
-        ('Operador', 'Operador'),
-        ('Supervisor', 'Supervisor'),
-        ('Encargado', 'Encargado'),
-        ('Tecnico', 'Técnico'),
-        ('Gerente', 'Gerente'),
-        ('Otro', 'Otro'),
+        ('supervisor', 'Supervisor'),
     ]
     rol = models.CharField(max_length=20, choices=ROLE_CHOICES)
     estacion = models.ForeignKey(
@@ -111,20 +105,17 @@ class UsuarioBiometrico(models.Model):
 
 
 class RegistroAsistencia(models.Model):
-    usuario = models.ForeignKey(
-        'UsuarioBiometrico',
-        on_delete=models.CASCADE
+    user = models.ForeignKey('UsuarioBiometrico', on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(default=timezone.now)
+    nombre = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True
     )
+    estacion_servicio = models.ForeignKey(EstacionServicio, on_delete=models.CASCADE, null=True, blank=True)
 
-    timestamp = models.DateTimeField(
-        default=timezone.now
-    )
-
-    estacion = models.ForeignKey(
-        'EstacionServicio',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
+    status = models.IntegerField(
+        default=0
     )
 
     aprobado = models.BooleanField(
@@ -135,7 +126,8 @@ class RegistroAsistencia(models.Model):
     )
 
     def __str__(self):
-        return f"{self.usuario} - {self.timestamp} - {self.estacion}"
+        return f"{self.user} - {self.timestamp}"
+
 
 
 

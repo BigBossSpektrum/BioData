@@ -2,6 +2,7 @@
 {% block title %}Resumen de Asistencias Diarias{% endblock %}
 {% load static %}
 {% block content %}
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 
@@ -44,33 +45,29 @@
             <tr>
                 <td>{{ forloop.counter }}</td>
                 <td class="col-dia">{{ r.dia }}</td>
-                <td>{{ r.usuario_id }}</td>
+                <td>{{ r.user_id }}</td>
                 <td>{{ r.nombre }}</td>
                 <td>{{ r.estacion|default:"-" }}</td>
                 <td>
-                    {% if r.entradas %}
-                        {{ r.entradas|join:', ' }}
-                    {% elif r.entrada %}
+                    {% if r.entrada %}
                         {{ r.entrada|date:"H:i" }}
                     {% else %}
                         <span class="text-muted">-</span>
                     {% endif %}
                 </td>
                 <td>
-                    {% if r.salidas %}
-                        {{ r.salidas|join:', ' }}
-                    {% elif r.salida %}
+                    {% if r.salida %}
                         {{ r.salida|date:"H:i" }}
                     {% else %}
                         <span class="text-muted">-</span>
                     {% endif %}
                 </td>
-                <td>{{ r.horas_trabajadas }}</td>
+                <td>{{ r.horas_trabajadas|default:"-" }}</td>
                 <td>
                     {% if r.horas_extra > 0 %}
                         <span class="badge bg-warning text-dark">{{ r.horas_extra }}</span>
                     {% else %}
-                        <span>{{ r.horas_extra }}</span>
+                        <span class="text-muted">-</span>
                     {% endif %}
                 </td>
                 <td>
@@ -80,11 +77,11 @@
                         {% elif r.aprobado is False %}
                             <span class="badge bg-danger">Rechazado</span>
                         {% elif request.user.rol == 'jefe_patio' %}
-                            <form method="post" action="{% url 'aprobar_horas_extra' r.usuario_id r.dia %}" style="display:inline;">
+                            <form method="post" action="{% url 'aprobar_horas_extra' r.user_id r.dia %}" style="display:inline;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-outline-success">Aprobar</button>
                             </form>
-                            <form method="post" action="{% url 'rechazar_horas_extra' r.usuario_id r.dia %}" style="display:inline; margin-left: 4px;">
+                            <form method="post" action="{% url 'rechazar_horas_extra' r.user_id r.dia %}" style="display:inline; margin-left: 4px;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
                             </form>
@@ -120,6 +117,5 @@
 </script>
 {% endif %}
 
-<!-- Filtro dinámico -->
-<script src="{% static 'js/frontend/components/filtro.js' %}"></script>
+<script src="{% static 'js/frontend/components/filtro2.js' %}"></script>
 {% endblock %}

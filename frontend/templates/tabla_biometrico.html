@@ -43,17 +43,17 @@
                 {% for r in registros %}
                     <tr>
                         <td>{{ forloop.counter }}</td>
-                        <td>{{ r.usuario_id }}</td>
+                        <td>{{ r.user_id }}</td>
                         <td>{{ r.nombre }}</td>
                         <td>{{ r.cedula }}</td>
                         <td>{{ r.estacion }}</td>
-                        <td class="col-entrada col-dia">
-    {% if r.entrada %}
-        {{ r.entrada|date:"Y-m-d" }}
-    {% else %}
-        <span class="text-muted">-</span>
-    {% endif %}
-</td>
+                        <td class="col-dia">
+                            {% if r.entrada %}
+                                {{ r.entrada|date:"Y-m-d H:i:s" }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if r.salida %}
                                 {{ r.salida|date:"Y-m-d H:i:s" }}
@@ -65,7 +65,7 @@
                         </td>
                         <td>
                             {% if r.horas_trabajadas is not None %}
-                                {{ r.horas_trabajadas }}
+                                {{ r.horas_trabajadas }} h
                             {% elif r.en_turno %}
                                 <span class="text-warning">En turno</span>
                             {% else %}
