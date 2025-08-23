@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         filas.forEach(fila => {
             const textoFila = fila.textContent.toLowerCase();
-            const fechaTexto = fila.querySelector('.col-dia').textContent.trim();
+            // Solo la fecha (YYYY-MM-DD) de la columna entrada
+            const fechaTexto = fila.querySelector('.col-dia').textContent.trim().slice(0,10);
 
             let visible = true;
 
@@ -22,10 +23,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 visible = false;
             }
 
-            // Filtro por fecha
+            // Filtro por fecha desde: igual o mayor
             if (desde && fechaTexto < desde) {
                 visible = false;
             }
+
+            // Filtro por fecha hasta: menor o igual
             if (hasta && fechaTexto > hasta) {
                 visible = false;
             }
