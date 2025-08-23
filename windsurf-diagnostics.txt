@@ -1,0 +1,842 @@
+{
+  "systemInfo": {
+    "operatingSystem": "win32",
+    "windsurfVersion": "1.10.7",
+    "ideName": "windsurf",
+    "userName": "",
+    "userEmail": "silvekerhernandez@proton.me",
+    "teamsTier": 9,
+    "timestamp": "2025-07-19T22:06:20.001Z",
+    "installationId": "e3d074dd-1bb8-4f0a-997c-d59ff548a6cf"
+  },
+  "userSettings": {
+    "openMostRecentChatConversation": false,
+    "lastSelectedModel": "MODEL_UNSPECIFIED",
+    "themePreference": "THEME_PREFERENCE_UNSPECIFIED",
+    "extensionPanelTab": "EXTENSION_PANEL_TAB_UNSPECIFIED",
+    "fontSize": "FONT_SIZE_UNSPECIFIED",
+    "autocompleteSpeed": "AUTOCOMPLETE_SPEED_UNSPECIFIED",
+    "rememberLastModelSelection": "REMEMBER_LAST_MODEL_SELECTION_UNSPECIFIED",
+    "lastSelectedModelName": "",
+    "cascadeNuxStates": [
+      {
+        "event": "CASCADE_NUX_EVENT_PLAN_MODE"
+      }
+    ],
+    "cascadePlannerMode": "CONVERSATIONAL_PLANNER_MODE_DEFAULT",
+    "cascadeAllowedCommands": [],
+    "cascadeDeniedCommands": [],
+    "userNuxStates": [],
+    "cascadeWebSearchDisabled": false,
+    "disableAutocomplete": false,
+    "disableSupercomplete": false,
+    "disableSelectionPopup": false,
+    "disableExplainProblemInlayHint": false,
+    "disableInlayHintShortcuts": false,
+    "disableOpenCascadeOnReload": false,
+    "disableAutoOpenEditedFiles": false,
+    "disableTabToJump": false,
+    "cascadeAutoExecutionPolicy": "CASCADE_COMMANDS_AUTO_EXECUTION_UNSPECIFIED",
+    "explainAndFixInCurrentConversation": false,
+    "allowCascadeAccessGitignoreFiles": false,
+    "disableCascadeAutoFixLints": false,
+    "disableCascadeBrowserPreviews": false,
+    "detectProxy": false,
+    "disableTabToImport": false,
+    "useClipboardForCompletions": false,
+    "disableHighlightAfterAccept": false,
+    "lastSelectedNewConvoTab": "",
+    "disableAutoGenerateMemories": false,
+    "enableSoundsForSpecialEvents": false,
+    "enableTabSounds": false,
+    "allowCascadeInBackground": false,
+    "tabToJump": "TAB_TO_JUMP_UNSPECIFIED",
+    "cascadeWebSearch": "CASCADE_WEB_SEARCH_TOOL_UNSPECIFIED",
+    "enableTerminalCompletion": false,
+    "featureUsageData": {
+      "CASCADE_MESSAGE_FEEDBACK": {
+        "hasUsed": true
+      }
+    },
+    "disableCascadeInBackground": false,
+    "enableCommandCascadeMode": false,
+    "customWorkspace": [],
+    "conversationBrainConfigs": {
+      "8fb72c8c-3bd6-4ec5-8c31-852e17792919": {
+        "planMode": "PLAN_MODE_OFF"
+      },
+      "ccd6dce0-b776-451b-ada4-1d7d56f0b0db": {
+        "planMode": "PLAN_MODE_OFF"
+      },
+      "6679004d-9f9e-4bc3-b729-cb889c809141": {
+        "planMode": "PLAN_MODE_OFF"
+      },
+      "f5702bc9-e94f-49f4-9fc1-2a20257b37a4": {
+        "planMode": "PLAN_MODE_OFF"
+      },
+      "eccf38e6-8291-494f-b5e0-220874fbbeb9": {
+        "planMode": "PLAN_MODE_OFF"
+      },
+      "38fcbc5d-ec45-4699-9775-609fdadd8fcd": {
+        "planMode": "PLAN_MODE_OFF"
+      },
+      "6acfb2c2-9998-4531-b246-31de5d60f260": {
+        "planMode": "PLAN_MODE_OFF"
+      }
+    },
+    "cachedCascadeModelConfigs": [
+      {
+        "label": "Claude Sonnet 4",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_4_SONNET_DATABRICKS"
+        },
+        "creditMultiplier": 2,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": true,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "SWE-1 (free limited time)",
+        "modelOrAlias": {
+          "alias": "MODEL_ALIAS_SWE_1"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_WINDSURF",
+        "isRecommended": true,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "SWE-1-lite",
+        "modelOrAlias": {
+          "alias": "MODEL_ALIAS_SWE_1_LITE"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": false,
+        "supportsLegacy": true,
+        "isPremium": false,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_WINDSURF",
+        "isRecommended": true,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "o3",
+        "modelOrAlias": {
+          "model": "MODEL_CHAT_O3"
+        },
+        "creditMultiplier": 1,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_OPENAI",
+        "isRecommended": true,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "o3 (high reasoning)",
+        "modelOrAlias": {
+          "model": "MODEL_CHAT_O3_HIGH"
+        },
+        "creditMultiplier": 1,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_OPENAI",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "GPT-4.1 (promo)",
+        "modelOrAlias": {
+          "model": "MODEL_CHAT_GPT_4_1_2025_04_14"
+        },
+        "creditMultiplier": 0.25,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_OPENAI",
+        "isRecommended": true,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "o4-mini (medium reasoning) (promo)",
+        "modelOrAlias": {
+          "model": "MODEL_CHAT_O4_MINI"
+        },
+        "creditMultiplier": 0.25,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_OPENAI",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "o4-mini (high reasoning) (promo)",
+        "modelOrAlias": {
+          "model": "MODEL_CHAT_O4_MINI_HIGH"
+        },
+        "creditMultiplier": 0.5,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_OPENAI",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "Gemini 2.5 Pro (promo)",
+        "modelOrAlias": {
+          "model": "MODEL_GOOGLE_GEMINI_2_5_PRO"
+        },
+        "creditMultiplier": 0.75,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_GOOGLE",
+        "isRecommended": true,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "Claude 3.5 Sonnet",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_3_5_SONNET_20241022"
+        },
+        "creditMultiplier": 1,
+        "disabled": true,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "Claude 3.5 Sonnet (BYOK)",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_3_5_SONNET_BYOK"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "Register your Anthropic API key in Windsurf settings.",
+        "isBeta": true,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_BYOK"
+      },
+      {
+        "label": "Claude 3.7 Sonnet",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_3_7_SONNET_20250219"
+        },
+        "creditMultiplier": 1,
+        "disabled": true,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "Claude 3.7 Sonnet (BYOK)",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_3_7_SONNET_BYOK"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "Register your Anthropic API key in Windsurf settings.",
+        "isBeta": true,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_BYOK"
+      },
+      {
+        "label": "Claude 3.7 Sonnet (Thinking)",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_3_7_SONNET_20250219_THINKING"
+        },
+        "creditMultiplier": 1.25,
+        "disabled": true,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "Claude 3.7 Sonnet (Thinking) (BYOK)",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_3_7_SONNET_THINKING_BYOK"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "Register your Anthropic API key in Windsurf settings.",
+        "isBeta": true,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_BYOK"
+      },
+      {
+        "label": "Claude Sonnet 4 (BYOK)",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_4_SONNET"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_BYOK"
+      },
+      {
+        "label": "Claude Sonnet 4 (Thinking, BYOK)",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_4_SONNET_THINKING"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_BYOK"
+      },
+      {
+        "label": "Claude Sonnet 4 (Thinking)",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_4_SONNET_THINKING_DATABRICKS"
+        },
+        "creditMultiplier": 2,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "Claude Opus 4 (BYOK)",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_4_OPUS"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "Register your Anthropic API key in Windsurf settings.",
+        "isBeta": true,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_BYOK"
+      },
+      {
+        "label": "Claude Opus 4 (Thinking, BYOK)",
+        "modelOrAlias": {
+          "model": "MODEL_CLAUDE_4_OPUS_THINKING"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "Register your Anthropic API key in Windsurf settings.",
+        "isBeta": true,
+        "provider": "MODEL_PROVIDER_ANTHROPIC",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_BYOK"
+      },
+      {
+        "label": "Gemini 2.5 Flash",
+        "modelOrAlias": {
+          "model": 312
+        },
+        "creditMultiplier": 0.10000000149011612,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_GOOGLE",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "Gemini 2.5 Flash (Thinking)",
+        "modelOrAlias": {
+          "model": 313
+        },
+        "creditMultiplier": 0.15000000596046448,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_GOOGLE",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "GPT-4o",
+        "modelOrAlias": {
+          "model": "MODEL_CHAT_GPT_4O_2024_08_06"
+        },
+        "creditMultiplier": 1,
+        "disabled": false,
+        "supportsImages": true,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_OPENAI",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "DeepSeek V3 (0324)",
+        "modelOrAlias": {
+          "model": "MODEL_DEEPSEEK_V3"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": false,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_DEEPSEEK",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "DeepSeek R1 (0528)",
+        "modelOrAlias": {
+          "model": "MODEL_DEEPSEEK_R1"
+        },
+        "creditMultiplier": 0,
+        "disabled": false,
+        "supportsImages": false,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "",
+        "isBeta": false,
+        "provider": "MODEL_PROVIDER_DEEPSEEK",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "xAI Grok-3",
+        "modelOrAlias": {
+          "model": "MODEL_XAI_GROK_3"
+        },
+        "creditMultiplier": 1,
+        "disabled": false,
+        "supportsImages": false,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "May be subject to rate limits or slow generation.",
+        "isBeta": true,
+        "provider": "MODEL_PROVIDER_XAI",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "xAI Grok-3 mini (Thinking)",
+        "modelOrAlias": {
+          "model": "MODEL_XAI_GROK_3_MINI_REASONING"
+        },
+        "creditMultiplier": 0.125,
+        "disabled": false,
+        "supportsImages": false,
+        "supportsLegacy": true,
+        "isPremium": true,
+        "betaWarningMessage": "May be subject to rate limits or slow generation.",
+        "isBeta": true,
+        "provider": "MODEL_PROVIDER_XAI",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      },
+      {
+        "label": "o3-mini (medium reasoning)",
+        "modelOrAlias": {
+          "model": "MODEL_CHAT_O3_MINI"
+        },
+        "creditMultiplier": 1,
+        "disabled": false,
+        "supportsImages": false,
+        "supportsLegacy": false,
+        "isPremium": true,
+        "betaWarningMessage": "May be subject to rate limits or slow generation.",
+        "isBeta": true,
+        "provider": "MODEL_PROVIDER_OPENAI",
+        "isRecommended": false,
+        "allowedTiers": [],
+        "pricingType": "MODEL_PRICING_TYPE_STATIC_CREDIT"
+      }
+    ],
+    "cachedCascadeModelSorts": [
+      {
+        "name": "Recommended",
+        "groups": [
+          {
+            "groupName": "",
+            "modelLabels": [
+              "Claude Sonnet 4",
+              "SWE-1 (free limited time)",
+              "SWE-1-lite",
+              "o3",
+              "GPT-4.1 (promo)",
+              "Gemini 2.5 Pro (promo)"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Provider",
+        "groups": [
+          {
+            "groupName": "Windsurf",
+            "modelLabels": [
+              "SWE-1 (free limited time)",
+              "SWE-1-lite"
+            ]
+          },
+          {
+            "groupName": "OpenAI",
+            "modelLabels": [
+              "o3",
+              "o3 (high reasoning)",
+              "GPT-4.1 (promo)",
+              "o4-mini (medium reasoning) (promo)",
+              "o4-mini (high reasoning) (promo)",
+              "GPT-4o",
+              "o3-mini (medium reasoning)"
+            ]
+          },
+          {
+            "groupName": "Anthropic",
+            "modelLabels": [
+              "Claude Sonnet 4",
+              "Claude 3.5 Sonnet",
+              "Claude 3.5 Sonnet (BYOK)",
+              "Claude 3.7 Sonnet",
+              "Claude 3.7 Sonnet (BYOK)",
+              "Claude 3.7 Sonnet (Thinking)",
+              "Claude 3.7 Sonnet (Thinking) (BYOK)",
+              "Claude Sonnet 4 (BYOK)",
+              "Claude Sonnet 4 (Thinking, BYOK)",
+              "Claude Sonnet 4 (Thinking)",
+              "Claude Opus 4 (BYOK)",
+              "Claude Opus 4 (Thinking, BYOK)"
+            ]
+          },
+          {
+            "groupName": "Google",
+            "modelLabels": [
+              "Gemini 2.5 Pro (promo)",
+              "Gemini 2.5 Flash",
+              "Gemini 2.5 Flash (Thinking)"
+            ]
+          },
+          {
+            "groupName": "xAI",
+            "modelLabels": [
+              "xAI Grok-3",
+              "xAI Grok-3 mini (Thinking)"
+            ]
+          },
+          {
+            "groupName": "DeepSeek",
+            "modelLabels": [
+              "DeepSeek V3 (0324)",
+              "DeepSeek R1 (0528)"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Cost",
+        "groups": [
+          {
+            "groupName": "Premium",
+            "modelLabels": [
+              "Claude Sonnet 4",
+              "o3",
+              "o3 (high reasoning)",
+              "Claude 3.5 Sonnet",
+              "Claude 3.7 Sonnet",
+              "Claude 3.7 Sonnet (Thinking)",
+              "Claude Sonnet 4 (Thinking)",
+              "GPT-4o",
+              "xAI Grok-3",
+              "o3-mini (medium reasoning)"
+            ]
+          },
+          {
+            "groupName": "Value",
+            "modelLabels": [
+              "GPT-4.1 (promo)",
+              "o4-mini (medium reasoning) (promo)",
+              "o4-mini (high reasoning) (promo)",
+              "Gemini 2.5 Pro (promo)",
+              "Gemini 2.5 Flash",
+              "Gemini 2.5 Flash (Thinking)",
+              "xAI Grok-3 mini (Thinking)"
+            ]
+          },
+          {
+            "groupName": "BYOK",
+            "modelLabels": [
+              "Claude 3.5 Sonnet (BYOK)",
+              "Claude 3.7 Sonnet (BYOK)",
+              "Claude 3.7 Sonnet (Thinking) (BYOK)",
+              "Claude Sonnet 4 (BYOK)",
+              "Claude Sonnet 4 (Thinking, BYOK)",
+              "Claude Opus 4 (BYOK)",
+              "Claude Opus 4 (Thinking, BYOK)"
+            ]
+          },
+          {
+            "groupName": "Free",
+            "modelLabels": [
+              "SWE-1 (free limited time)",
+              "SWE-1-lite",
+              "DeepSeek V3 (0324)",
+              "DeepSeek R1 (0528)"
+            ]
+          }
+        ]
+      }
+    ],
+    "globalPlanModePreference": "PLAN_MODE_UNSPECIFIED",
+    "isSnoozed": false
+  },
+  "extensionLogs": [
+    "2025-07-19 13:40:48.735 [info] 2025/07/19 13:40:48 maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined",
+    "2025-07-19 13:40:57.313 [info] I0719 13:40:57.312266  4276 main.go:602] Setting GOMAXPROCS to 4",
+    "2025-07-19 13:40:57.322 [info] I0719 13:40:57.321279  4276 main.go:817] Starting language server process with pid 4276",
+    "2025-07-19 13:40:57.372 [info] I0719 13:40:57.371370  4276 server.go:293] Language server will attempt to listen on host 127.0.0.1",
+    "2025-07-19 13:40:57.375 [info] I0719 13:40:57.374744  4276 server.go:300] Language server listening on random port at 51550",
+    "2025-07-19 13:40:59.059 [info] I0719 13:40:59.057678  4276 server.go:431] Created extension server client at port 51536",
+    "2025-07-19 13:41:05.951 [info] I0719 13:41:05.949747  4276 server.go:959] Local search is enabled, will index local files.",
+    "2025-07-19 13:41:05.955 [info] I0719 13:41:05.952568  4276 server.go:963] Using 1 indexer workers",
+    "2025-07-19 13:41:06.895 [info] (Windsurf) 2025-07-19 13:41:06.862 [INFO]: Language server started",
+    "2025-07-19 13:41:07.165 [info] (Windsurf) 2025-07-19 13:41:07.165 [INFO]: LS lspClient started successfully",
+    "2025-07-19 13:41:23.222 [info] (Windsurf) 2025-07-19 13:41:23.221 [INFO]: [Terminal] Command completed: git pull exit code 0",
+    "2025-07-19 13:41:24.301 [info] (Windsurf) 2025-07-19 13:41:24.299 [INFO]: [Terminal] Command completed: C:/Users/Administrador/AppData/Local/Programs/Python/Python313/python.exe c:\\Users\\Administrador\\.windsurf\\extensions\\ms-python.python-2025.4.0\\python_files\\printEnvVariablesToFile.py c:\\Users\\Administrador\\.windsurf\\extensions\\ms-python.python-2025.4.0\\python_files\\deactivate\\bash\\envVars.txt exit code 2",
+    "2025-07-19 13:43:24.883 [info] (Windsurf) 2025-07-19 13:43:24.882 [INFO]: [Cascade Manager] Opening diff zones for: ",
+    "2025-07-19 13:50:47.749 [info] (Windsurf) 2025-07-19 13:50:47.747 [INFO]: [Cascade Manager] Opening diff zones for: sync_bio.py",
+    "2025-07-19 13:52:01.402 [info] (Windsurf) 2025-07-19 13:52:01.401 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 13:52:19.957 [info] (Windsurf) 2025-07-19 13:52:19.956 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:07:43.138 [info] (Windsurf) 2025-07-19 16:07:43.136 [INFO]: [Cascade Manager] Opening diff zones for: sync_bio.py",
+    "2025-07-19 16:08:54.123 [info] (Windsurf) 2025-07-19 16:08:54.122 [INFO]: [Terminal] Command completed: curl -v https://rhligol.gventas.net/recibir-datos-biometrico/ exit code 60",
+    "2025-07-19 16:11:30.734 [info] 2025/07/19 16:11:30 http: proxy error: readfrom tcp 127.0.0.1:54456->127.0.0.1:51536: write tcp 127.0.0.1:54456->127.0.0.1:51536: wsasend: Se ha anulado una conexión establecida por el software en su equipo host..",
+    "2025-07-19 16:12:07.612 [info] (Windsurf) 2025-07-19 16:12:07.609 [INFO]: [Terminal] Command completed: git pull exit code 0",
+    "2025-07-19 16:12:07.615 [info] (Windsurf) 2025-07-19 16:12:07.614 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:12:07.618 [info] (Windsurf) 2025-07-19 16:12:07.616 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:12:07.621 [info] (Windsurf) 2025-07-19 16:12:07.620 [INFO]: [Terminal] Command completed: curl -v https://rhligol.gventas.net/recibir-datos-biometrico/ exit code 60",
+    "2025-07-19 16:12:07.623 [info] (Windsurf) 2025-07-19 16:12:07.622 [INFO]: [Terminal] Command completed: curl -v https://rhligol.gventas.net/recibir-datos-biometrico/ exit code 60",
+    "2025-07-19 16:12:07.626 [info] (Windsurf) 2025-07-19 16:12:07.624 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:12:10.764 [info] 2025/07/19 16:12:10 maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined",
+    "2025-07-19 16:12:23.968 [info] I0719 16:12:23.967754  8052 main.go:602] Setting GOMAXPROCS to 4",
+    "2025-07-19 16:12:23.969 [info] I0719 16:12:23.968615  8052 main.go:817] Starting language server process with pid 8052",
+    "2025-07-19 16:12:24.021 [info] I0719 16:12:24.016964  8052 server.go:293] Language server will attempt to listen on host 127.0.0.1",
+    "2025-07-19 16:12:24.061 [info] I0719 16:12:24.060673  8052 server.go:300] Language server listening on random port at 54620",
+    "2025-07-19 16:12:26.657 [info] I0719 16:12:26.656545  8052 server.go:431] Created extension server client at port 54604",
+    "2025-07-19 16:12:34.340 [info] I0719 16:12:34.339559  8052 server.go:959] Local search is enabled, will index local files.",
+    "2025-07-19 16:12:34.341 [info] I0719 16:12:34.340551  8052 server.go:963] Using 1 indexer workers",
+    "2025-07-19 16:12:35.186 [info] (Windsurf) 2025-07-19 16:12:35.177 [INFO]: Language server started",
+    "2025-07-19 16:12:35.405 [info] (Windsurf) 2025-07-19 16:12:35.404 [INFO]: LS lspClient started successfully",
+    "2025-07-19 16:12:54.464 [info] (Windsurf) 2025-07-19 16:12:54.463 [INFO]: [Cascade Manager] Opening diff zones for: ",
+    "2025-07-19 16:12:56.505 [info] (Windsurf) 2025-07-19 16:12:56.501 [INFO]: [Terminal] Command completed: C:/Users/Administrador/AppData/Local/Programs/Python/Python313/python.exe c:\\Users\\Administrador\\.windsurf\\extensions\\ms-python.python-2025.4.0\\python_files\\printEnvVariablesToFile.py c:\\Users\\Administrador\\.windsurf\\extensions\\ms-python.python-2025.4.0\\python_files\\deactivate\\bash\\envVars.txt exit code 2",
+    "2025-07-19 16:13:40.146 [info] (Windsurf) 2025-07-19 16:13:40.144 [INFO]: [SupercompleteProvider] No supercomplete response",
+    "2025-07-19 16:16:38.900 [info] (Windsurf) 2025-07-19 16:16:38.899 [INFO]: [Cascade Manager] Opening diff zones for: sync_bio.py",
+    "2025-07-19 16:18:02.413 [info] (Windsurf) 2025-07-19 16:18:02.412 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:18:16.310 [info] E0719 16:18:16.309596  8052 interceptor.go:73] /exa.language_server_pb.LanguageServerService/AcknowledgeCascadeCodeEdit (unknown): no unacknowledged steps for file file:///c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py",
+    "2025-07-19 16:18:54.284 [info] (Windsurf) 2025-07-19 16:18:54.282 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:20:12.262 [info] (Windsurf) 2025-07-19 16:20:12.261 [INFO]: [Terminal] Command completed: python manage.py runserver exit code 1",
+    "2025-07-19 16:20:17.033 [info] (Windsurf) 2025-07-19 16:20:17.032 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:20:22.010 [info] (Windsurf) 2025-07-19 16:20:22.009 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:20:24.726 [info] (Windsurf) 2025-07-19 16:20:24.725 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 1",
+    "2025-07-19 16:20:28.977 [info] (Windsurf) 2025-07-19 16:20:28.976 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:23:08.489 [info] (Windsurf) 2025-07-19 16:23:08.485 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:23:15.848 [info] (Windsurf) 2025-07-19 16:23:15.845 [INFO]: [Terminal] Command completed: source env/Scripts/activate exit code 0",
+    "2025-07-19 16:23:23.775 [info] (Windsurf) 2025-07-19 16:23:23.774 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:40:43.661 [info] (Windsurf) 2025-07-19 16:40:43.660 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:42:40.298 [info] (Windsurf) 2025-07-19 16:42:40.296 [INFO]: [Cascade Manager] Opening diff zones for: sync_bio.py",
+    "2025-07-19 16:43:12.333 [info] (Windsurf) 2025-07-19 16:43:12.332 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 16:43:57.636 [info] (Windsurf) 2025-07-19 16:43:57.634 [INFO]: [Cascade Manager] Opening diff zones for: sync_bio.py",
+    "2025-07-19 16:48:51.727 [info] (Windsurf) 2025-07-19 16:48:51.725 [INFO]: [Terminal] Command completed: python manage.py shell exit code 0",
+    "2025-07-19 16:48:58.168 [info] (Windsurf) 2025-07-19 16:48:58.166 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/views.py exit code 1",
+    "2025-07-19 16:50:39.509 [info] (Windsurf) 2025-07-19 16:50:39.508 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/views.py exit code 1",
+    "2025-07-19 16:51:10.806 [info] (Windsurf) 2025-07-19 16:51:10.805 [INFO]: [Terminal] Command completed: :/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 127",
+    "2025-07-19 16:51:28.283 [info] (Windsurf) 2025-07-19 16:51:28.282 [INFO]: [Terminal] Command completed: c:/Users/Administrador/Documents/GitHub/BioData/env/Scripts/python.exe c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py exit code 0",
+    "2025-07-19 17:01:59.350 [info] (Windsurf) 2025-07-19 17:01:59.348 [INFO]: [Terminal] Command completed: python manage.py shell exit code 0",
+    "2025-07-19 17:02:25.927 [info] (Windsurf) 2025-07-19 17:02:25.926 [INFO]: [Terminal] Command completed: curl -k -X POST https://rhligol.gventas.net/recibir-datos-biometrico/ -H \"Content-Type: application/json\" -H \"Authorization: Token 36a8a5bc0f8d28d8ea2d62d67aacba1af0baa9ac\" -d '[{\"biometrico_id\":1,\"timestamp\":\"2025-07-19T08:00:00\",\"estacion\":\"La Soledad\"}]' exit code 0"
+  ],
+  "languageServerDiagnostics": {
+    "logs": [
+      "I0719 16:12:23.967754  8052 main.go:602] Setting GOMAXPROCS to 4\n",
+      "I0719 16:12:23.968615  8052 main.go:817] Starting language server process with pid 8052\n",
+      "I0719 16:12:24.016964  8052 server.go:293] Language server will attempt to listen on host 127.0.0.1\n",
+      "I0719 16:12:24.060673  8052 server.go:300] Language server listening on random port at 54620\n",
+      "I0719 16:12:26.656545  8052 server.go:431] Created extension server client at port 54604\n",
+      "I0719 16:12:34.339559  8052 server.go:959] Local search is enabled, will index local files.\n",
+      "I0719 16:12:34.340551  8052 server.go:963] Using 1 indexer workers\n",
+      "E0719 16:18:16.309596  8052 interceptor.go:73] /exa.language_server_pb.LanguageServerService/AcknowledgeCascadeCodeEdit (unknown): no unacknowledged steps for file file:///c:/Users/Administrador/Documents/GitHub/BioData/API/sync_bio.py\n"
+    ]
+  },
+  "recentTrajectories": [
+    {
+      "cascadeId": "8fb72c8c-3bd6-4ec5-8c31-852e17792919",
+      "trajectoryId": "9c7de3ff-854f-4235-b668-3f4ef478dd41",
+      "summary": "Integrating Biometric Sync with Django API",
+      "lastStepIndex": 125,
+      "lastModifiedTime": "2025-07-19T22:02:50.685Z"
+    },
+    {
+      "cascadeId": "6acfb2c2-9998-4531-b246-31de5d60f260",
+      "trajectoryId": "782b49d4-7834-4d43-9319-75a343ec4eb0",
+      "summary": "Remove Auth Token from Server Request",
+      "lastStepIndex": 12,
+      "lastModifiedTime": "2025-07-19T18:39:57.706Z"
+    },
+    {
+      "cascadeId": "38fcbc5d-ec45-4699-9775-609fdadd8fcd",
+      "trajectoryId": "239993f0-7a37-4b0d-af86-82774e656edb",
+      "summary": "Fixing Table Filter in HTML",
+      "lastStepIndex": 29,
+      "lastModifiedTime": "2025-07-18T18:16:18.257Z"
+    },
+    {
+      "cascadeId": "f5702bc9-e94f-49f4-9fc1-2a20257b37a4",
+      "trajectoryId": "04394ac0-6af6-4793-99ce-7d7b3c2efb96",
+      "summary": "Single-Window User Registration  ",
+      "lastStepIndex": 15,
+      "lastModifiedTime": "2025-07-18T17:55:44.870Z"
+    },
+    {
+      "cascadeId": "ccd6dce0-b776-451b-ada4-1d7d56f0b0db",
+      "trajectoryId": "e04a00a7-20e4-4f6e-bb55-dce9cfe20a29",
+      "summary": "Fixing Python MySQL Backup Script",
+      "lastStepIndex": 16,
+      "lastModifiedTime": "2025-07-16T23:32:19.598Z"
+    },
+    {
+      "cascadeId": "6679004d-9f9e-4bc3-b729-cb889c809141",
+      "trajectoryId": "fec92fd1-baaf-4ece-a486-d8abc80e8a52",
+      "summary": "Fix Django ModuleNotFoundError",
+      "lastStepIndex": 31,
+      "lastModifiedTime": "2025-07-16T20:03:47.273Z"
+    },
+    {
+      "cascadeId": "eccf38e6-8291-494f-b5e0-220874fbbeb9",
+      "trajectoryId": "ced7533a-3aaf-4f30-9a50-be01122944d2",
+      "summary": "revisa mi serve.py y indicame porque no reconoce _file_",
+      "lastStepIndex": 3,
+      "lastModifiedTime": "2025-07-14T23:21:48.145Z"
+    }
+  ],
+  "fields": {
+    "cascadeId": "8fb72c8c-3bd6-4ec5-8c31-852e17792919",
+    "currentLatestStepIndex": 125,
+    "trajectoryId": "9c7de3ff-854f-4235-b668-3f4ef478dd41",
+    "consoleLogs": [
+      "[LOG] 2025-7-19 16:12:44.760 Sentry initialized",
+      "[ERROR] 2025-7-19 16:12:44.835 Failed to fetch knowledge base items ConnectError: [permission_denied] api server wire error: Unauthorized",
+      "[ERROR] 2025-7-19 16:12:59.842 Failed to fetch knowledge base items ConnectError: [permission_denied] api server wire error: Unauthorized",
+      "[ERROR] 2025-7-19 16:13:0.368 Failed to fetch knowledge base items ConnectError: [permission_denied] api server wire error: Unauthorized",
+      "[WARN] 2025-7-19 16:43:4.569 Failed to copy text using Clipboard API:  NotAllowedError: Failed to execute 'writeText' on 'Clipboard': Write permission denied.",
+      "[WARN] 2025-7-19 16:44:50.39 Failed to copy text using Clipboard API:  NotAllowedError: Failed to execute 'writeText' on 'Clipboard': Write permission denied.",
+      "[WARN] 2025-7-19 16:53:2.41 Failed to copy text using Clipboard API:  NotAllowedError: Failed to execute 'writeText' on 'Clipboard': Write permission denied."
+    ]
+  }
+}

@@ -1,18 +1,14 @@
 {% extends 'layout/base.html' %}
 {% load static %}
-
 {% block title %}Inicio{% endblock %}
-
 {% block content %}
 <div class="container mt-5">
     <div class="card shadow-sm">
         <div class="card-body">
             <h1 class="card-title text-center mb-4">Bienvenido, {{ request.user.username }}</h1>
 
-
-
             <p class="card-text fs-5 text-center">
-                Resumen de asistencias del día: <span class="fw-bold" id="asistencias-hoy-count">0</span>
+                Resumen de primeras entradas del día: <span class="fw-bold">{{ usuarios_finales|length }}</span>
             </p>
 
             <div class="table-responsive mt-4">
@@ -25,49 +21,50 @@
                             <th>Estación</th>
                         </tr>
                     </thead>
-                    <tbody id="tabla-asistencias-body">
-                        <tr>
-                            <td colspan="4" class="text-center text-muted">Cargando asistencias...</td>
-                        </tr>
+                    <tbody>
+                        {% if error %}
+                            <tr>
+                                <td colspan="4" class="text-center text-danger">Error: {{ error }}</td>
+                            </tr>
+                        {% elif usuarios_finales %}
+                            {% for item in usuarios_finales %}
+                                {% if item.salida_ayer %}
+                                    <tr>
+                                        <td rowspan="2">{{ item.usuario.nombre }}</td>
+                                        <td>Salida (ayer)</td>
+                                        <td>{{ item.salida_ayer.timestamp_local|time:"H:i" }}</td>
+                                        <td>
+                                            {{ item.usuario.estacion.nombre|default:"-" }}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Entrada</td>
+                                        <td>{{ item.entrada.timestamp_local|time:"H:i" }}</td>
+                                        <td>
+                                            {{ item.usuario.estacion.nombre|default:"-" }}
+                                        </td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td>{{ item.usuario.nombre }}</td>
+                                        <td>Entrada</td>
+                                        <td>{{ item.entrada.timestamp_local|time:"H:i" }}</td>
+                                        <td>
+                                            {{ item.usuario.estacion.nombre|default:"-" }}
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">Sin asistencias hoy.</td>
+                            </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
-
-
-
-<script>
-function pad(n) { return n < 10 ? '0' + n : n; }
-function hoyISO() {
-    const hoy = new Date();
-    return hoy.getFullYear() + '-' + pad(hoy.getMonth()+1) + '-' + pad(hoy.getDate());
-}
-
-async function cargarAsistenciasHoy() {
-    const response = await fetch('/api/api_sincronizar_biometrico/', { method: 'POST' });
-    const data = await response.json();
-    const registros = (data.registros || []).filter(r => {
-        // Solo entradas del día actual
-        return r.tipo === 'entrada' && r.timestamp.startsWith(hoyISO());
-    });
-    let html = '';
-    if (registros.length === 0) {
-        html = '<tr><td colspan="4" class="text-center text-muted">No hay asistencias registradas hoy.</td></tr>';
-    } else {
-        registros.forEach(r => {
-            html += `<tr>
-                <td>${r.usuario.nombre}</td>
-                <td><span class="badge bg-primary">Entrada</span></td>
-                <td>${r.timestamp.substring(11,19)}</td>
-                <td>${r.usuario.estacion ? r.usuario.estacion.nombre : '<span class=\"text-muted\">No asignada</span>'}</td>
-            </tr>`;
-        });
-    }
-    document.getElementById('tabla-asistencias-body').innerHTML = html;
-    document.getElementById('asistencias-hoy-count').textContent = registros.length;
-}
-window.onload = cargarAsistenciasHoy;
-</script>
+<script src="{% static 'js/frontend/components/filtro.js' %}"></script>
 {% endblock %}

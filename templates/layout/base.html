@@ -81,34 +81,34 @@
         </a>
       </li>
 
-      {% if user.rol == 'admin' %}
+      {% if user.rol == 'admin' or user.rol == 'rrhh' %}
         <li class="nav-item">
           <a class="nav-link text-white d-flex align-items-center" href="{% url 'lista_usuarios' %}">
-            <i class="bi bi-people me-2"></i><span class="sidebar-text">Gestión Usuarios</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link text-white d-flex align-items-center" href="{% url 'historial_asistencia' %}">
-            <i class="bi bi-clock-history me-2"></i><span class="sidebar-text">Historial</span>
-          </a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link text-warning d-flex align-items-center" href="http://{{ request.get_host }}/admin/" target="_blank">
-            <i class="bi bi-gear-fill me-2"></i><span class="sidebar-text">SuperUsuario</span>
+            <i class="bi bi-people me-2"></i><span class="sidebar-text">Gestion Empleados</span>
           </a>
         </li>
       {% endif %}
 
-      {% if request.user.rol == "admin" %}
+      {% if user.rol == 'admin' or user.rol == 'rrhh' or user.rol == 'jefe_patio' %}
         <li class="nav-item">
-          <button id="btn-sincronizar" class="nav-link text-primary d-flex align-items-center w-100 bg-transparent border-0">
-            <i class="bi bi-arrow-repeat me-2"></i><span class="sidebar-text">Sincronizar Biométrico</span>
-          </button>
+          <a class="nav-link text-white d-flex align-items-center" href="{% url 'historial_asistencia' %}">
+            <i class="bi bi-clock-history me-2"></i><span class="sidebar-text">Historial de Asistencias</span>
+          </a>
         </li>
+      {% endif %}
 
+      {% if request.user.rol == "admin" or request.user.rol == "rrhh" %}
         <li class="nav-item">
           <a class="nav-link text-white d-flex align-items-center" href="{% url 'resumen_asistencias_diarias' %}">
-            <i class="bi bi-calendar-check me-2"></i><span class="sidebar-text">Resumen Diario</span>
+            <i class="bi bi-calendar-check me-2"></i><span class="sidebar-text">Resumen Asistencias</span>
+          </a>
+        </li>
+      {% endif %}
+
+      {% if user.rol == 'admin' or user.rol == 'rrhh' %}
+        <li class="nav-item">
+          <a class="nav-link text-warning d-flex align-items-center" href="http://{{ request.get_host }}/admin/" target="_blank">
+            <i class="bi bi-gear-fill me-2"></i><span class="sidebar-text">SuperUsuario</span>
           </a>
         </li>
       {% endif %}

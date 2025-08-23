@@ -1,4 +1,6 @@
 # API/views.py
+import json
+import traceback
 from django.shortcuts import render, redirect, get_object_or_404
 from .Biometricos_connections import crear_o_actualizar_usuario_biometrico, eliminar_usuario_biometrico, conectar_dispositivo, importar_datos_dispositivo
 from rest_framework import generics
@@ -14,6 +16,11 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from .serializers import RegistroAsistenciaSerializer
+from django.http import JsonResponse
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from django.utils.dateparse import parse_datetime
 User = get_user_model()
 
 class RegistroAsistenciaListView(generics.ListAPIView):
@@ -137,41 +144,94 @@ def eliminar_usuario(request, user_id):
         print("[DEBUG] Redirigiendo a lista_usuarios")
         return redirect('lista_usuarios')
 
-@csrf_exempt
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def recibir_datos_biometrico(request):
-    print(f"[DEBUG] Recibiendo datos biométrico. PATH: {request.get_full_path()}")
-    print(f"[DEBUG] Headers: {request.headers}")
-    print(f"[DEBUG] Body (JSON): {request.data}")
-    datos = request.data
-    nuevos = 0
-    from django.utils import timezone
-    for registro in datos:
-        user_id = registro.get("user_id")
-        nombre = registro.get("nombre")
-        timestamp = parse_datetime(registro.get("timestamp"))
-        if not timestamp:
-            print(f"[ERROR] Timestamp inválido: {registro.get('timestamp')}")
-            continue
-        fecha = timestamp.date()
-        user, _ = UsuarioBiometrico.objects.get_or_create(biometrico_id=user_id, defaults={"nombre": nombre})
-        # Buscar registros de ese usuario en ese día
-        registros_dia = RegistroAsistencia.objects.filter(usuario=user, timestamp__date=fecha).order_by('timestamp')
-        if not registros_dia.filter(tipo='entrada').exists():
-            # No hay entrada, este es la entrada
-            RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='entrada')
-            nuevos += 1
-            print(f"[DEBUG] Registrada ENTRADA para usuario {user} en {timestamp}")
-        elif not registros_dia.filter(tipo='salida').exists():
-            # Ya hay entrada, este es la salida
-            RegistroAsistencia.objects.create(usuario=user, timestamp=timestamp, tipo='salida')
-            nuevos += 1
-            print(f"[DEBUG] Registrada SALIDA para usuario {user} en {timestamp}")
-        else:
-            print(f"[DEBUG] Ya existen entrada y salida para usuario {user} en {fecha}, se ignora registro adicional.")
-    print(f"[DEBUG] Registros importados: {nuevos}")
-    return Response({"status": "ok", "registros_importados": nuevos})
+    try:
+        print(f"[DEBUG] 📥 Recibiendo datos biométrico. PATH: {request.get_full_path()}")
+        print(f"[DEBUG] Headers: {request.headers}")
+        print(f"[DEBUG] Body (JSON): {request.data}")
 
+        datos = request.data
+
+        if not isinstance(datos, list):
+            print("[ERROR] ❌ request.data no es una lista. Tipo:", type(datos))
+            return Response({"error": "El cuerpo debe ser una lista de registros"}, status=400)
+
+        nuevos = 0
+
+        for i, registro in enumerate(datos):
+            print(f"[DEBUG] Procesando registro #{i}: {registro}")
+            if not isinstance(registro, dict):
+                print(f"[ERROR] ❌ Registro #{i} no es un dict válido. Tipo: {type(registro)}")
+                continue
+
+            user_id = registro.get("user_id")
+            nombre = registro.get("nombre", "").strip()  # Nuevo campo
+            timestamp_str = registro.get("timestamp")
+            estacion_nombre = registro.get("estacion")
+            status = registro.get("status")
+
+            if not user_id or not timestamp_str or not estacion_nombre:
+                print(f"[ERROR] ❌ Registro incompleto: {registro}")
+                continue
+
+            timestamp = parse_datetime(timestamp_str)
+            if not timestamp:
+                print(f"[ERROR] ❌ Timestamp inválido: {timestamp_str}")
+                continue
+
+            try:
+                estacion_obj = EstacionServicio.objects.get(nombre=estacion_nombre)
+            except EstacionServicio.DoesNotExist:
+                print(f"[ERROR] ❌ Estación no encontrada: {estacion_nombre}")
+                continue
+
+            # Obtener o crear el usuario
+            user, created = UsuarioBiometrico.objects.get_or_create(biometrico_id=user_id)
+
+            if created:
+                user.nombre = nombre
+                user.save()
+                print(f"[INFO] 🆕 Usuario biométrico creado: ID={user_id}, Nombre={nombre}")
+            else:
+                if nombre and user.nombre != nombre:
+                    print(f"[INFO] ✏️ Nombre actualizado para biometrico_id={user_id}: '{user.nombre}' → '{nombre}'")
+                    user.nombre = nombre
+                    user.save()
+
+            # Verificar si ya existe un registro igual
+            duplicado = RegistroAsistencia.objects.filter(
+                user=user,
+                timestamp=timestamp,
+                estacion_servicio=estacion_obj
+            ).exists()
+
+            if duplicado:
+                print(f"[INFO] 🔁 Registro duplicado ignorado para usuario {user.biometrico_id} a las {timestamp}")
+                continue
+
+            # Crear nuevo registro
+            RegistroAsistencia.objects.create(
+                user=user,
+                timestamp=timestamp,
+                status=status,
+                estacion_servicio=estacion_obj
+            )
+            print(f"[DEBUG] ✅ Registro creado para usuario {user.biometrico_id} a las {timestamp}")
+            nuevos += 1
+
+        print(f"[DEBUG] 🧾 Registros nuevos importados: {nuevos}")
+        return Response({"status": "ok", "registros_importados": nuevos})
+
+    except Exception as e:
+        print("[ERROR] ❌ Excepción no controlada:")
+        print(traceback.format_exc())
+        return Response({
+            "error": "Excepción inesperada en el servidor",
+            "detalle": str(e)
+        }, status=500)
+    
 @api_view(["GET"])
 def obtener_datos_biometrico(request):
     print("[DEBUG] Obteniendo datos del dispositivo biométrico...")
@@ -236,4 +296,29 @@ def api_sincronizar_biometrico(request):
         registros = RegistroAsistencia.objects.all()
         serializer = RegistroAsistenciaSerializer(registros, many=True)
         return JsonResponse({'registros': serializer.data}, safe=False)
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+@csrf_exempt
+def recibir_logs(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+
+            for log in data:
+                usuario, _ = UsuarioBiometrico.objects.get_or_create(
+                    biometrico_id=log['biometrico_id']
+                )
+
+                RegistroAsistencia.objects.get_or_create(
+                    usuario=usuario,
+                    timestamp=log['timestamp'],
+                    defaults={
+                        'tipo': 'entrada' if log['punch'] == 0 else 'salida',
+                        'aprobado': True
+                    }
+                )
+
+            return JsonResponse({'status': 'success'}, status=200)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
     return JsonResponse({'error': 'Método no permitido'}, status=405)

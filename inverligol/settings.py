@@ -31,8 +31,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ['*']
-ALLOWED_HOSTS = ['.cleverapps.io', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['.cleverapps.io', 'localhost', '127.0.0.1', '192.168.0.110', '186.31.35.24']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
@@ -108,18 +107,7 @@ WSGI_APPLICATION = 'inverligol.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME'),         # Clever Cloud
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT', cast=int),
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        }
-    },
-    'local': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'biometrico',         # o tu base local
+        'NAME': 'Ligol',
         'USER': 'root',
         'PASSWORD': 'L0sm3j0r3s!',
         'HOST': 'localhost',
@@ -129,9 +117,6 @@ DATABASES = {
         }
     }
 }
-
-
-
 
 
 # Password validation
@@ -196,7 +181,7 @@ LOGIN_URL = '/accounts/login/'
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 
-BIOMETRIC_DEVICE_IP = '192.168.0.5'
+BIOMETRIC_DEVICE_IP = '192.168.0.24'
 BIOMETRIC_DEVICE_PORT = 4370
 
 AUTH_USER_MODEL = 'API.CustomUser'
