@@ -37,7 +37,7 @@
         <td>{{ usuario.id }}</td>
         <td>{{ usuario.biometrico_id }}</td>
         <td>{{ usuario.nombre }}</td>
-        <td>{{ usuario.estacion }}</td>
+        <td>{{ usuario.estacion.nombre|default:"Sin asignar" }}</td>
         {% if usuario.activo %}
         <td class="text-success">Activo</td>
         {% else %}
@@ -47,7 +47,7 @@
           {% if request.user.rol == 'admin' or request.user.rol == 'rrhh' %}
           <!-- Botón para editar -->
           <button class='btn btn-sm btn-warning' data-bs-toggle='modal' data-bs-target='#modalEditarUsuario'
-            onclick="abrirModalEditar('{{ usuario.id }}','{{ usuario.biometrico_id|default_if_none:'' }}','{{ usuario.nombre|escapejs }}','{{ usuario.estacion.id }}','{{ activo_val }}')">
+            onclick="abrirModalEditar('{{ usuario.id }}','{{ usuario.biometrico_id|default_if_none:'' }}','{{ usuario.nombre|escapejs }}','{% if usuario.estacion %}{{ usuario.estacion.id }}{% else %}{% endif %}','{{ activo_val }}')">
             Editar
           </button>
           {% endif %}
@@ -89,7 +89,8 @@
           </div>
           <div class="mb-3">
             <label for="input_estacion_id_editar" class="form-label">Estación de Servicio</label>
-            <select class="form-control" name="estacion_id" id="input_estacion_id_editar" required>
+            <select class="form-control" name="estacion_id" id="input_estacion_id_editar">
+              <option value="">Sin asignar</option>
               {% for estacion in estaciones %}
                 <option value="{{ estacion.id }}">{{ estacion.nombre }} - {{ estacion.direccion }}</option>
               {% endfor %}
@@ -138,12 +139,15 @@
   function abrirModalEditar(id, biometrico_id, nombre, estacion_id, activo) {
     document.getElementById("formEditarUsuario").action = "/api/usuarios/editar/" + id + "/";
     document.getElementById("input_id_editar").value = id;
-    document.getElementById("input_biometrico_id_editar").value = biometrico_id;
-    document.getElementById("input_nombre_editar").value = nombre;
+    document.getElementById("input_biometrico_id_editar").value = biometrico_id || '';
+    document.getElementById("input_nombre_editar").value = nombre || '';
+    
     const selectEstacion = document.getElementById("input_estacion_id_editar");
-    if (selectEstacion && estacion_id) {
-      selectEstacion.value = estacion_id;
+    if (selectEstacion) {
+      // Si estacion_id está vacío o es undefined, seleccionar "Sin asignar"
+      selectEstacion.value = estacion_id || '';
     }
+    
     const checkActivo = document.getElementById("input_activo_editar");
     if (checkActivo) {
       checkActivo.checked = (activo === 'true' || activo === true);
