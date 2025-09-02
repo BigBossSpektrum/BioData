@@ -457,17 +457,19 @@ def resumen_asistencias_diarias(request):
                     aprobado = False
 
             registros.append({
-                'dia': entrada.date().strftime('%Y-%m-%d'),
-                'user_id': usuario.id,
-                'nombre': usuario.nombre,
-                'cedula': usuario.cedula,
-                'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia and registros_dia[0].estacion_servicio else '',
-                'entrada': entrada,
-                'salida': salida,
-                'horas_trabajadas': horas_trabajadas if salida else None,
-                'horas_extra': horas_extra if salida else None,
-                'aprobado': aprobado,
-            })
+                        'dia': entrada.date().strftime('%Y-%m-%d'),
+                        'user_id': usuario.id,
+                        'nombre': usuario.nombre,
+                        'cedula': usuario.cedula,
+                        'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia and registros_dia[0].estacion_servicio else '',
+                        'entrada': entrada,
+                        'salida': salida,
+                        'horas_trabajadas': horas_trabajadas if salida else None,
+                        'horas_trabajadas_hhmm': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_trabajadas) if salida and horas_trabajadas is not None else None,
+                        'horas_extra': horas_extra if salida else None,
+                        'horas_extra_hhmm': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_extra) if salida and horas_extra > 0 else None,
+                        'aprobado': aprobado,
+                })
 
     context = {
         'registros': registros,

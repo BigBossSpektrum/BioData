@@ -62,10 +62,10 @@
                         <span class="text-muted">-</span>
                     {% endif %}
                 </td>
-                <td>{{ r.horas_trabajadas|default:"-" }}</td>
+                <td>{{ r.horas_trabajadas_hhmm|default:"-" }}</td>
                 <td>
                     {% if r.horas_extra > 0 %}
-                        <span class="badge bg-warning text-dark">{{ r.horas_extra }}</span>
+                            <span class="badge bg-warning text-dark">{{ r.horas_extra_hhmm }}</span>
                     {% else %}
                         <span class="text-muted">-</span>
                     {% endif %}
