@@ -1,0 +1,214 @@
+{% extends "layout/base.html" %}
+{% load static %}
+
+{% block title %}Monitor de Sesiones - Biométrico App{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="bi bi-activity me-2"></i>
+                    Monitor de Sesiones Activas
+                </h2>
+                <div>
+                    <button class="btn btn-outline-primary me-2" onclick="location.reload()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        Actualizar
+                    </button>
+                    <span class="badge bg-success fs-6">
+                        {{total_sessions}} sesiones activas
+                    </span>
+                </div>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Error: {{ error }}
+            </div>
+            {% endif %}
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-table me-2"></i>
+                        Sesiones Activas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if sessions %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>ID de Sesión</th>
+                                    <th>Última Actividad</th>
+                                    <th>Expira</th>
+                                    <th>Estado</th>
+                                    <th>Tiempo Restante</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions %}
+                                <tr class="{% if session.is_expired %}table-warning{% endif %}">
+                                    <td>
+                                        <strong>{{ session.user }}</strong>
+                                        <small class="text-muted d-block">ID: {{ session.user_id }}</small>
+                                    </td>
+                                    <td>
+                                        <code>{{ session.session_key }}</code>
+                                    </td>
+                                    <td>
+                                        {% if session.last_activity %}
+                                            <span class="text-success">
+                                                {{ session.last_activity|date:"d/m/Y H:i:s" }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">No disponible</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="{% if session.is_expired %}text-danger{% else %}text-info{% endif %}">
+                                            {{ session.expire_date|date:"d/m/Y H:i:s" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if session.is_expired %}
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-clock-history me-1"></i>
+                                                Expirada
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>
+                                                Activa
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="session-countdown" data-expire="{{ session.expire_date|date:'c' }}">
+                                            Calculando...
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox display-1 text-muted"></i>
+                        <h4 class="text-muted mt-3">No hay sesiones activas</h4>
+                        <p class="text-muted">Actualmente no hay usuarios conectados al sistema.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Estadísticas adicionales -->
+            <div class="row mt-4">
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title">Total de Sesiones</h6>
+                                    <h3 class="mb-0">{{ total_sessions }}</h3>
+                                </div>
+                                <div class="ms-3">
+                                    <i class="bi bi-people-fill display-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title">Tiempo de Sesión</h6>
+                                    <h3 class="mb-0">30 min</h3>
+                                </div>
+                                <div class="ms-3">
+                                    <i class="bi bi-clock-fill display-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title">Auto-renovación</h6>
+                                    <h3 class="mb-0">Activa</h3>
+                                </div>
+                                <div class="ms-3">
+                                    <i class="bi bi-arrow-repeat display-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Función para calcular tiempo restante
+    function updateCountdowns() {
+        const countdownElements = document.querySelectorAll('.session-countdown');
+        
+        countdownElements.forEach(element => {
+            const expireDate = new Date(element.getAttribute('data-expire'));
+            const now = new Date();
+            const timeLeft = expireDate - now;
+            
+            if (timeLeft <= 0) {
+                element.innerHTML = '<span class="text-danger">Expirada</span>';
+                element.closest('tr').classList.add('table-warning');
+            } else {
+                const minutes = Math.floor(timeLeft / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                
+                let timeString = '';
+                if (minutes > 0) {
+                    timeString = `${minutes}m ${seconds}s`;
+                } else {
+                    timeString = `${seconds}s`;
+                }
+                
+                // Cambiar color según tiempo restante
+                let colorClass = 'text-success';
+                if (minutes < 5) {
+                    colorClass = 'text-warning';
+                }
+                if (minutes < 2) {
+                    colorClass = 'text-danger';
+                }
+                
+                element.innerHTML = `<span class="${colorClass}">${timeString}</span>`;
+            }
+        });
+    }
+    
+    // Actualizar cada segundo
+    updateCountdowns();
+    setInterval(updateCountdowns, 1000);
+    
+    // Auto-refresh cada 30 segundos
+    setInterval(() => {
+        location.reload();
+    }, 30000);
+});
+</script>
+{% endblock %}

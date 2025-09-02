@@ -26,6 +26,16 @@
               <div class="text-center mb-4">
                 <h4>Iniciar sesión</h4>
               </div>
+              
+              <!-- Mensaje de sesión expirada -->
+              {% if request.GET.expired %}
+              <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="bi bi-clock-history me-2"></i>
+                <strong>Sesión expirada:</strong> Tu sesión se cerró automáticamente por inactividad (30 minutos).
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+              {% endif %}
+              
               <form method="post" novalidate class="text-center">
                 {% csrf_token %}
 
