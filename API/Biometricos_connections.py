@@ -102,19 +102,13 @@ def conectar_dispositivo(ip=None, puerto=None, timeout=10):
 # 🧠 Funciones CRUD
 # ============================== #
 def crear_o_actualizar_usuario_biometrico(user_id, nombre):
-    conn = conectar_dispositivo()
-    if conn:
-        try:
-            conn.set_user(uid=int(user_id), name=nombre, privilege=0, password='', group_id='', user_id=str(user_id))
-            print(f"✅ Usuario {nombre} (ID {user_id}) creado/actualizado en el biométrico.")
-            return user_id  # Retornar el ID usado en el biométrico
-        except Exception as e:
-            print(f"❌ Error al crear/actualizar usuario: {e}")
-            return None
-        finally:
-            conn.enable_device()
-            conn.disconnect()
-    return None
+    """
+    Función deshabilitada - No se conecta al biométrico para editar/actualizar usuarios.
+    Solo retorna el user_id para mantener compatibilidad.
+    """
+    print(f"⚠️ Función crear_o_actualizar_usuario_biometrico deshabilitada para usuario {nombre} (ID {user_id})")
+    print(f"✅ Cambios solo aplicados en la base de datos")
+    return user_id  # Retornar el ID para mantener compatibilidad
 
 
 def eliminar_usuario_biometrico(zk, user_id):

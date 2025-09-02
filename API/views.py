@@ -62,7 +62,7 @@ def crear_usuario(request):
         cedula = request.POST.get('cedula')
         estacion_id = request.POST.get('estacion_id')
         print(f"[DEBUG] Datos recibidos: nombre={nombre}, cedula={cedula}, estacion_id={estacion_id}")
-        if not nombre or not cedula or not estacion_id:
+        if not nombre or not estacion_id:
             print("[ERROR] Faltan campos obligatorios.")
             messages.error(request, "Todos los campos son obligatorios.")
             return redirect('lista_usuarios')
@@ -73,13 +73,8 @@ def crear_usuario(request):
             print("[ERROR] Estación no válida.")
             messages.error(request, "Estación no válida.")
             return redirect('lista_usuarios')
-        if UsuarioBiometrico.objects.filter(cedula=cedula).exists():
-            print("[ERROR] Usuario biométrico duplicado por Cedula.")
-            messages.error(request, "Ya existe un usuario biométrico con esta Cedula.")
-            return redirect('lista_usuarios')
         usuario_bio = UsuarioBiometrico.objects.create(
             nombre=nombre,
-            cedula=cedula,
             estacion=estacion
         )
         print(f"[DEBUG] Usuario biométrico creado en BD: {usuario_bio}")
@@ -263,11 +258,10 @@ def editar_usuario(request, user_id):
         return redirect('no_autorizado')
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
-        cedula = request.POST.get('cedula')
         estacion_id = request.POST.get('estacion_id')
         activo = request.POST.get('activo') == 'on' or request.POST.get('activo') == 'true'
-        print(f"[DEBUG] Datos recibidos para editar: nombre={nombre}, cedula={cedula}, estacion_id={estacion_id}, activo={activo}")
-        if not nombre or not cedula or not estacion_id:
+        print(f"[DEBUG] Datos recibidos para editar: nombre={nombre}, estacion_id={estacion_id}, activo={activo}")
+        if not nombre or not estacion_id:
             print("[ERROR] Faltan campos obligatorios en edición.")
             messages.error(request, "Todos los campos son obligatorios.")
             return redirect('lista_usuarios')
@@ -279,12 +273,11 @@ def editar_usuario(request, user_id):
             messages.error(request, "Estación no válida.")
             return redirect('lista_usuarios')
         usuario.nombre = nombre
-        usuario.cedula = cedula
         usuario.estacion = estacion
         usuario.activo = activo
         usuario.save()
         print(f"[DEBUG] Usuario biométrico editado y guardado: {usuario}")
-        crear_o_actualizar_usuario_biometrico(usuario.id, nombre)
+        # crear_o_actualizar_usuario_biometrico(usuario.id, nombre)  # Conexión al biométrico eliminada
         messages.success(request, "Usuario biométrico editado correctamente.")
         return redirect('lista_usuarios')
     return redirect('lista_usuarios')
