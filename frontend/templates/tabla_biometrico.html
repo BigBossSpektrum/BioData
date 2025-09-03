@@ -32,7 +32,6 @@
                     <th>#</th>
                     <th>ID Usuario</th>
                     <th>Nombre</th>
-                    <th>Cédula</th>
                     <th>Estación</th>
                     <th>Entrada</th>
                     <th>Salida</th>
@@ -45,7 +44,6 @@
                         <td>{{ forloop.counter }}</td>
                         <td>{{ r.user_id }}</td>
                         <td>{{ r.nombre }}</td>
-                        <td>{{ r.cedula }}</td>
                         <td>{{ r.estacion }}</td>
                         <td class="col-dia">
                             {% if r.entrada %}
@@ -75,11 +73,11 @@
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted">No hay registros.</td>
+                        <td colspan="7" class="text-center text-muted">No hay registros.</td>
                     </tr>
                 {% endfor %}
                 <tr id="sinCoincidencias" style="display: none;">
-                    <td colspan="8" class="text-center text-muted">No se encontraron resultados con el filtro aplicado.</td>
+                    <td colspan="7" class="text-center text-muted">No se encontraron resultados con el filtro aplicado.</td>
                 </tr>
             </tbody>
         </table>
