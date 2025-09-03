@@ -10,6 +10,7 @@ from .utils import obtener_rango_semana
 from .utils_filters import aplicar_filtro_jefe_patio, obtener_info_estacion_jefe
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.urls import reverse
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 import logging
 
@@ -284,11 +285,57 @@ def historial_asistencia(request):
             'en_turno': salida is None,
         })
 
+    # Aplicar filtros de búsqueda
+    search_query = request.GET.get('search', '').strip()
+    fecha_desde = request.GET.get('fecha_desde', '').strip()
+    fecha_hasta = request.GET.get('fecha_hasta', '').strip()
+
+    if search_query:
+        resultados = [r for r in resultados if (
+            search_query.lower() in r['nombre'].lower() or
+            search_query.lower() in str(r['user_id']).lower() or
+            search_query.lower() in r['estacion'].lower() or
+            (r['cedula'] and search_query.lower() in r['cedula'].lower())
+        )]
+
+    if fecha_desde:
+        try:
+            fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+            resultados = [r for r in resultados if r['entrada'].date() >= fecha_desde_obj]
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            resultados = [r for r in resultados if r['entrada'].date() <= fecha_hasta_obj]
+        except ValueError:
+            pass
+
+    # Ordenar resultados por fecha de entrada más reciente
+    resultados.sort(key=lambda x: x['entrada'], reverse=True)
+    
+    # Implementar paginación
+    paginator = Paginator(resultados, 50)  # 50 registros por página
+    page_number = request.GET.get('page', 1)
+    
+    try:
+        page_obj = paginator.get_page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.get_page(1)
+    except EmptyPage:
+        page_obj = paginator.get_page(paginator.num_pages)
+
     # Obtener información de la estación filtrada para jefe de patio
     info_estacion = obtener_info_estacion_jefe(request.user)
 
     context = {
-        'registros': resultados,
+        'registros': page_obj,
+        'paginator': paginator,
+        'page_obj': page_obj,
+        'search_query': search_query,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
         **info_estacion
     }
     return render(request, 'tabla_biometrico.html', context)
@@ -495,16 +542,62 @@ def resumen_asistencias_diarias(request):
                         'aprobado': aprobado,
                 })
 
+    # Aplicar filtros de búsqueda adicionales
+    search_query = request.GET.get('search', '').strip()
+    fecha_desde = request.GET.get('fecha_desde', '').strip()
+    fecha_hasta = request.GET.get('fecha_hasta', '').strip()
+
+    if search_query:
+        registros = [r for r in registros if (
+            search_query.lower() in r['nombre'].lower() or
+            search_query.lower() in str(r['user_id']).lower() or
+            search_query.lower() in r['estacion'].lower() or
+            (r['cedula'] and search_query.lower() in r['cedula'].lower())
+        )]
+
+    if fecha_desde:
+        try:
+            fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+            registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() >= fecha_desde_obj]
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() <= fecha_hasta_obj]
+        except ValueError:
+            pass
+
+    # Ordenar registros por fecha más reciente
+    registros.sort(key=lambda x: datetime.strptime(x['dia'], '%Y-%m-%d'), reverse=True)
+    
+    # Implementar paginación
+    paginator = Paginator(registros, 50)  # 50 registros por página
+    page_number = request.GET.get('page', 1)
+    
+    try:
+        page_obj = paginator.get_page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.get_page(1)
+    except EmptyPage:
+        page_obj = paginator.get_page(paginator.num_pages)
+
     # Obtener información de la estación filtrada para jefe de patio
     info_estacion = obtener_info_estacion_jefe(request.user)
 
     context = {
-        'registros': registros,
+        'registros': page_obj,
+        'paginator': paginator,
+        'page_obj': page_obj,
         'nombre': nombre,
         'cedula': cedula,
         'estacion': estacion,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
+        'search_query': search_query,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
         **info_estacion
     }
     return render(request, 'resumen_asistencias_diarias.html', context)
