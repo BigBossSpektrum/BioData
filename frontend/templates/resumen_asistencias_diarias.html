@@ -111,6 +111,7 @@
                 <th>Entrada</th>
                 <th>Salida</th>
                 <th>Horas Trabajadas</th>
+                <th>Tipo de Turno</th>
                 <th>Horas Extras</th>
                 <th>Aprobado</th>
             </tr>
@@ -146,6 +147,22 @@
                         <span class="text-danger">Sin salida registrada</span>
                     {% else %}
                         <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if r.es_turno_nocturno %}
+                        <div class="badge bg-dark" data-bs-toggle="tooltip" data-bs-placement="top" 
+                             title="{% if r.mensaje_turno %}{{ r.mensaje_turno }}{% else %}{{ r.descripcion_turno }}{% endif %}">
+                            <i class="bi bi-moon-stars"></i> Nocturno
+                            {% if r.diferencia_dias > 0 %}
+                                <br><small>({{ r.diferencia_dias }} día{{ r.diferencia_dias|pluralize }})</small>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="badge bg-warning text-dark" data-bs-toggle="tooltip" data-bs-placement="top" 
+                             title="{{ r.descripcion_turno }}">
+                            <i class="bi bi-sun"></i> {{ r.tipo_turno|title }}
+                        </div>
                     {% endif %}
                 </td>
                 <td>
@@ -420,6 +437,12 @@ document.addEventListener('DOMContentLoaded', function() {
         link.addEventListener('mouseleave', function() {
             this.style.transform = 'translateY(0)';
         });
+    });
+    
+    // Inicializar tooltips para la información de turnos
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 });
 </script>

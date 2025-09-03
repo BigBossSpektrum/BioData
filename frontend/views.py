@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
 from django.utils import timezone
-from .utils import obtener_rango_semana
+from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado
 from .utils_filters import aplicar_filtro_jefe_patio, obtener_info_estacion_jefe
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.urls import reverse
@@ -495,25 +495,68 @@ def resumen_asistencias_diarias(request):
             registros_dia.sort(key=lambda r: r.timestamp)
 
             timestamps = [localtime(r.timestamp) for r in registros_dia]
-            entrada = timestamps[0]
-            salida = timestamps[-1]
+            
+            # Para turnos nocturnos, reorganizar entrada y salida según las horas
+            # Entrada = hora mayor (ej: 22:30), Salida = hora menor (ej: 06:30)
+            if len(timestamps) >= 2:
+                # Detectar si es turno nocturno basándose en el primer timestamp
+                es_posible_nocturno = timestamps[0].hour >= 22 or timestamps[0].hour <= 6
+                
+                if es_posible_nocturno:
+                    # Para turnos nocturnos, buscar la hora más tardía como entrada
+                    # y la hora más temprana como salida
+                    horas_timestamps = [(ts.hour, ts) for ts in timestamps]
+                    
+                    # Separar en posibles entradas (>=22 o <=6) y salidas
+                    posibles_entradas = [ts for hora, ts in horas_timestamps if hora >= 22]
+                    posibles_salidas = [ts for hora, ts in horas_timestamps if hora <= 6]
+                    
+                    if posibles_entradas and posibles_salidas:
+                        # Es definitivamente un turno nocturno
+                        entrada = max(posibles_entradas)  # Hora más tardía (mayor valor)
+                        salida = min(posibles_salidas)    # Hora más temprana (menor valor)
+                    elif posibles_entradas:
+                        # Solo hay registros nocturnos tardíos, buscar salida en día siguiente
+                        entrada = max(posibles_entradas)
+                        salida = timestamps[-1]  # Por defecto, el último del día
+                        
+                        # Buscar salida en el día siguiente si existe
+                        if idx + 1 < len(fechas_ordenadas):
+                            next_fecha = fechas_ordenadas[idx + 1]
+                            next_registros_dia = dias[next_fecha]
+                            for r in sorted(next_registros_dia, key=lambda r: r.timestamp):
+                                ts = localtime(r.timestamp)
+                                if ts.hour <= 6:
+                                    salida = ts
+                                    break
+                    else:
+                        # Usar orden cronológico normal
+                        entrada = timestamps[0]
+                        salida = timestamps[-1]
+                else:
+                    # Turno diurno normal: usar orden cronológico
+                    entrada = timestamps[0]
+                    salida = timestamps[-1]
+            else:
+                # Solo un registro
+                entrada = timestamps[0]
+                salida = timestamps[-1]
 
-            # Turno nocturno: entrada ≥ 22:00
-            if entrada.hour >= 22 and idx + 1 < len(fechas_ordenadas):
-                next_fecha = fechas_ordenadas[idx + 1]
-                next_registros_dia = dias[next_fecha]
-                for r in sorted(next_registros_dia, key=lambda r: r.timestamp):
-                    ts = localtime(r.timestamp)
-                    if ts.hour <= 6:
-                        salida = ts
-                        break
+            # Detectar tipo de turno usando la nueva funcionalidad
+            info_turno = detectar_tipo_turno_detallado(entrada, salida if len(timestamps) > 1 else None)
 
             horas_trabajadas = 0.0
+            resultado_turno = None
             if salida and entrada:
-                delta = salida - entrada
-                if delta.total_seconds() < 0:
-                    delta += timedelta(days=1)
-                horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+                # Usar la nueva función para calcular diferencia de días en turnos nocturnos
+                if len(timestamps) > 1:  # Solo si hay entrada y salida diferentes
+                    resultado_turno = calcular_diferencia_dias_turno_nocturno(entrada, salida)
+                    horas_trabajadas = resultado_turno['duracion_horas']
+                else:
+                    delta = salida - entrada
+                    if delta.total_seconds() < 0:
+                        delta += timedelta(days=1)
+                    horas_trabajadas = round(delta.total_seconds() / 3600, 2)
 
             horas_extra = 0.0
             if horas_trabajadas > 8:
@@ -540,6 +583,12 @@ def resumen_asistencias_diarias(request):
                         'horas_extra': horas_extra if salida else None,
                         'horas_extra_hhmm': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_extra) if salida and horas_extra > 0 else None,
                         'aprobado': aprobado,
+                        # Nueva información de turno nocturno
+                        'es_turno_nocturno': info_turno['es_nocturno'],
+                        'tipo_turno': info_turno['tipo'],
+                        'descripcion_turno': info_turno['descripcion'],
+                        'diferencia_dias': resultado_turno['diferencia_dias'] if resultado_turno else 0,
+                        'mensaje_turno': resultado_turno['mensaje'] if resultado_turno else None,
                 })
 
     # Aplicar filtros de búsqueda adicionales
