@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from API.models import RegistroAsistencia, UsuarioBiometrico
+from API.models import RegistroAsistencia, UsuarioBiometrico, EstacionServicio
 from datetime import datetime, timedelta, time
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -7,6 +7,7 @@ from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
 from django.utils import timezone
 from .utils import obtener_rango_semana
+from .utils_filters import aplicar_filtro_jefe_patio, obtener_info_estacion_jefe
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.urls import reverse
 
@@ -99,6 +100,9 @@ def filtrar_asistencias(request):
     usuario_id = request.GET.get('usuario')
 
     registros = RegistroAsistencia.objects.select_related('usuario').all().order_by('timestamp')
+    
+    # Filtro por jefe de patio - solo ver registros de su estación asignada
+    registros = aplicar_filtro_jefe_patio(registros, request.user)
 
     # Filtro por usuario (si se selecciona uno)
     if usuario_id:
@@ -201,19 +205,30 @@ def filtrar_asistencias(request):
                     i += 1
 
     usuarios = UsuarioBiometrico.objects.all()
+    
+    # Filtrar usuarios para jefe de patio - solo mostrar usuarios de su estación
+    usuarios = aplicar_filtro_jefe_patio(usuarios, request.user, 'estacion')
+
+    # Obtener información de estación para el contexto
+    info_estacion = obtener_info_estacion_jefe(request.user)
 
     context = {
         'registros': registros_combinados,
         'usuarios': usuarios,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
-        'usuario_id': usuario_id
+        'usuario_id': usuario_id,
+        **info_estacion
     }
+    
 
     return render(request, 'tabla_biometrico.html', context)
 
 def historial_asistencia(request):
     registros = RegistroAsistencia.objects.select_related('user', 'estacion_servicio').order_by('user_id', 'timestamp')
+    
+    # Filtro por jefe de patio - solo ver registros de su estación asignada
+    registros = aplicar_filtro_jefe_patio(registros, request.user)
 
     data_por_usuario_dia = {}
 
@@ -269,7 +284,13 @@ def historial_asistencia(request):
             'en_turno': salida is None,
         })
 
-    context = {'registros': resultados}
+    # Obtener información de la estación filtrada para jefe de patio
+    info_estacion = obtener_info_estacion_jefe(request.user)
+
+    context = {
+        'registros': resultados,
+        **info_estacion
+    }
     return render(request, 'tabla_biometrico.html', context)
     
 """FUNCION PARA DETECTAR SI ES ENTRADA O SALIDA"""
@@ -397,6 +418,9 @@ def resumen_asistencias_diarias(request):
     fecha_fin = request.GET.get('fecha_fin')
 
     registros_qs = RegistroAsistencia.objects.select_related('user', 'user__estacion').all()
+    
+    # Filtro por jefe de patio - solo ver registros de su estación asignada
+    registros_qs = aplicar_filtro_jefe_patio(registros_qs, request.user)
 
     if nombre:
         registros_qs = registros_qs.filter(user__nombre__icontains=nombre)
@@ -471,6 +495,9 @@ def resumen_asistencias_diarias(request):
                         'aprobado': aprobado,
                 })
 
+    # Obtener información de la estación filtrada para jefe de patio
+    info_estacion = obtener_info_estacion_jefe(request.user)
+
     context = {
         'registros': registros,
         'nombre': nombre,
@@ -478,6 +505,7 @@ def resumen_asistencias_diarias(request):
         'estacion': estacion,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
+        **info_estacion
     }
     return render(request, 'resumen_asistencias_diarias.html', context)
     

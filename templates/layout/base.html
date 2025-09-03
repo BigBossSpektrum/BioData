@@ -160,7 +160,7 @@
   <main class="container mt-4">
     {% if user.is_authenticated %}
       <div class="alert alert-info" role="alert">
-        Bienvenido, <strong>{{ user.username }}</strong>. Rol: <strong>{{ user.get_rol_display }}</strong>
+        Bienvenido, <strong>{{ user.username }}</strong>. Rol: <strong>{{ user.get_rol_display }}</strong>{% if user.estacion %}, Asignado a: <strong>{{ user.estacion.nombre }}</strong>{% endif %}
       </div>
     {% endif %}
 
