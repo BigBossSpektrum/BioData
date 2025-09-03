@@ -67,6 +67,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'accounts.middleware.SessionTimeoutMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -185,3 +186,8 @@ BIOMETRIC_DEVICE_IP = '192.168.0.24'
 BIOMETRIC_DEVICE_PORT = 4370
 
 AUTH_USER_MODEL = 'API.CustomUser'
+
+# Configuración de sesión para cierre automático cada 30 minutos
+SESSION_COOKIE_AGE = 1800  # 30 minutos en segundos
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_SAVE_EVERY_REQUEST = True  # Reinicia el contador en cada request

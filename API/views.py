@@ -36,11 +36,11 @@ def lista_usuarios(request):
     print(f"[DEBUG] Entrando a lista_usuarios. Usuario autenticado: {request.user}, rol: {getattr(request.user, 'rol', None)}")
     rol = request.user.rol
     if rol == 'admin' or rol == 'rrhh':
-        usuarios_biometricos = UsuarioBiometrico.objects.all()
+        usuarios_biometricos = UsuarioBiometrico.objects.select_related('estacion').all()
     elif rol == 'jefe_patio':
         # Solo usuarios biométricos asignados a la misma estación que el jefe de patio
         estaciones_jefe = EstacionServicio.objects.filter(jefe=request.user)
-        usuarios_biometricos = UsuarioBiometrico.objects.filter(estacion__in=estaciones_jefe)
+        usuarios_biometricos = UsuarioBiometrico.objects.select_related('estacion').filter(estacion__in=estaciones_jefe)
     else:
         usuarios_biometricos = UsuarioBiometrico.objects.none()
     estaciones = EstacionServicio.objects.all()
@@ -62,21 +62,25 @@ def crear_usuario(request):
         cedula = request.POST.get('cedula')
         estacion_id = request.POST.get('estacion_id')
         print(f"[DEBUG] Datos recibidos: nombre={nombre}, cedula={cedula}, estacion_id={estacion_id}")
-        if not nombre or not cedula or not estacion_id:
-            print("[ERROR] Faltan campos obligatorios.")
-            messages.error(request, "Todos los campos son obligatorios.")
+        
+        if not nombre:
+            print("[ERROR] Falta el nombre.")
+            messages.error(request, "El nombre es obligatorio.")
             return redirect('lista_usuarios')
-        try:
-            estacion = EstacionServicio.objects.get(id=estacion_id)
-            print(f"[DEBUG] Estación encontrada: {estacion}")
-        except EstacionServicio.DoesNotExist:
-            print("[ERROR] Estación no válida.")
-            messages.error(request, "Estación no válida.")
-            return redirect('lista_usuarios')
-        if UsuarioBiometrico.objects.filter(cedula=cedula).exists():
-            print("[ERROR] Usuario biométrico duplicado por Cedula.")
-            messages.error(request, "Ya existe un usuario biométrico con esta Cedula.")
-            return redirect('lista_usuarios')
+        
+        # Manejo de estación - puede ser vacío para "Sin asignar"
+        estacion = None
+        if estacion_id and estacion_id.strip():
+            try:
+                estacion = EstacionServicio.objects.get(id=estacion_id)
+                print(f"[DEBUG] Estación encontrada: {estacion}")
+            except EstacionServicio.DoesNotExist:
+                print("[ERROR] Estación no válida.")
+                messages.error(request, "Estación no válida.")
+                return redirect('lista_usuarios')
+        else:
+            print("[DEBUG] No se asignó estación (Sin asignar)")
+            
         usuario_bio = UsuarioBiometrico.objects.create(
             nombre=nombre,
             cedula=cedula,
@@ -263,28 +267,34 @@ def editar_usuario(request, user_id):
         return redirect('no_autorizado')
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
-        cedula = request.POST.get('cedula')
         estacion_id = request.POST.get('estacion_id')
         activo = request.POST.get('activo') == 'on' or request.POST.get('activo') == 'true'
-        print(f"[DEBUG] Datos recibidos para editar: nombre={nombre}, cedula={cedula}, estacion_id={estacion_id}, activo={activo}")
-        if not nombre or not cedula or not estacion_id:
-            print("[ERROR] Faltan campos obligatorios en edición.")
-            messages.error(request, "Todos los campos son obligatorios.")
+        print(f"[DEBUG] Datos recibidos para editar: nombre={nombre}, estacion_id={estacion_id}, activo={activo}")
+        
+        if not nombre:
+            print("[ERROR] Falta el nombre en edición.")
+            messages.error(request, "El nombre es obligatorio.")
             return redirect('lista_usuarios')
-        try:
-            estacion = EstacionServicio.objects.get(id=estacion_id)
-            print(f"[DEBUG] Estación encontrada para edición: {estacion}")
-        except EstacionServicio.DoesNotExist:
-            print("[ERROR] Estación no válida en edición.")
-            messages.error(request, "Estación no válida.")
-            return redirect('lista_usuarios')
+        
+        # Manejo de estación - puede ser vacío para "Sin asignar"
+        estacion = None
+        if estacion_id and estacion_id.strip():
+            try:
+                estacion = EstacionServicio.objects.get(id=estacion_id)
+                print(f"[DEBUG] Estación encontrada para edición: {estacion}")
+            except EstacionServicio.DoesNotExist:
+                print("[ERROR] Estación no válida en edición.")
+                messages.error(request, "Estación no válida.")
+                return redirect('lista_usuarios')
+        else:
+            print("[DEBUG] No se asignó estación (Sin asignar)")
+        
         usuario.nombre = nombre
-        usuario.cedula = cedula
         usuario.estacion = estacion
         usuario.activo = activo
         usuario.save()
         print(f"[DEBUG] Usuario biométrico editado y guardado: {usuario}")
-        crear_o_actualizar_usuario_biometrico(usuario.id, nombre)
+        # crear_o_actualizar_usuario_biometrico(usuario.id, nombre)  # Conexión al biométrico eliminada
         messages.success(request, "Usuario biométrico editado correctamente.")
         return redirect('lista_usuarios')
     return redirect('lista_usuarios')
