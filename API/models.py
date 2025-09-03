@@ -113,7 +113,10 @@ class JornadaLaboral(models.Model):
     def calcular_horas_trabajadas(self, entrada, salida):
         """
         Calcula las horas trabajadas dados los timestamps de entrada y salida.
-        Maneja correctamente los turnos nocturnos.
+        Solo cuenta las horas trabajadas dentro del rango de la jornada laboral.
+        Si el empleado llega 1 hora antes, esa hora extra no se contabiliza.
+        El tiempo empieza a correr a partir de la hora de inicio de la jornada.
+        RETORNA LAS HORAS TOTALES TRABAJADAS (normales + extras).
         """
         if not entrada or not salida:
             return 0
@@ -127,8 +130,42 @@ class JornadaLaboral(models.Model):
             # Si la salida es anterior o igual a la entrada, no hay tiempo trabajado válido
             return 0
         
-        # Calcular la diferencia de tiempo
-        tiempo_trabajado = salida_dt - entrada_dt
+        # Obtener las fechas y horas
+        fecha_entrada = entrada_dt.date()
+        hora_entrada = entrada_dt.time()
+        hora_salida = salida_dt.time()
+        
+        # Crear datetime para el inicio y fin de la jornada laboral
+        if self.es_nocturno:
+            # Para turnos nocturnos (ej: 22:00 - 06:00)
+            # El inicio es el mismo día de entrada
+            inicio_jornada = datetime.combine(fecha_entrada, self.hora_inicio)
+            # El fin es al día siguiente
+            fin_jornada = datetime.combine(fecha_entrada + timedelta(days=1), self.hora_fin)
+        else:
+            # Para turnos diurnos (ej: 06:00 - 14:00 o 14:00 - 22:00)
+            inicio_jornada = datetime.combine(fecha_entrada, self.hora_inicio)
+            fin_jornada = datetime.combine(fecha_entrada, self.hora_fin)
+        
+        # Hacer timezone aware si es necesario
+        if hasattr(entrada_dt, 'tzinfo') and entrada_dt.tzinfo:
+            from django.utils import timezone
+            inicio_jornada = timezone.make_aware(inicio_jornada)
+            fin_jornada = timezone.make_aware(fin_jornada)
+        
+        # Ajustar la entrada: no puede ser antes del inicio de la jornada
+        entrada_efectiva = max(entrada_dt, inicio_jornada)
+        
+        # Para el cálculo total, considerar hasta donde realmente salió
+        # (incluyendo horas extras)
+        salida_efectiva = salida_dt
+        
+        # Si la entrada efectiva es después de la salida, no hay tiempo trabajado
+        if entrada_efectiva >= salida_efectiva:
+            return 0
+        
+        # Calcular la diferencia de tiempo total (incluyendo horas extras)
+        tiempo_trabajado = salida_efectiva - entrada_efectiva
         
         # Convertir a horas decimales
         horas = tiempo_trabajado.total_seconds() / 3600
@@ -139,6 +176,78 @@ class JornadaLaboral(models.Model):
             return 0
         
         return round(horas, 2)
+
+    def calcular_horas_normales_y_extras(self, entrada, salida):
+        """
+        Calcula por separado las horas normales (dentro de jornada) y las horas extras.
+        Retorna un diccionario con:
+        - horas_normales: horas trabajadas dentro de la jornada laboral
+        - horas_extras: horas trabajadas fuera de la jornada laboral
+        - horas_totales: suma de normales + extras
+        """
+        if not entrada or not salida:
+            return {
+                'horas_normales': 0,
+                'horas_extras': 0,
+                'horas_totales': 0
+            }
+        
+        # Convertir a datetime locales para facilitar el cálculo
+        entrada_dt = entrada if hasattr(entrada, 'date') else entrada
+        salida_dt = salida if hasattr(salida, 'date') else salida
+        
+        # Asegurar que salida sea posterior a entrada
+        if salida_dt <= entrada_dt:
+            return {
+                'horas_normales': 0,
+                'horas_extras': 0,
+                'horas_totales': 0
+            }
+        
+        # Obtener las fechas
+        fecha_entrada = entrada_dt.date()
+        
+        # Crear datetime para el inicio y fin de la jornada laboral
+        if self.es_nocturno:
+            # Para turnos nocturnos (ej: 22:00 - 06:00)
+            inicio_jornada = datetime.combine(fecha_entrada, self.hora_inicio)
+            fin_jornada = datetime.combine(fecha_entrada + timedelta(days=1), self.hora_fin)
+        else:
+            # Para turnos diurnos (ej: 06:00 - 14:00 o 14:00 - 22:00)
+            inicio_jornada = datetime.combine(fecha_entrada, self.hora_inicio)
+            fin_jornada = datetime.combine(fecha_entrada, self.hora_fin)
+        
+        # Hacer timezone aware si es necesario
+        if hasattr(entrada_dt, 'tzinfo') and entrada_dt.tzinfo:
+            from django.utils import timezone
+            inicio_jornada = timezone.make_aware(inicio_jornada)
+            fin_jornada = timezone.make_aware(fin_jornada)
+        
+        # Ajustar la entrada: no puede ser antes del inicio de la jornada
+        entrada_efectiva = max(entrada_dt, inicio_jornada)
+        
+        # Calcular horas normales (dentro de la jornada)
+        salida_normal = min(salida_dt, fin_jornada)
+        if entrada_efectiva < salida_normal:
+            tiempo_normal = salida_normal - entrada_efectiva
+            horas_normales = round(tiempo_normal.total_seconds() / 3600, 2)
+        else:
+            horas_normales = 0
+        
+        # Calcular horas extras (después del fin de jornada)
+        horas_extras = 0
+        if salida_dt > fin_jornada:
+            tiempo_extra = salida_dt - fin_jornada
+            horas_extras = round(tiempo_extra.total_seconds() / 3600, 2)
+        
+        # Calcular total
+        horas_totales = round(horas_normales + horas_extras, 2)
+        
+        return {
+            'horas_normales': horas_normales,
+            'horas_extras': horas_extras,
+            'horas_totales': horas_totales
+        }
 
     def calcular_horas_extras(self, horas_trabajadas):
         """
@@ -381,9 +490,12 @@ class UsuarioBiometrico(models.Model):
                 'mensaje': 'Entrada y salida tienen el mismo horario - Registro incompleto'
             }
         
-        # Calcular horas trabajadas
-        horas_trabajadas = self.turno.calcular_horas_trabajadas(entrada.timestamp, salida.timestamp)
-        horas_extras = self.turno.calcular_horas_extras(horas_trabajadas)
+        # Calcular horas trabajadas usando el nuevo método detallado
+        detalle_horas = self.turno.calcular_horas_normales_y_extras(entrada.timestamp, salida.timestamp)
+        
+        horas_trabajadas = detalle_horas['horas_totales']
+        horas_extras = detalle_horas['horas_extras']
+        horas_normales = detalle_horas['horas_normales']
         
         # Determinar estado basado en horas trabajadas
         if horas_trabajadas == 0:
@@ -391,17 +503,18 @@ class UsuarioBiometrico(models.Model):
             mensaje = 'No se pudo calcular tiempo trabajado'
         elif horas_extras > 0:
             estado = 'con_extras'
-            mensaje = f'Jornada completa con {decimal_a_tiempo(horas_extras)} de horas extras'
+            mensaje = f'Jornada con {decimal_a_tiempo(horas_normales)} normales + {decimal_a_tiempo(horas_extras)} extras'
         else:
             estado = 'normal'
-            mensaje = 'Jornada completa normal'
+            mensaje = f'Jornada con {decimal_a_tiempo(horas_normales)} horas trabajadas'
         
         return {
             'horas_trabajadas': horas_trabajadas,
             'horas_extras': horas_extras,
+            'horas_normales': horas_normales,
             'horas_trabajadas_formato': decimal_a_tiempo(horas_trabajadas),
             'horas_extras_formato': decimal_a_tiempo(horas_extras),
-            'horas_normales_formato': decimal_a_tiempo(float(self.turno.horas_normales)),
+            'horas_normales_formato': decimal_a_tiempo(horas_normales),
             'registros': list(registros),
             'entrada': entrada,
             'salida': salida,
