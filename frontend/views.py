@@ -1,6 +1,6 @@
 from django.shortcuts import render
-from API.models import RegistroAsistencia, UsuarioBiometrico, EstacionServicio
-from datetime import datetime, timedelta, time
+from API.models import RegistroAsistencia, UsuarioBiometrico, EstacionServicio, JornadaLaboral
+from datetime import datetime, timedelta, time, date
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.utils.timezone import now, localtime, make_aware
@@ -496,51 +496,77 @@ def resumen_asistencias_diarias(request):
 
             timestamps = [localtime(r.timestamp) for r in registros_dia]
             
-            # Para turnos nocturnos, reorganizar entrada y salida según las horas
-            # Entrada = hora mayor (ej: 22:30), Salida = hora menor (ej: 06:30)
+            # Nueva lógica mejorada para detectar turnos nocturnos
+            entrada = None
+            salida = None
+            
             if len(timestamps) >= 2:
-                # Detectar si es turno nocturno basándose en el primer timestamp
-                es_posible_nocturno = timestamps[0].hour >= 22 or timestamps[0].hour <= 6
+                # Buscar patrones de turno nocturno
+                posibles_entradas_nocturnas = []
+                posibles_salidas_nocturnas = []
                 
-                if es_posible_nocturno:
-                    # Para turnos nocturnos, buscar la hora más tardía como entrada
-                    # y la hora más temprana como salida
-                    horas_timestamps = [(ts.hour, ts) for ts in timestamps]
+                for ts in timestamps:
+                    # Entradas nocturnas: entre 20:00 y 23:59
+                    if time(20, 0) <= ts.time() <= time(23, 59):
+                        posibles_entradas_nocturnas.append(ts)
+                    # Salidas nocturnas: entre 00:00 y 08:00
+                    elif time(0, 0) <= ts.time() <= time(8, 0):
+                        posibles_salidas_nocturnas.append(ts)
+                
+                # Verificar si hay un patrón de turno nocturno válido
+                if posibles_entradas_nocturnas and posibles_salidas_nocturnas:
+                    # Turno nocturno: entrada más tardía del día, salida más temprana del día siguiente
+                    entrada = max(posibles_entradas_nocturnas)
                     
-                    # Separar en posibles entradas (>=22 o <=6) y salidas
-                    posibles_entradas = [ts for hora, ts in horas_timestamps if hora >= 22]
-                    posibles_salidas = [ts for hora, ts in horas_timestamps if hora <= 6]
+                    # Buscar salida correspondiente (puede ser en el día siguiente)
+                    # Primero intentar en las salidas del mismo día
+                    salidas_mismo_dia = [ts for ts in posibles_salidas_nocturnas if ts.date() == entrada.date()]
+                    salidas_dia_siguiente = [ts for ts in posibles_salidas_nocturnas if ts.date() > entrada.date()]
                     
-                    if posibles_entradas and posibles_salidas:
-                        # Es definitivamente un turno nocturno
-                        entrada = max(posibles_entradas)  # Hora más tardía (mayor valor)
-                        salida = min(posibles_salidas)    # Hora más temprana (menor valor)
-                    elif posibles_entradas:
-                        # Solo hay registros nocturnos tardíos, buscar salida en día siguiente
-                        entrada = max(posibles_entradas)
-                        salida = timestamps[-1]  # Por defecto, el último del día
-                        
-                        # Buscar salida en el día siguiente si existe
+                    if salidas_dia_siguiente:
+                        # Preferir salida del día siguiente (más lógico para turno nocturno)
+                        salida = min(salidas_dia_siguiente)
+                    elif salidas_mismo_dia:
+                        # Si solo hay salidas del mismo día, tomar la más temprana
+                        salida = min(salidas_mismo_dia)
+                    else:
+                        # Buscar en el día siguiente si existe
                         if idx + 1 < len(fechas_ordenadas):
                             next_fecha = fechas_ordenadas[idx + 1]
                             next_registros_dia = dias[next_fecha]
                             for r in sorted(next_registros_dia, key=lambda r: r.timestamp):
                                 ts = localtime(r.timestamp)
-                                if ts.hour <= 6:
+                                if time(0, 0) <= ts.time() <= time(8, 0):
                                     salida = ts
                                     break
+                
+                # Si no se detectó patrón nocturno, usar lógica diurna normal
+                if not entrada or not salida:
+                    # Verificar si realmente hay registros de entrada nocturna sin salida válida
+                    if posibles_entradas_nocturnas and not salida:
+                        # Entrada nocturna sin salida válida - buscar en día siguiente
+                        entrada = max(posibles_entradas_nocturnas)
+                        if idx + 1 < len(fechas_ordenadas):
+                            next_fecha = fechas_ordenadas[idx + 1]
+                            next_registros_dia = dias[next_fecha]
+                            for r in sorted(next_registros_dia, key=lambda r: r.timestamp):
+                                ts = localtime(r.timestamp)
+                                if time(0, 0) <= ts.time() <= time(8, 0):
+                                    salida = ts
+                                    break
+                        
+                        # Si no encontramos salida en día siguiente, usar lógica normal
+                        if not salida:
+                            entrada = timestamps[0]
+                            salida = timestamps[-1]
                     else:
-                        # Usar orden cronológico normal
+                        # Turno diurno normal: primer registro = entrada, último = salida
                         entrada = timestamps[0]
                         salida = timestamps[-1]
-                else:
-                    # Turno diurno normal: usar orden cronológico
-                    entrada = timestamps[0]
-                    salida = timestamps[-1]
             else:
-                # Solo un registro
-                entrada = timestamps[0]
-                salida = timestamps[-1]
+                # Solo un registro - no se puede determinar entrada/salida
+                entrada = timestamps[0] if timestamps else None
+                salida = timestamps[0] if timestamps else None
 
             # Detectar tipo de turno usando la nueva funcionalidad
             info_turno = detectar_tipo_turno_detallado(entrada, salida if len(timestamps) > 1 else None)
@@ -704,3 +730,99 @@ def rechazar_horas_extra(request, usuario_id, dia):
         return HttpResponseRedirect(reverse('resumen_asistencias_diarias') + '?aprobado=0')
     print("[RECHAZO] Intento de acceso no autorizado o método incorrecto")
     return HttpResponseForbidden("No autorizado")
+
+
+@login_required
+def reporte_horas_trabajadas(request):
+    """
+    Vista para mostrar el reporte de horas trabajadas con formato HH:MM
+    """
+    # Obtener fecha del parámetro o usar hoy por defecto
+    fecha_str = request.GET.get('fecha')
+    if fecha_str:
+        try:
+            fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except ValueError:
+            fecha = date.today()
+    else:
+        fecha = date.today()
+    
+    # Filtros
+    jornada_filtro = request.GET.get('jornada')
+    solo_extras = request.GET.get('solo_extras') == '1'
+    usuario_filtro = request.GET.get('usuario')
+    
+    # Obtener usuarios con jornada asignada
+    usuarios = UsuarioBiometrico.objects.filter(
+        activo=True,
+        turno__isnull=False
+    ).select_related('turno', 'estacion')
+    
+    # Aplicar filtros de rol
+    rol = getattr(request.user, 'rol', None)
+    if rol == 'jefe_patio':
+        usuarios = usuarios.filter(estacion__jefe=request.user)
+    
+    # Aplicar filtros de la URL
+    if jornada_filtro:
+        usuarios = usuarios.filter(turno__tipo_jornada=jornada_filtro)
+    
+    if usuario_filtro:
+        usuarios = usuarios.filter(nombre__icontains=usuario_filtro)
+    
+    # Calcular horas para cada usuario
+    reporte_data = []
+    total_horas_trabajadas = 0
+    total_horas_extras = 0
+    usuarios_con_extras = 0
+    
+    for usuario in usuarios:
+        calculo = usuario.calcular_horas_dia(fecha)
+        
+        # Filtrar solo usuarios con horas extras si se solicita
+        if solo_extras and calculo['horas_extras'] == 0:
+            continue
+        
+        # Incluir usuarios con registros incompletos o con horas trabajadas
+        estado = calculo.get('estado', 'normal')
+        incluir_usuario = (
+            calculo['horas_trabajadas'] > 0 or 
+            estado in ['falta_salida', 'falta_entrada', 'registros_iguales', 'sin_registros']
+        )
+        
+        if incluir_usuario:
+            reporte_data.append({
+                'usuario': usuario,
+                'calculo': calculo
+            })
+            
+            # Solo sumar al total si hay horas trabajadas válidas
+            if calculo['horas_trabajadas'] > 0:
+                total_horas_trabajadas += calculo['horas_trabajadas']
+                total_horas_extras += calculo['horas_extras']
+                if calculo['horas_extras'] > 0:
+                    usuarios_con_extras += 1
+    
+    # Convertir totales a formato HH:MM
+    from API.models import decimal_a_tiempo
+    total_trabajadas_formato = decimal_a_tiempo(total_horas_trabajadas)
+    total_extras_formato = decimal_a_tiempo(total_horas_extras)
+    
+    # Obtener jornadas para el filtro
+    jornadas = JornadaLaboral.objects.all()
+    
+    context = {
+        'reporte_data': reporte_data,
+        'fecha': fecha,
+        'fecha_str': fecha.strftime('%Y-%m-%d'),
+        'jornadas': jornadas,
+        'jornada_filtro': jornada_filtro,
+        'solo_extras': solo_extras,
+        'usuario_filtro': usuario_filtro,
+        'total_trabajadas_formato': total_trabajadas_formato,
+        'total_extras_formato': total_extras_formato,
+        'usuarios_con_extras': usuarios_con_extras,
+        'total_usuarios': len(reporte_data)
+    }
+    
+    return render(request, 'frontend/reporte_horas.html', context)
