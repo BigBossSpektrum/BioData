@@ -131,13 +131,23 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% if r.salida %}
+                    {% if r.salida and r.entrada|date:"H:i" != r.salida|date:"H:i" %}
                         {{ r.salida|date:"H:i" }}
+                    {% elif r.salida and r.entrada|date:"H:i" == r.salida|date:"H:i" %}
+                        <span class="text-danger">Sin salida registrada</span>
                     {% else %}
                         <span class="text-muted">-</span>
                     {% endif %}
                 </td>
-                <td>{{ r.horas_trabajadas_hhmm|default:"-" }}</td>
+                <td>
+                    {% if r.horas_trabajadas_hhmm and r.entrada|date:"H:i" != r.salida|date:"H:i" %}
+                        {{ r.horas_trabajadas_hhmm }}
+                    {% elif r.salida and r.entrada|date:"H:i" == r.salida|date:"H:i" %}
+                        <span class="text-danger">Sin salida registrada</span>
+                    {% else %}
+                        <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
                 <td>
                     {% if r.horas_extra > 0 %}
                             <span class="badge bg-warning text-dark">{{ r.horas_extra_hhmm }}</span>
