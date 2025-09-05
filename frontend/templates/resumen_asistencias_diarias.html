@@ -143,8 +143,7 @@
                 <td>
                     {% if r.horas_trabajadas_hhmm and r.entrada|date:"H:i" != r.salida|date:"H:i" %}
                         {{ r.horas_trabajadas_hhmm }}
-                    {% elif r.salida and r.entrada|date:"H:i" == r.salida|date:"H:i" %}
-                        <span class="text-danger">Sin salida registrada</span>
+
                     {% else %}
                         <span class="text-muted">-</span>
                     {% endif %}
