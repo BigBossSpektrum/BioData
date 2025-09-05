@@ -1,0 +1,131 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}
+    Diagnóstico de Timezone - {{ site_title|default:_('Django site admin') }}
+{% endblock %}
+
+{% block branding %}
+    <h1 id="site-name">
+        <a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a>
+    </h1>
+{% endblock %}
+
+{% block nav-breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">Inicio</a>
+        › Diagnóstico de Timezone
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="module">
+    <h2>Diagnóstico del Sistema de Timezone</h2>
+    
+    <div class="form-row">
+        <h3>Configuración de Django</h3>
+        <table>
+            <tr>
+                <th>Timezone Django:</th>
+                <td>{{ diagnostico.timezone_django }}</td>
+            </tr>
+            <tr>
+                <th>USE_TZ activado:</th>
+                <td>{% if diagnostico.use_tz %}✅ Sí{% else %}❌ No{% endif %}</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="form-row">
+        <h3>Configuración de Base de Datos</h3>
+        <table>
+            <tr>
+                <th>Time Zone DB:</th>
+                <td>{{ diagnostico.configuracion_db.time_zone }}</td>
+            </tr>
+            <tr>
+                <th>SQL Mode:</th>
+                <td>{{ diagnostico.configuracion_db.sql_mode }}</td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="form-row">
+        <h3>Estado de los Datos</h3>
+        <table>
+            <tr>
+                <th>Total de registros:</th>
+                <td>{{ diagnostico.total_registros }}</td>
+            </tr>
+            <tr>
+                <th>Registros problemáticos:</th>
+                <td>
+                    {% if diagnostico.registros_problematicos %}
+                        <span style="color: red;">{{ diagnostico.registros_problematicos|length }} encontrados</span>
+                    {% else %}
+                        <span style="color: green;">✅ Ninguno detectado</span>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    {% if diagnostico.registros_problematicos %}
+    <div class="form-row">
+        <h3>Detalles de Registros Problemáticos</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID Registro</th>
+                    <th>Usuario ID</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for problema in diagnostico.registros_problematicos %}
+                <tr>
+                    <td>{{ problema.id }}</td>
+                    <td>{{ problema.user_id|default:"Sin usuario" }}</td>
+                    <td style="color: red;">{{ problema.error }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    
+    {% if diagnostico.errores %}
+    <div class="form-row">
+        <h3>Errores del Sistema</h3>
+        <ul>
+            {% for error in diagnostico.errores %}
+            <li style="color: red;">{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    <div class="form-row">
+        <h3>Comandos Recomendados</h3>
+        <p>Para corregir problemas de timezone, ejecute en la terminal:</p>
+        <pre style="background: #f8f8f8; padding: 10px; border: 1px solid #ddd;">
+# Verificar problemas
+python manage.py fix_invalid_timestamps
+
+# Corregir problemas automáticamente
+python manage.py fix_invalid_timestamps --fix
+
+# Eliminar registros irrecuperables (usar con cuidado)
+python manage.py fix_invalid_timestamps --fix --delete-invalid
+        </pre>
+    </div>
+    
+    <div class="form-row">
+        <p>
+            <a href="{% url 'admin:API_registroasistencia_changelist' %}" class="button">
+                Volver a Registros de Asistencia
+            </a>
+        </p>
+    </div>
+</div>
+{% endblock %}

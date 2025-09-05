@@ -694,7 +694,7 @@ def aprobar_horas_extra(request, usuario_id, dia):
         inicio_dia = make_aware(datetime.combine(fecha, time.min))
         fin_dia = make_aware(datetime.combine(fecha, time.max))
         qs = RegistroAsistencia.objects.filter(
-            usuario_id=int(usuario_id),
+            user_id=int(usuario_id),
             timestamp__gte=inicio_dia,
             timestamp__lte=fin_dia
         )
@@ -721,7 +721,7 @@ def rechazar_horas_extra(request, usuario_id, dia):
         inicio_dia = make_aware(datetime.combine(fecha, time.min))
         fin_dia = make_aware(datetime.combine(fecha, time.max))
         qs = RegistroAsistencia.objects.filter(
-            usuario_id=int(usuario_id),
+            user_id=int(usuario_id),
             timestamp__gte=inicio_dia,
             timestamp__lte=fin_dia
         )

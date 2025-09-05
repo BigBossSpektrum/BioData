@@ -584,28 +584,73 @@ class RegistroAsistencia(models.Model):
         """
         Verifica si el registro está dentro del horario normal del empleado
         """
-        if not self.user.turno:
+        try:
+            if not self.user or not self.user.turno:
+                return True
+            
+            # Verificar que el timestamp sea válido
+            if not self.timestamp:
+                return False
+                
+            return self.user.turno.esta_en_horario(self.timestamp)
+        except Exception:
+            # Si hay cualquier error (timezone, etc.), asumir que está en horario normal
             return True
-        
-        return self.user.turno.esta_en_horario(self.timestamp)
 
     def calcular_tiempo_hasta_siguiente(self):
         """
         Calcula el tiempo hasta el siguiente registro del mismo usuario
         """
-        siguiente = RegistroAsistencia.objects.filter(
-            user=self.user,
-            timestamp__gt=self.timestamp
-        ).order_by('timestamp').first()
-        
-        if siguiente:
-            return siguiente.timestamp - self.timestamp
-        return None
+        try:
+            if not self.timestamp or not self.user:
+                return None
+                
+            siguiente = RegistroAsistencia.objects.filter(
+                user=self.user,
+                timestamp__gt=self.timestamp
+            ).order_by('timestamp').first()
+            
+            if siguiente and siguiente.timestamp:
+                return siguiente.timestamp - self.timestamp
+            return None
+        except Exception:
+            # Si hay errores de timezone o consulta, retornar None
+            return None
+
+    def get_timestamp_safe(self):
+        """
+        Obtiene el timestamp de forma segura, manejando errores de timezone
+        """
+        try:
+            if self.timestamp:
+                from django.utils import timezone
+                # Intentar convertir a timezone local
+                return timezone.localtime(self.timestamp)
+            return None
+        except Exception:
+            try:
+                # Si falla, intentar retornar el timestamp raw
+                return self.timestamp
+            except Exception:
+                # Si todo falla, retornar None
+                return None
+
+    def get_timestamp_string(self):
+        """
+        Obtiene el timestamp como string de forma segura
+        """
+        try:
+            ts = self.get_timestamp_safe()
+            if ts:
+                return ts.strftime('%Y-%m-%d %H:%M:%S')
+            return "Sin fecha"
+        except Exception:
+            return "Error en fecha"
 
     class Meta:
         verbose_name = "Registro de Asistencia"
         verbose_name_plural = "Registros de Asistencia"
-        ordering = ['-timestamp']
+        ordering = ['-id']  # Ordenar por ID en lugar de timestamp para evitar errores
 
 
 
