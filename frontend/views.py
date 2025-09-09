@@ -1202,7 +1202,23 @@ def generar_resumen_semanal(request):
         except Exception as e:
             messages.error(request, f"Error al generar resúmenes: {str(e)}")
     
-    return redirect('resumenes_semanales')
+    # Construir URL de redirect con filtros aplicados
+    redirect_url = reverse('resumenes_semanales')
+    params = []
+    
+    if request.method == 'POST':
+        # Mantener los filtros del formulario de generación
+        if fecha_inicio_str:
+            params.append(f'fecha_inicio={fecha_inicio_str}')
+        if fecha_fin_str:
+            params.append(f'fecha_fin={fecha_fin_str}')
+        if empleado_id:
+            params.append(f'empleado={empleado_id}')
+    
+    if params:
+        redirect_url += '?' + '&'.join(params)
+    
+    return HttpResponseRedirect(redirect_url)
 
 
 @login_required
