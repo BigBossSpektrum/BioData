@@ -47,9 +47,9 @@ class CustomUserAdmin(UserAdmin):
 # ---------- Admin UsuarioBiometrico ----------
 @admin.register(UsuarioBiometrico)
 class UsuarioBiometricoAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'cedula', 'biometrico_id', 'privilegio', 'activo', 'turno', 'jefe', 'estacion', 'ver_registros')
+    list_display = ('nombre', 'biometrico_id', 'privilegio', 'activo', 'turno', 'jefe', 'estacion', 'ver_registros')
     list_filter = ('activo', 'privilegio', 'turno', 'estacion', 'jefe')
-    search_fields = ('nombre', 'cedula', 'biometrico_id', 'jefe__username', 'estacion__nombre')
+    search_fields = ('nombre', 'biometrico_id', 'jefe__username', 'estacion__nombre')
     autocomplete_fields = ['jefe', 'turno', 'estacion']
     list_editable = ('activo', 'privilegio')
     list_per_page = 25
@@ -57,7 +57,7 @@ class UsuarioBiometricoAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Información Personal', {
-            'fields': ('nombre', 'cedula', 'biometrico_id')
+            'fields': ('nombre', 'biometrico_id')
         }),
         ('Configuración de Acceso', {
             'fields': ('privilegio', 'activo')
@@ -133,7 +133,7 @@ class JornadaLaboralAdmin(admin.ModelAdmin):
 class RegistroAsistenciaAdmin(admin.ModelAdmin):
     list_display = ('user_safe', 'nombre', 'timestamp_safe', 'tipo_registro', 'estacion_servicio_safe', 'aprobado_safe')
     list_filter = ('status', 'aprobado', 'estacion_servicio')
-    search_fields = ('user__nombre', 'user__cedula', 'nombre', 'estacion_servicio__nombre')
+    search_fields = ('user__nombre', 'nombre', 'estacion_servicio__nombre')
     list_per_page = 50
     ordering = ('-id',)  # Usar ID en lugar de timestamp para evitar errores
     
@@ -319,7 +319,7 @@ class RegistroAsistenciaAdmin(admin.ModelAdmin):
         
         with connection.cursor() as cursor:
             cursor.execute(f"""
-                SELECT ra.id, ub.nombre, ub.cedula, ra.timestamp, ra.status, es.nombre, ra.aprobado
+                SELECT ra.id, ub.nombre, ra.timestamp, ra.status, es.nombre, ra.aprobado
                 FROM API_registroasistencia ra
                 LEFT JOIN API_usuariobiometrico ub ON ra.user_id = ub.id
                 LEFT JOIN API_estacionservicio es ON ra.estacion_servicio_id = es.id
@@ -350,7 +350,7 @@ class RegistroAsistenciaAdmin(admin.ModelAdmin):
 class JornadaEspecialAdmin(admin.ModelAdmin):
     list_display = ('empleado', 'fecha_inicio', 'fecha_fin', 'horas_programadas', 'activa', 'aprobada_por', 'fecha_aprobacion')
     list_filter = ('activa', 'fecha_inicio', 'fecha_aprobacion', 'aprobada_por')
-    search_fields = ('empleado__nombre', 'empleado__cedula', 'aprobada_por__username')
+    search_fields = ('empleado__nombre', 'aprobada_por__username')
     ordering = ('-fecha_inicio',)
     list_per_page = 25
     
@@ -467,7 +467,7 @@ class ResumenSemanalAdmin(admin.ModelAdmin):
     list_filter = (
         'fecha_inicio_semana', 'empleado__estacion', 'empleado__turno'
     )
-    search_fields = ('empleado__nombre', 'empleado__cedula')
+    search_fields = ('empleado__nombre',)
     readonly_fields = (
         'total_horas_trabajadas', 'total_horas_extras', 
         'costo_horas_extra_diurno', 'costo_horas_extra_nocturno',

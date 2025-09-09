@@ -316,12 +316,6 @@ class UsuarioBiometrico(models.Model):
         blank=True,
         null=True
     )
-    cedula = models.CharField(
-        max_length=20,
-        unique=True,
-        blank=True,
-        null=True
-    )
     privilegio = models.IntegerField(
         default=0
     )
@@ -773,6 +767,14 @@ class UsuarioBiometrico(models.Model):
         # Calcular fecha fin (lunes siguiente)
         fecha_fin_semana = fecha_inicio_semana + timedelta(days=7)
         
+        return self.calcular_resumen_rango_fechas(fecha_inicio_semana, fecha_fin_semana)
+
+    def calcular_resumen_rango_fechas(self, fecha_inicio, fecha_fin):
+        """
+        Calcula el resumen para un empleado en un rango de fechas específico
+        """
+        from datetime import timedelta
+        
         # Inicializar contadores
         horas_normales = 0
         horas_extra_diurno = 0
@@ -780,18 +782,18 @@ class UsuarioBiometrico(models.Model):
         horas_extra_feriado_diurno = 0
         horas_extra_feriado_nocturno = 0
         
-        # Obtener feriados de la semana
+        # Obtener feriados del rango
         feriados = set(
             FeriadoNacional.objects.filter(
-                fecha__gte=fecha_inicio_semana,
-                fecha__lt=fecha_fin_semana,
+                fecha__gte=fecha_inicio,
+                fecha__lte=fecha_fin,
                 activo=True
             ).values_list('fecha', flat=True)
         )
         
         # Calcular día por día
-        current_date = fecha_inicio_semana
-        while current_date < fecha_fin_semana:
+        current_date = fecha_inicio
+        while current_date <= fecha_fin:
             calculo_dia = self.calcular_horas_dia(current_date)
             
             if calculo_dia['horas_trabajadas'] > 0:
@@ -813,14 +815,55 @@ class UsuarioBiometrico(models.Model):
             
             current_date += timedelta(days=1)
         
+        # Calcular totales
+        total_horas_extras = (
+            horas_extra_diurno + 
+            horas_extra_nocturno + 
+            horas_extra_feriado_diurno + 
+            horas_extra_feriado_nocturno
+        )
+        total_horas_trabajadas = horas_normales + total_horas_extras
+        
+        # Calcular costos (obtener tarifas actuales)
+        try:
+            tarifas = {
+                tarifa.tipo: tarifa.tarifa_por_hora
+                for tarifa in TarifaHoraExtra.objects.filter(activa=True)
+            }
+            
+            costo_horas_extra_diurno = horas_extra_diurno * tarifas.get('diurno', 0)
+            costo_horas_extra_nocturno = horas_extra_nocturno * tarifas.get('nocturno', 0)
+            costo_horas_extra_feriado_diurno = horas_extra_feriado_diurno * tarifas.get('feriado_diurno', 0)
+            costo_horas_extra_feriado_nocturno = horas_extra_feriado_nocturno * tarifas.get('feriado_nocturno', 0)
+            
+            costo_total_horas_extras = (
+                costo_horas_extra_diurno + 
+                costo_horas_extra_nocturno + 
+                costo_horas_extra_feriado_diurno + 
+                costo_horas_extra_feriado_nocturno
+            )
+        except:
+            costo_horas_extra_diurno = 0
+            costo_horas_extra_nocturno = 0
+            costo_horas_extra_feriado_diurno = 0
+            costo_horas_extra_feriado_nocturno = 0
+            costo_total_horas_extras = 0
+        
         return {
-            'fecha_inicio_semana': fecha_inicio_semana,
-            'fecha_fin_semana': fecha_fin_semana,
+            'fecha_inicio_semana': fecha_inicio,  # Reutilizar campos existentes
+            'fecha_fin_semana': fecha_fin,
             'horas_normales': horas_normales,
             'horas_extra_diurno': horas_extra_diurno,
             'horas_extra_nocturno': horas_extra_nocturno,
             'horas_extra_feriado_diurno': horas_extra_feriado_diurno,
             'horas_extra_feriado_nocturno': horas_extra_feriado_nocturno,
+            'total_horas_extras': total_horas_extras,
+            'total_horas_trabajadas': total_horas_trabajadas,
+            'costo_horas_extra_diurno': costo_horas_extra_diurno,
+            'costo_horas_extra_nocturno': costo_horas_extra_nocturno,
+            'costo_horas_extra_feriado_diurno': costo_horas_extra_feriado_diurno,
+            'costo_horas_extra_feriado_nocturno': costo_horas_extra_feriado_nocturno,
+            'costo_total_horas_extras': costo_total_horas_extras,
         }
 
     def obtener_registros_periodo(self, fecha_inicio, fecha_fin):

@@ -293,7 +293,7 @@ def historial_asistencia(request):
         resultados.append({
             'user_id': info['user'].id,
             'nombre': info['user'].nombre,
-            'cedula': info['user'].cedula,
+            'cedula': 'N/A',  # Campo cedula removido del modelo
             'estacion': info['estacion'],
             'entrada': entrada,
             'salida': salida,
@@ -310,8 +310,9 @@ def historial_asistencia(request):
         resultados = [r for r in resultados if (
             search_query.lower() in r['nombre'].lower() or
             search_query.lower() in str(r['user_id']).lower() or
-            search_query.lower() in r['estacion'].lower() or
-            (r['cedula'] and search_query.lower() in r['cedula'].lower())
+            search_query.lower() in r['estacion'].lower()
+            # Comentado: campo cedula removido del modelo
+            # (r['cedula'] and search_query.lower() in r['cedula'].lower())
         )]
 
     if fecha_desde:
@@ -487,8 +488,8 @@ def resumen_asistencias_diarias(request):
 
     if nombre:
         registros_qs = registros_qs.filter(user__nombre__icontains=nombre)
-    if cedula:
-        registros_qs = registros_qs.filter(user__cedula__icontains=cedula)
+    # if cedula:
+    #     registros_qs = registros_qs.filter(user__cedula__icontains=cedula)  # Campo cedula removido
     if estacion:
         registros_qs = registros_qs.filter(estacion_servicio__nombre__icontains=estacion)
     if fecha_inicio:
@@ -643,7 +644,7 @@ def resumen_asistencias_diarias(request):
                         'dia': entrada.date().strftime('%Y-%m-%d'),
                         'user_id': usuario.id,
                         'nombre': usuario.nombre,
-                        'cedula': usuario.cedula,
+                        'cedula': 'N/A',  # Campo cedula removido del modelo
                         'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia and registros_dia[0].estacion_servicio else '',
                         'entrada': entrada,
                         'salida': salida,
@@ -672,8 +673,9 @@ def resumen_asistencias_diarias(request):
         registros = [r for r in registros if (
             search_query.lower() in r['nombre'].lower() or
             search_query.lower() in str(r['user_id']).lower() or
-            search_query.lower() in r['estacion'].lower() or
-            (r['cedula'] and search_query.lower() in r['cedula'].lower())
+            search_query.lower() in r['estacion'].lower()
+            # Comentado: campo cedula removido del modelo
+            # (r['cedula'] and search_query.lower() in r['cedula'].lower())
         )]
 
     if fecha_desde:
@@ -712,7 +714,7 @@ def resumen_asistencias_diarias(request):
         'paginator': paginator,
         'page_obj': page_obj,
         'nombre': nombre,
-        'cedula': cedula,
+        'cedula': 'N/A',  # Campo cedula removido del modelo
         'estacion': estacion,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
@@ -1031,7 +1033,7 @@ def lista_empleados_estacion(request):
     empleados = UsuarioBiometrico.objects.filter(
         estacion__jefe=request.user,
         activo=True
-    ).values('id', 'nombre', 'cedula')
+    ).values('id', 'nombre')  # Removido 'cedula'
     
     return JsonResponse({'empleados': list(empleados)})
 
@@ -1048,7 +1050,7 @@ def obtener_inicio_semana(fecha):
 @login_required
 def resumenes_semanales(request):
     """
-    Vista para mostrar los resúmenes semanales de horas trabajadas
+    Vista para mostrar los resúmenes por rango de fechas de horas trabajadas
     Solo accesible para admin y rrhh
     """
     if not hasattr(request.user, 'rol') or request.user.rol not in ['admin', 'rrhh']:
@@ -1072,14 +1074,22 @@ def resumenes_semanales(request):
     if fecha_inicio:
         try:
             fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
-            resumenes = resumenes.filter(fecha_inicio_semana__gte=fecha_inicio_dt)
+            # Filtrar por fecha de inicio del resumen
+            resumenes = resumenes.filter(
+                Q(fecha_inicio_semana__gte=fecha_inicio_dt) | 
+                Q(fecha_fin_semana__gte=fecha_inicio_dt)
+            )
         except ValueError:
             pass
     
     if fecha_fin:
         try:
             fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
-            resumenes = resumenes.filter(fecha_inicio_semana__lte=fecha_fin_dt)
+            # Filtrar por fecha de fin del resumen
+            resumenes = resumenes.filter(
+                Q(fecha_inicio_semana__lte=fecha_fin_dt) | 
+                Q(fecha_fin_semana__lte=fecha_fin_dt)
+            )
         except ValueError:
             pass
     
@@ -1128,7 +1138,7 @@ def resumenes_semanales(request):
 @login_required
 def generar_resumen_semanal(request):
     """
-    Vista para generar resúmenes semanales masivamente
+    Vista para generar resúmenes por rango de fechas
     Solo accesible para admin y rrhh
     """
     if not hasattr(request.user, 'rol') or request.user.rol not in ['admin', 'rrhh']:
@@ -1138,11 +1148,17 @@ def generar_resumen_semanal(request):
     
     if request.method == 'POST':
         fecha_inicio_str = request.POST.get('fecha_inicio')
+        fecha_fin_str = request.POST.get('fecha_fin')
         empleado_id = request.POST.get('empleado_id')
         
         try:
             fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
-            fecha_inicio_semana = obtener_inicio_semana(fecha_inicio)
+            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+            
+            # Validar que la fecha de inicio no sea mayor que la de fin
+            if fecha_inicio > fecha_fin:
+                messages.error(request, "La fecha de inicio no puede ser mayor que la fecha de fin")
+                return redirect('resumenes_semanales')
             
             if empleado_id:
                 # Generar para un empleado específico
@@ -1156,13 +1172,14 @@ def generar_resumen_semanal(request):
             resumen_actualizados = 0
             
             for empleado in empleados:
-                # Calcular resumen semanal
-                datos_resumen = empleado.calcular_resumen_semanal(fecha_inicio_semana)
+                # Calcular resumen por rango de fechas
+                datos_resumen = empleado.calcular_resumen_rango_fechas(fecha_inicio, fecha_fin)
                 
                 # Crear o actualizar el resumen
                 resumen, created = ResumenSemanal.objects.update_or_create(
                     empleado=empleado,
-                    fecha_inicio_semana=fecha_inicio_semana,
+                    fecha_inicio_semana=fecha_inicio,
+                    fecha_fin_semana=fecha_fin,
                     defaults=datos_resumen
                 )
                 
@@ -1186,7 +1203,7 @@ def generar_resumen_semanal(request):
 @login_required
 def descargar_pdf_resumen(request, resumen_id):
     """
-    Vista para descargar un resumen semanal en PDF
+    Vista para descargar un resumen por rango de fechas en PDF
     Solo accesible para admin y rrhh
     """
     if not hasattr(request.user, 'rol') or request.user.rol not in ['admin', 'rrhh']:
@@ -1227,17 +1244,16 @@ def descargar_pdf_resumen(request, resumen_id):
         story = []
         
         # Título
-        title = Paragraph(f"Resumen Semanal - {resumen.empleado.nombre}", title_style)
+        title = Paragraph(f"Resumen de Horas - {resumen.empleado.nombre}", title_style)
         story.append(title)
         
         # Información básica
         info_data = [
             ['Empleado:', resumen.empleado.nombre],
-            ['Cédula:', resumen.empleado.cedula or 'N/A'],
+            ['Cédula:', 'N/A'],  # Campo cedula removido del modelo
             ['Estación:', resumen.empleado.estacion.nombre if resumen.empleado.estacion else 'N/A'],
             ['Turno:', resumen.empleado.turno.nombre if resumen.empleado.turno else 'N/A'],
-            ['Semana:', f"{resumen.fecha_inicio_semana} al {resumen.fecha_fin_semana}"],
-            ['Número de Semana:', str(resumen.calcular_numero_semana())],
+            ['Rango de Fechas:', f"{resumen.fecha_inicio_semana} al {resumen.fecha_fin_semana}"],
         ]
         
         info_table = Table(info_data, colWidths=[2*inch, 3*inch])
@@ -1289,7 +1305,7 @@ def descargar_pdf_resumen(request, resumen_id):
         # Preparar la respuesta
         buffer.seek(0)
         response = HttpResponse(buffer, content_type='application/pdf')
-        filename = f"resumen_semanal_{resumen.empleado.nombre}_{resumen.fecha_inicio_semana}.pdf"
+        filename = f"resumen_horas_{resumen.empleado.nombre}_{resumen.fecha_inicio_semana}_{resumen.fecha_fin_semana}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
         return response
