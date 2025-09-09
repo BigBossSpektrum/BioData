@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from API.models import RegistroAsistencia, UsuarioBiometrico, EstacionServicio, JornadaLaboral
+from API.Biometricos_connections import detectar_turno
 from datetime import datetime, timedelta, time, date
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -100,14 +101,14 @@ def filtrar_asistencias(request):
     fecha_fin = request.GET.get('fecha_fin')
     usuario_id = request.GET.get('usuario')
 
-    registros = RegistroAsistencia.objects.select_related('usuario').all().order_by('timestamp')
+    registros = RegistroAsistencia.objects.select_related('user').all().order_by('timestamp')
     
     # Filtro por jefe de patio - solo ver registros de su estación asignada
     registros = aplicar_filtro_jefe_patio(registros, request.user)
 
     # Filtro por usuario (si se selecciona uno)
     if usuario_id:
-        registros = registros.filter(usuario__user_id=usuario_id)
+        registros = registros.filter(user__id=usuario_id)
 
     # Filtro por fechas
     if fecha_inicio:
@@ -128,7 +129,7 @@ def filtrar_asistencias(request):
     asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
     for r in registros:
         fecha = r.timestamp.date()
-        asistencia_por_usuario_fecha[r.usuario][fecha].append(r)
+        asistencia_por_usuario_fecha[r.user][fecha].append(r)
 
     registros_combinados = []
     for dias in asistencia_por_usuario_fecha.values():
@@ -153,16 +154,23 @@ def filtrar_asistencias(request):
                     salida_time = salida.timestamp
                     if salida_time < entrada_time:
                         salida_time += timedelta(days=1)
-                    duracion = salida_time - entrada_time
-                    horas = round(duracion.total_seconds() / 3600, 2)
+                    
+                    # Usar la jornada laboral del usuario para calcular horas trabajadas
+                    if entrada.user.turno:
+                        horas = entrada.user.turno.calcular_horas_trabajadas(entrada_time, salida_time)
+                    else:
+                        # Fallback al cálculo tradicional si no hay turno asignado
+                        duracion = salida_time - entrada_time
+                        horas = round(duracion.total_seconds() / 3600, 2)
+                    
                     turno_detectado = detectar_turno(entrada_time)
 
                     # Cálculo de horas extra por turno (igual que antes)
                     horas_extra = 0.0
                     # Nuevo cálculo basado en el turno asignado al usuario
-                    if entrada.usuario.turno:
-                        turno_inicio = entrada.usuario.turno.hora_inicio
-                        turno_fin = entrada.usuario.turno.hora_fin
+                    if entrada.user.turno:
+                        turno_inicio = entrada.user.turno.hora_inicio
+                        turno_fin = entrada.user.turno.hora_fin
                         # Duración del turno en horas
                         if turno_inicio < turno_fin:
                             duracion_turno = (datetime.combine(entrada_time.date(), turno_fin) - datetime.combine(entrada_time.date(), turno_inicio)).total_seconds() / 3600
@@ -192,8 +200,8 @@ def filtrar_asistencias(request):
                         horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
 
                     registros_combinados.append({
-                        'usuario_id': entrada.usuario.user_id,
-                        'nombre': entrada.usuario.nombre,
+                        'usuario_id': entrada.user.id,
+                        'nombre': entrada.user.nombre,
                         'entrada': entrada_time,
                         'salida': salida_time,
                         'horas_trabajadas': horas,
@@ -271,8 +279,14 @@ def historial_asistencia(request):
 
         horas_trabajadas = None
         if salida:
-            delta = salida - entrada
-            horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+            # Usar la jornada laboral del usuario para calcular horas trabajadas
+            user = info['user']
+            if hasattr(user, 'turno') and user.turno:
+                horas_trabajadas = user.turno.calcular_horas_trabajadas(entrada, salida)
+            else:
+                # Fallback al cálculo tradicional si no hay turno asignado
+                delta = salida - entrada
+                horas_trabajadas = round(delta.total_seconds() / 3600, 2)
 
         resultados.append({
             'user_id': info['user'].id,
@@ -404,7 +418,7 @@ def procesar_registros_asistencia(registros):
                 i += 1
                 continue  # si no hay salida, no procesamos jornada
 
-            turno = detectar_turno_por_hora(entrada_time.time())
+            turno = detectar_turno(entrada_time.time())
             duracion = salida_time - entrada_time
 
             resumen_jornadas.append({
@@ -422,14 +436,14 @@ def procesar_registros_asistencia(registros):
 
 
 def calcular_horas_trabajadas():
-    registros = RegistroAsistencia.objects.select_related('usuario__turno').order_by('usuario__id', 'timestamp')
+    registros = RegistroAsistencia.objects.select_related('user__turno').order_by('user__id', 'timestamp')
     
     # Agrupamos registros por usuario y día
     asistencia_por_usuario = defaultdict(lambda: defaultdict(list))
 
     for r in registros:
         fecha = localtime(r.timestamp).date()
-        asistencia_por_usuario[r.usuario][fecha].append(localtime(r.timestamp))
+        asistencia_por_usuario[r.user][fecha].append(localtime(r.timestamp))
 
     resumen_horas = []
 
@@ -574,15 +588,19 @@ def resumen_asistencias_diarias(request):
             horas_trabajadas = 0.0
             resultado_turno = None
             if salida and entrada:
-                # Usar la nueva función para calcular diferencia de días en turnos nocturnos
-                if len(timestamps) > 1:  # Solo si hay entrada y salida diferentes
-                    resultado_turno = calcular_diferencia_dias_turno_nocturno(entrada, salida)
-                    horas_trabajadas = resultado_turno['duracion_horas']
+                # Usar la jornada laboral del usuario para calcular horas trabajadas
+                if hasattr(usuario, 'turno') and usuario.turno:
+                    horas_trabajadas = usuario.turno.calcular_horas_trabajadas(entrada, salida)
                 else:
-                    delta = salida - entrada
-                    if delta.total_seconds() < 0:
-                        delta += timedelta(days=1)
-                    horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+                    # Usar la nueva función para calcular diferencia de días en turnos nocturnos
+                    if len(timestamps) > 1:  # Solo si hay entrada y salida diferentes
+                        resultado_turno = calcular_diferencia_dias_turno_nocturno(entrada, salida)
+                        horas_trabajadas = resultado_turno['duracion_horas']
+                    else:
+                        delta = salida - entrada
+                        if delta.total_seconds() < 0:
+                            delta += timedelta(days=1)
+                        horas_trabajadas = round(delta.total_seconds() / 3600, 2)
 
             horas_extra = 0.0
             if horas_trabajadas > 8:
