@@ -454,10 +454,21 @@
                             Deje vacío para generar resúmenes para todos los empleados activos.
                         </small>
                     </div>
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Opciones disponibles:</strong><br>
+                        • <strong>Guardar Resumen:</strong> Guarda los datos en la base de datos para consultas futuras<br>
+                        • <strong>Generar PDF Directo:</strong> Crea y descarga el PDF inmediatamente sin guardar en BD
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary btn-generar-resumen-modal">Generar Resumen</button>
+                    <button type="button" class="btn btn-success btn-generar-pdf-directo">
+                        <i class="fas fa-file-pdf"></i> Generar PDF Directo
+                    </button>
+                    <button type="button" class="btn btn-primary btn-generar-resumen-modal">
+                        <i class="fas fa-save"></i> Guardar Resumen
+                    </button>
                 </div>
             </form>
         </div>
@@ -530,8 +541,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    });
-
     // Función para validar fechas
     function validarFechas() {
         const fechaInicio = document.getElementById('fecha_inicio_gen');
@@ -548,6 +557,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     this.value = '';
                 }
+                validarRangoFechas();
             });
             
             fechaFin.addEventListener('change', function() {
@@ -560,7 +570,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     this.value = '';
                 }
+                validarRangoFechas();
             });
+        }
+    }
+    
+    // Función para validar el rango de fechas (máximo 6 meses)
+    function validarRangoFechas() {
+        const fechaInicio = document.getElementById('fecha_inicio_gen');
+        const fechaFin = document.getElementById('fecha_fin_gen');
+        
+        if (fechaInicio.value && fechaFin.value) {
+            const inicio = new Date(fechaInicio.value);
+            const fin = new Date(fechaFin.value);
+            const diffTime = Math.abs(fin - inicio);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 180) { // Más de 6 meses
+                Swal.fire({
+                    title: '⚠️ Rango muy extenso',
+                    text: 'El rango de fechas no puede ser mayor a 6 meses para evitar problemas de rendimiento',
+                    icon: 'warning',
+                    confirmButtonColor: '#667eea'
+                });
+                fechaFin.value = '';
+            }
         }
     }
     
@@ -568,9 +602,292 @@ document.addEventListener('DOMContentLoaded', function() {
     validarFechas();
 
     // SweetAlert para botón de generar resumen (header)
-    document.querySelector('.btn-generar-resumen').addEventListener('click', function() {
+    const btnGenerarResumenHeader = document.querySelector('.btn-generar-resumen');
+    if (btnGenerarResumenHeader) {
+        btnGenerarResumenHeader.addEventListener('click', function() {
+            Swal.fire({
+                title: '📊 Generar Resumen por Rango',
+                text: 'Se abrirá el formulario para generar un nuevo resumen por rango de fechas',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Continuar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#667eea',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // El modal se abrirá automáticamente por el data-bs-toggle
+                }
+            });
+        });
+    }
+
+    // SweetAlert para botón de generar resumen (dentro del modal)
+    const btnGenerarResumenModal = document.querySelector('.btn-generar-resumen-modal');
+    if (btnGenerarResumenModal) {
+        btnGenerarResumenModal.addEventListener('click', function() {
+            const fechaInicio = document.getElementById('fecha_inicio_gen').value;
+            const fechaFin = document.getElementById('fecha_fin_gen').value;
+            const empleadoSelect = document.getElementById('empleado_gen');
+            const empleadoText = empleadoSelect.options[empleadoSelect.selectedIndex].text;
+            
+            if (!fechaInicio || !fechaFin) {
+                Swal.fire({
+                    title: '⚠️ Campos requeridos',
+                    text: 'Por favor seleccione las fechas de inicio y fin',
+                    icon: 'warning',
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+
+            const empleadoMsg = empleadoSelect.value ? `para ${empleadoText}` : 'para todos los empleados activos';
+            
+            Swal.fire({
+                title: '💾 ¿Guardar resumen en la base de datos?',
+                html: `Se generará y guardará el resumen ${empleadoMsg}<br><br><strong>Desde:</strong> ${fechaInicio}<br><strong>Hasta:</strong> ${fechaFin}<br><br><small>Este resumen quedará disponible en la tabla para futuras consultas</small>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, guardar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#667eea',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Mostrar loading
+                    Swal.fire({
+                        title: '⏳ Generando y guardando resumen...',
+                        text: 'Por favor espere mientras se procesa la información',
+                        icon: 'info',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Enviar formulario
+                    document.querySelector('#generarResumenModal form').submit();
+                }
+            });
+        });
+    }
+
+    // SweetAlert para botón de generar PDF directo (nuevo)
+    const btnGenerarPdfDirecto = document.querySelector('.btn-generar-pdf-directo');
+    if (btnGenerarPdfDirecto) {
+        btnGenerarPdfDirecto.addEventListener('click', function() {
+            const fechaInicio = document.getElementById('fecha_inicio_gen').value;
+            const fechaFin = document.getElementById('fecha_fin_gen').value;
+            const empleadoSelect = document.getElementById('empleado_gen');
+            const empleadoText = empleadoSelect.options[empleadoSelect.selectedIndex].text;
+            const empleadoId = empleadoSelect.value;
+            
+            if (!fechaInicio || !fechaFin) {
+                Swal.fire({
+                    title: '⚠️ Campos requeridos',
+                    text: 'Por favor seleccione las fechas de inicio y fin',
+                    icon: 'warning',
+                    confirmButtonColor: '#667eea'
+                });
+                return;
+            }
+
+            const empleadoMsg = empleadoId ? `para ${empleadoText}` : 'para todos los empleados activos';
+            
+            Swal.fire({
+                title: '📄 ¿Generar PDF directamente?',
+                html: `Se generará un PDF ${empleadoMsg}<br><br><strong>Desde:</strong> ${fechaInicio}<br><strong>Hasta:</strong> ${fechaFin}<br><br><small>El PDF se descargará automáticamente sin guardar en la base de datos</small>`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, generar PDF',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Mostrar loading
+                    Swal.fire({
+                        title: '📥 Generando PDF...',
+                        text: 'Por favor espere mientras se genera el archivo',
+                        icon: 'info',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Construir URL para descargar PDF directo
+                    let url = `/generar-pdf-rango/?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
+                    if (empleadoId) {
+                        url += `&empleado_id=${empleadoId}`;
+                    }
+                    
+                    // Descargar archivo
+                    window.location.href = url;
+                    
+                    // Cerrar modal y mostrar mensaje de éxito
+                    setTimeout(() => {
+                        Swal.close();
+                        document.querySelector('#generarResumenModal').querySelector('.btn-close').click();
+                        Swal.fire({
+                            title: '✅ ¡PDF generado!',
+                            text: 'El archivo PDF se está descargando',
+                            icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }, 1500);
+                }
+            });
+        });
+    }
+
+    // SweetAlert para botón de filtrar
+    const btnFiltrar = document.querySelector('.btn-filtrar');
+    if (btnFiltrar) {
+        btnFiltrar.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            Swal.fire({
+                title: '🔍 Aplicar filtros',
+                text: 'Se aplicarán los filtros seleccionados a la tabla de resúmenes',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Aplicar filtros',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#667eea',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Enviar formulario
+                    this.closest('form').submit();
+                }
+            });
+        });
+    }
+
+    // SweetAlert para botón de limpiar filtros
+    window.limpiarFiltros = function() {
         Swal.fire({
-            title: '📊 Generar Resumen por Rango',
+            title: '🧹 Limpiar filtros',
+            text: '¿Desea eliminar todos los filtros aplicados?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, limpiar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#667eea',
+            cancelButtonColor: '#6c757d'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '{% url "resumenes_semanales" %}';
+            }
+        });
+    };
+
+    // SweetAlert para botones de descargar PDF
+    document.querySelectorAll('.btn-descargar-pdf').forEach(button => {
+        button.addEventListener('click', function() {
+            const resumenId = this.dataset.resumenId;
+            const empleadoNombre = this.dataset.empleadoNombre;
+            
+            Swal.fire({
+                title: '📄 Descargar PDF',
+                html: `¿Desea descargar el resumen de <strong>${empleadoNombre}</strong> en formato PDF?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, descargar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Mostrar loading
+                    Swal.fire({
+                        title: '📥 Generando PDF...',
+                        text: 'Por favor espere mientras se genera el archivo',
+                        icon: 'info',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Descargar archivo
+                    window.location.href = `/descargar-pdf-resumen/${resumenId}/`;
+                    
+                    // Cerrar loading después de un momento
+                    setTimeout(() => {
+                        Swal.close();
+                        Swal.fire({
+                            title: '✅ ¡Descarga iniciada!',
+                            text: 'El archivo PDF se está descargando',
+                            icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }, 1500);
+                }
+            });
+        });
+    });
+
+    // SweetAlert para botones de ver detalle
+    document.querySelectorAll('.btn-ver-detalle').forEach(button => {
+        button.addEventListener('click', function() {
+            const empleadoNombre = this.dataset.empleadoNombre;
+            
+            Swal.fire({
+                title: '�️ Ver detalle',
+                html: `Se mostrará el detalle completo del resumen de <strong>${empleadoNombre}</strong>`,
+                icon: 'info',
+                confirmButtonText: 'Ver detalle',
+                confirmButtonColor: '#17a2b8',
+                timer: 1500,
+                timerProgressBar: true
+            });
+        });
+    });
+
+    // Mostrar mensaje de éxito si hay mensajes de Django
+    {% if messages %}
+        {% for message in messages %}
+            {% if message.tags == 'success' %}
+                Swal.fire({
+                    title: '✅ ¡Éxito!',
+                    text: '{{ message }}',
+                    icon: 'success',
+                    confirmButtonColor: '#667eea'
+                });
+            {% elif message.tags == 'error' %}
+                Swal.fire({
+                    title: '❌ Error',
+                    text: '{{ message }}',
+                    icon: 'error',
+                    confirmButtonColor: '#dc3545'
+                });
+            {% elif message.tags == 'warning' %}
+                Swal.fire({
+                    title: '⚠️ Advertencia',
+                    text: '{{ message }}',
+                    icon: 'warning',
+                    confirmButtonColor: '#ffc107'
+                });
+            {% elif message.tags == 'info' %}
+                Swal.fire({
+                    title: 'ℹ️ Información',
+                    text: '{{ message }}',
+                    icon: 'info',
+                    confirmButtonColor: '#17a2b8'
+                });
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+});
+</script>
+{% endblock %}
             text: 'Se abrirá el formulario para generar un nuevo resumen por rango de fechas',
             icon: 'info',
             showCancelButton: true,
@@ -605,11 +922,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const empleadoMsg = empleadoSelect.value ? `para ${empleadoText}` : 'para todos los empleados activos';
         
         Swal.fire({
-            title: '🔄 ¿Generar resumen por rango?',
-            html: `Se generará el resumen ${empleadoMsg}<br><br><strong>Desde:</strong> ${fechaInicio}<br><strong>Hasta:</strong> ${fechaFin}`,
+            title: '� ¿Guardar resumen en la base de datos?',
+            html: `Se generará y guardará el resumen ${empleadoMsg}<br><br><strong>Desde:</strong> ${fechaInicio}<br><strong>Hasta:</strong> ${fechaFin}<br><br><small>Este resumen quedará disponible en la tabla para futuras consultas</small>`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Sí, generar',
+            confirmButtonText: 'Sí, guardar',
             cancelButtonText: 'Cancelar',
             confirmButtonColor: '#667eea',
             cancelButtonColor: '#6c757d'
@@ -617,7 +934,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (result.isConfirmed) {
                 // Mostrar loading
                 Swal.fire({
-                    title: '⏳ Generando resumen...',
+                    title: '⏳ Generando y guardando resumen...',
                     text: 'Por favor espere mientras se procesa la información',
                     icon: 'info',
                     allowOutsideClick: false,
@@ -629,6 +946,74 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Enviar formulario
                 document.querySelector('#generarResumenModal form').submit();
+            }
+        });
+    });
+
+    // SweetAlert para botón de generar PDF directo (nuevo)
+    document.querySelector('.btn-generar-pdf-directo').addEventListener('click', function() {
+        const fechaInicio = document.getElementById('fecha_inicio_gen').value;
+        const fechaFin = document.getElementById('fecha_fin_gen').value;
+        const empleadoSelect = document.getElementById('empleado_gen');
+        const empleadoText = empleadoSelect.options[empleadoSelect.selectedIndex].text;
+        const empleadoId = empleadoSelect.value;
+        
+        if (!fechaInicio || !fechaFin) {
+            Swal.fire({
+                title: '⚠️ Campos requeridos',
+                text: 'Por favor seleccione las fechas de inicio y fin',
+                icon: 'warning',
+                confirmButtonColor: '#667eea'
+            });
+            return;
+        }
+
+        const empleadoMsg = empleadoId ? `para ${empleadoText}` : 'para todos los empleados activos';
+        
+        Swal.fire({
+            title: '📄 ¿Generar PDF directamente?',
+            html: `Se generará un PDF ${empleadoMsg}<br><br><strong>Desde:</strong> ${fechaInicio}<br><strong>Hasta:</strong> ${fechaFin}<br><br><small>El PDF se descargará automáticamente sin guardar en la base de datos</small>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, generar PDF',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Mostrar loading
+                Swal.fire({
+                    title: '📥 Generando PDF...',
+                    text: 'Por favor espere mientras se genera el archivo',
+                    icon: 'info',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Construir URL para descargar PDF directo
+                let url = `/generar-pdf-rango/?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
+                if (empleadoId) {
+                    url += `&empleado_id=${empleadoId}`;
+                }
+                
+                // Descargar archivo
+                window.location.href = url;
+                
+                // Cerrar modal y mostrar mensaje de éxito
+                setTimeout(() => {
+                    Swal.close();
+                    document.querySelector('#generarResumenModal').querySelector('.btn-close').click();
+                    Swal.fire({
+                        title: '✅ ¡PDF generado!',
+                        text: 'El archivo PDF se está descargando',
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }, 1500);
             }
         });
     });
@@ -773,4 +1158,3 @@ document.addEventListener('DOMContentLoaded', function() {
     {% endif %}
 });
 </script>
-{% endblock %}

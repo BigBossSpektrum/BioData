@@ -1160,6 +1160,11 @@ def generar_resumen_semanal(request):
                 messages.error(request, "La fecha de inicio no puede ser mayor que la fecha de fin")
                 return redirect('resumenes_semanales')
             
+            # Validar rango de fechas (máximo 6 meses para evitar problemas de rendimiento)
+            if (fecha_fin - fecha_inicio).days > 180:
+                messages.error(request, "El rango de fechas no puede ser mayor a 6 meses")
+                return redirect('resumenes_semanales')
+            
             if empleado_id:
                 # Generar para un empleado específico
                 empleado = get_object_or_404(UsuarioBiometrico, id=empleado_id)
@@ -1315,3 +1320,212 @@ def descargar_pdf_resumen(request, resumen_id):
         return redirect('resumenes_semanales')
     
     return render(request, 'frontend/reporte_horas.html', context)
+
+
+@login_required
+def generar_pdf_rango(request):
+    """
+    Vista para generar PDF directamente por rango de fechas sin guardar en BD
+    Solo accesible para admin y rrhh
+    """
+    if not hasattr(request.user, 'rol') or request.user.rol not in ['admin', 'rrhh']:
+        return HttpResponseForbidden("No tienes permisos para acceder a esta función.")
+    
+    try:
+        # Importaciones condicionales para ReportLab
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from io import BytesIO
+    except ImportError:
+        messages.error(request, "ReportLab no está instalado. Instale con: pip install reportlab")
+        return redirect('resumenes_semanales')
+    
+    from django.http import HttpResponse
+    from datetime import datetime
+    
+    try:
+        # Obtener parámetros
+        fecha_inicio_str = request.GET.get('fecha_inicio')
+        fecha_fin_str = request.GET.get('fecha_fin')
+        empleado_id = request.GET.get('empleado_id')
+        
+        if not fecha_inicio_str or not fecha_fin_str:
+            messages.error(request, "Debe especificar las fechas de inicio y fin")
+            return redirect('resumenes_semanales')
+        
+        fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+        fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+        
+        # Validar fechas
+        if fecha_inicio > fecha_fin:
+            messages.error(request, "La fecha de inicio no puede ser mayor que la fecha de fin")
+            return redirect('resumenes_semanales')
+        
+        # Validar rango de fechas (máximo 6 meses para evitar problemas de rendimiento)
+        from datetime import timedelta
+        if (fecha_fin - fecha_inicio).days > 180:
+            messages.error(request, "El rango de fechas no puede ser mayor a 6 meses")
+            return redirect('resumenes_semanales')
+        
+        # Obtener empleados
+        if empleado_id:
+            empleados = [get_object_or_404(UsuarioBiometrico, id=empleado_id)]
+            filename_suffix = f"{empleados[0].nombre}_{fecha_inicio}_{fecha_fin}"
+        else:
+            empleados = UsuarioBiometrico.objects.filter(activo=True)
+            filename_suffix = f"todos_empleados_{fecha_inicio}_{fecha_fin}"
+        
+        # Crear el archivo PDF en memoria
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*inch, bottomMargin=0.5*inch)
+        
+        # Estilos
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=18,
+            spaceAfter=20,
+            alignment=1,  # Centrado
+            textColor=colors.darkblue
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle',
+            parent=styles['Heading2'],
+            fontSize=14,
+            spaceAfter=15,
+            alignment=1,  # Centrado
+            textColor=colors.darkred
+        )
+        
+        employee_title_style = ParagraphStyle(
+            'EmployeeTitle',
+            parent=styles['Heading3'],
+            fontSize=12,
+            spaceAfter=10,
+            textColor=colors.darkgreen
+        )
+        
+        # Contenido del PDF
+        story = []
+        
+        # Título principal
+        if len(empleados) == 1:
+            title = Paragraph(f"Resumen de Horas - {empleados[0].nombre}", title_style)
+        else:
+            title = Paragraph("Resumen de Horas - Todos los Empleados", title_style)
+        story.append(title)
+        
+        # Subtítulo con rango de fechas
+        subtitle = Paragraph(f"Período: {fecha_inicio} al {fecha_fin}", subtitle_style)
+        story.append(subtitle)
+        story.append(Spacer(1, 20))
+        
+        # Procesar cada empleado
+        for i, empleado in enumerate(empleados):
+            if i > 0:
+                story.append(PageBreak())  # Nueva página para cada empleado (excepto el primero)
+            
+            # Título del empleado (solo si hay múltiples empleados)
+            if len(empleados) > 1:
+                emp_title = Paragraph(f"Empleado: {empleado.nombre}", employee_title_style)
+                story.append(emp_title)
+                story.append(Spacer(1, 10))
+            
+            # Calcular resumen para este empleado
+            datos_resumen = empleado.calcular_resumen_rango_fechas(fecha_inicio, fecha_fin)
+            
+            # Información básica del empleado
+            info_data = [
+                ['Empleado:', empleado.nombre],
+                ['Estación:', empleado.estacion.nombre if empleado.estacion else 'N/A'],
+                ['Turno:', empleado.turno.nombre if empleado.turno else 'N/A'],
+                ['Rango de Fechas:', f"{fecha_inicio} al {fecha_fin}"],
+            ]
+            
+            info_table = Table(info_data, colWidths=[2*inch, 3*inch])
+            info_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                ('TOPPADDING', (0, 0), (-1, -1), 12),
+                ('BACKGROUND', (1, 0), (1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            
+            story.append(info_table)
+            story.append(Spacer(1, 20))
+            
+            # Verificar si el empleado tiene horas trabajadas
+            if datos_resumen['total_horas_trabajadas'] == 0:
+                no_data_table = Table([['Sin registros de horas para este período']], colWidths=[6*inch])
+                no_data_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.lightyellow),
+                    ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 12),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+                    ('TOPPADDING', (0, 0), (-1, -1), 20),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                story.append(no_data_table)
+                continue
+            
+            # Tabla de horas
+            horas_data = [
+                ['Tipo de Horas', 'Cantidad', 'Costo'],
+                ['Horas Normales', f"{datos_resumen['horas_normales']:.2f}", 'N/A'],
+                ['Horas Extra Diurno', f"{datos_resumen['horas_extra_diurno']:.2f}", f"${datos_resumen['costo_horas_extra_diurno']:.2f}"],
+                ['Horas Extra Nocturno', f"{datos_resumen['horas_extra_nocturno']:.2f}", f"${datos_resumen['costo_horas_extra_nocturno']:.2f}"],
+                ['Horas Extra Feriado Diurno', f"{datos_resumen['horas_extra_feriado_diurno']:.2f}", f"${datos_resumen['costo_horas_extra_feriado_diurno']:.2f}"],
+                ['Horas Extra Feriado Nocturno', f"{datos_resumen['horas_extra_feriado_nocturno']:.2f}", f"${datos_resumen['costo_horas_extra_feriado_nocturno']:.2f}"],
+                ['', '', ''],  # Línea separadora
+                ['TOTAL HORAS TRABAJADAS', f"{datos_resumen['total_horas_trabajadas']:.2f}", ''],
+                ['TOTAL HORAS EXTRAS', f"{datos_resumen['total_horas_extras']:.2f}", f"${datos_resumen['costo_total_horas_extras']:.2f}"],
+            ]
+            
+            horas_table = Table(horas_data, colWidths=[3*inch, 1.5*inch, 1.5*inch])
+            horas_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                ('TOPPADDING', (0, 0), (-1, -1), 12),
+                ('BACKGROUND', (0, 1), (-1, 5), colors.beige),
+                ('BACKGROUND', (0, 6), (-1, 6), colors.white),  # Línea separadora
+                ('BACKGROUND', (0, 7), (-1, -1), colors.lightblue),
+                ('FONTNAME', (0, 7), (-1, -1), 'Helvetica-Bold'),
+                ('GRID', (0, 0), (-1, 5), 1, colors.black),
+                ('GRID', (0, 7), (-1, -1), 1, colors.black)
+            ]))
+            
+            story.append(horas_table)
+            
+            # Agregar espaciado entre empleados si hay múltiples
+            if len(empleados) > 1 and i < len(empleados) - 1:
+                story.append(Spacer(1, 30))
+        
+        # Generar el PDF
+        doc.build(story)
+        
+        # Preparar la respuesta
+        buffer.seek(0)
+        response = HttpResponse(buffer, content_type='application/pdf')
+        filename = f"resumen_horas_{filename_suffix}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f"Error al generar el PDF: {str(e)}")
+        return redirect('resumenes_semanales')

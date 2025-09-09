@@ -20,4 +20,5 @@ urlpatterns = [
     path('resumenes-semanales/', views.resumenes_semanales, name='resumenes_semanales'),
     path('generar-resumen-semanal/', views.generar_resumen_semanal, name='generar_resumen_semanal'),
     path('descargar-pdf-resumen/<int:resumen_id>/', views.descargar_pdf_resumen, name='descargar_pdf_resumen'),
+    path('generar-pdf-rango/', views.generar_pdf_rango, name='generar_pdf_rango'),
 ]
