@@ -51,9 +51,8 @@
     font-size: 1.1em;
 }
 
-/* Estilos para tabla con no-wrap */
+/* Estilos para tabla responsive sin scroll */
 .table-container {
-    overflow-x: auto;
     width: 100%;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -62,14 +61,15 @@
 
 .table {
     margin-bottom: 0;
-    min-width: 1200px; /* Ancho mínimo para forzar scroll horizontal si es necesario */
+    width: 100%;
+    table-layout: fixed; /* Distribución uniforme de columnas */
 }
 
 .table td, .table th {
-    white-space: nowrap;
     vertical-align: middle;
-    padding: 12px 8px;
-    text-overflow: ellipsis;
+    padding: 8px 4px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .table th {
@@ -79,18 +79,18 @@
     z-index: 10;
 }
 
-/* Anchos específicos para columnas */
-.table th:nth-child(1), .table td:nth-child(1) { width: 30px; min-width: 30px; } /* # */
-.table th:nth-child(2), .table td:nth-child(2) { width: 100px; min-width: 100px; } /* Día */
-.table th:nth-child(3), .table td:nth-child(3) { width: 30px; min-width: 30px; } /* ID Usuario */
-.table th:nth-child(4), .table td:nth-child(4) { width: 150px; min-width: 150px; } /* Nombre */
-.table th:nth-child(5), .table td:nth-child(5) { width: 150px; min-width: 150px; } /* Estación */
-.table th:nth-child(6), .table td:nth-child(6) { width: 100px; min-width: 100px; } /* Entrada */
-.table th:nth-child(7), .table td:nth-child(7) { width: 100px; min-width: 100px; } /* Salida */
-.table th:nth-child(8), .table td:nth-child(8) { width: 80px; min-width: 80px; } /* Horas Trabajadas */
-.table th:nth-child(9), .table td:nth-child(9) { width: 140px; min-width: 140px; } /* Tipo de Turno */
-.table th:nth-child(10), .table td:nth-child(10) { width: 120px; min-width: 120px; } /* Horas Extras */
-.table th:nth-child(11), .table td:nth-child(11) { width: 180px; min-width: 180px; } /* Aprobado */
+/* Anchos específicos para columnas - responsive */
+.table th:nth-child(1), .table td:nth-child(1) { width: 4%; } /* # */
+.table th:nth-child(2), .table td:nth-child(2) { width: 9%; white-space: nowrap; } /* Día */
+.table th:nth-child(3), .table td:nth-child(3) { width: 6%; } /* ID Usuario */
+.table th:nth-child(4), .table td:nth-child(4) { width: 15%; } /* Nombre */
+.table th:nth-child(5), .table td:nth-child(5) { width: 12%; } /* Estación */
+.table th:nth-child(6), .table td:nth-child(6) { width: 8%; } /* Entrada */
+.table th:nth-child(7), .table td:nth-child(7) { width: 8%; } /* Salida */
+.table th:nth-child(8), .table td:nth-child(8) { width: 10%; } /* Horas Trabajadas */
+.table th:nth-child(9), .table td:nth-child(9) { width: 12%; } /* Tipo de Turno */
+.table th:nth-child(10), .table td:nth-child(10) { width: 8%; } /* Horas Extras */
+.table th:nth-child(11), .table td:nth-child(11) { width: 9%; } /* Aprobado */
 
 /* Ajustes para badges y botones */
 .badge {
