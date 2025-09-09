@@ -1,5 +1,5 @@
-from django.shortcuts import render
-from API.models import RegistroAsistencia, UsuarioBiometrico, EstacionServicio, JornadaLaboral
+from django.shortcuts import render, redirect, get_object_or_404
+from API.models import RegistroAsistencia, UsuarioBiometrico, EstacionServicio, JornadaLaboral, JornadaEspecial, ResumenSemanal, TarifaHoraExtra, FeriadoNacional
 from API.Biometricos_connections import detectar_turno
 from datetime import datetime, timedelta, time, date
 from django.contrib.auth.decorators import login_required
@@ -9,9 +9,11 @@ from collections import defaultdict
 from django.utils import timezone
 from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado
 from .utils_filters import aplicar_filtro_jefe_patio, obtener_info_estacion_jefe
-from django.http import HttpResponseForbidden, HttpResponseRedirect
+from django.http import HttpResponseForbidden, HttpResponseRedirect, JsonResponse
 from django.urls import reverse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+from django.contrib import messages
 
 import logging
 
@@ -614,6 +616,29 @@ def resumen_asistencias_diarias(request):
                 elif any(a is False for a in aprobados):
                     aprobado = False
 
+            # Verificar si hay jornada especial activa para esta fecha
+            fecha_registro = entrada.date() if entrada else None
+            jornada_especial_info = None
+            es_jornada_especial = False
+            
+            if fecha_registro:
+                jornada_especial = JornadaEspecial.objects.filter(
+                    empleado=usuario,
+                    activa=True,
+                    fecha_inicio__lte=fecha_registro,
+                    fecha_fin__gte=fecha_registro
+                ).first()
+                
+                if jornada_especial:
+                    es_jornada_especial = True
+                    jornada_especial_info = {
+                        'id': jornada_especial.id,
+                        'fecha_inicio': jornada_especial.fecha_inicio,
+                        'fecha_fin': jornada_especial.fecha_fin,
+                        'horas_programadas': jornada_especial.horas_programadas,
+                        'observaciones': jornada_especial.observaciones
+                    }
+
             registros.append({
                         'dia': entrada.date().strftime('%Y-%m-%d'),
                         'user_id': usuario.id,
@@ -633,6 +658,9 @@ def resumen_asistencias_diarias(request):
                         'descripcion_turno': info_turno['descripcion'],
                         'diferencia_dias': resultado_turno['diferencia_dias'] if resultado_turno else 0,
                         'mensaje_turno': resultado_turno['mensaje'] if resultado_turno else None,
+                        # Información de jornada especial
+                        'es_jornada_especial': es_jornada_especial,
+                        'jornada_especial_info': jornada_especial_info,
                 })
 
     # Aplicar filtros de búsqueda adicionales
@@ -842,5 +870,432 @@ def reporte_horas_trabajadas(request):
         'usuarios_con_extras': usuarios_con_extras,
         'total_usuarios': len(reporte_data)
     }
+    
+    return render(request, 'frontend/reporte_horas.html', context)
+
+
+# ===========================
+# PANEL JEFE DE PATIO - JORNADAS ESPECIALES
+# ===========================
+
+@login_required
+def panel_jefe_patio(request):
+    """
+    Vista principal del panel para jefe de patio
+    """
+    # Verificar que el usuario sea jefe de patio
+    if not hasattr(request.user, 'rol') or request.user.rol != 'jefe_patio':
+        messages.error(request, "No tiene permisos para acceder a esta sección.")
+        return redirect('home_biometrico')
+    
+    # Obtener la estación del jefe de patio
+    info_estacion = obtener_info_estacion_jefe(request.user)
+    
+    if not info_estacion['estacion_filtrada']:
+        messages.warning(request, "No tiene una estación asignada. Contacte al administrador.")
+        return redirect('home_biometrico')
+    
+    # Obtener empleados de la estación
+    empleados = UsuarioBiometrico.objects.filter(
+        estacion__jefe=request.user,
+        activo=True
+    ).order_by('nombre')
+    
+    # Obtener jornadas especiales activas
+    jornadas_especiales = JornadaEspecial.objects.filter(
+        empleado__estacion__jefe=request.user,
+        activa=True
+    ).order_by('-fecha_inicio')
+    
+    context = {
+        'empleados': empleados,
+        'jornadas_especiales': jornadas_especiales,
+        'estacion': info_estacion['estacion_filtrada'],
+        'total_empleados': empleados.count(),
+        'jornadas_activas': jornadas_especiales.count()
+    }
+    
+    return render(request, 'frontend/panel_jefe_patio.html', context)
+
+
+@login_required
+def crear_jornada_especial(request):
+    """
+    Vista para crear una nueva jornada especial
+    """
+    # Verificar que el usuario sea jefe de patio
+    if not hasattr(request.user, 'rol') or request.user.rol != 'jefe_patio':
+        messages.error(request, "No tiene permisos para realizar esta acción.")
+        return redirect('home_biometrico')
+    
+    if request.method == 'POST':
+        try:
+            empleado_id = request.POST.get('empleado_id')
+            fecha_inicio = request.POST.get('fecha_inicio')
+            fecha_fin = request.POST.get('fecha_fin')
+            hora_inicio = request.POST.get('hora_inicio')
+            hora_fin = request.POST.get('hora_fin')
+            horas_programadas = request.POST.get('horas_programadas', '12.00')
+            observaciones = request.POST.get('observaciones', '')
+            
+            # Validaciones
+            if not all([empleado_id, fecha_inicio, fecha_fin, hora_inicio, hora_fin]):
+                messages.error(request, "Todos los campos son obligatorios.")
+                return redirect('panel_jefe_patio')
+            
+            # Obtener empleado y verificar que pertenece a la estación del jefe
+            empleado = get_object_or_404(
+                UsuarioBiometrico, 
+                id=empleado_id, 
+                estacion__jefe=request.user
+            )
+            
+            # Convertir fechas
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            hora_inicio_dt = datetime.strptime(hora_inicio, '%H:%M').time()
+            hora_fin_dt = datetime.strptime(hora_fin, '%H:%M').time()
+            
+            # Crear la jornada especial
+            jornada_especial = JornadaEspecial(
+                empleado=empleado,
+                fecha_inicio=fecha_inicio_dt,
+                fecha_fin=fecha_fin_dt,
+                hora_inicio_programada=hora_inicio_dt,
+                hora_fin_programada=hora_fin_dt,
+                horas_programadas=float(horas_programadas),
+                aprobada_por=request.user,
+                observaciones=observaciones
+            )
+            
+            # Validar antes de guardar
+            jornada_especial.full_clean()
+            jornada_especial.save()
+            
+            messages.success(
+                request, 
+                f"Jornada especial creada exitosamente para {empleado.nombre} "
+                f"del {fecha_inicio} al {fecha_fin}."
+            )
+            
+        except ValueError as e:
+            messages.error(request, f"Error en el formato de fecha/hora: {str(e)}")
+        except Exception as e:
+            messages.error(request, f"Error al crear la jornada especial: {str(e)}")
+    
+    return redirect('panel_jefe_patio')
+
+
+@login_required
+def desactivar_jornada_especial(request, jornada_id):
+    """
+    Vista para desactivar una jornada especial
+    """
+    # Verificar que el usuario sea jefe de patio
+    if not hasattr(request.user, 'rol') or request.user.rol != 'jefe_patio':
+        messages.error(request, "No tiene permisos para realizar esta acción.")
+        return redirect('home_biometrico')
+    
+    if request.method == 'POST':
+        try:
+            # Obtener la jornada especial y verificar que pertenece al jefe de patio
+            jornada = get_object_or_404(
+                JornadaEspecial,
+                id=jornada_id,
+                empleado__estacion__jefe=request.user
+            )
+            
+            jornada.activa = False
+            jornada.save()
+            
+            messages.success(
+                request,
+                f"Jornada especial de {jornada.empleado.nombre} desactivada exitosamente."
+            )
+            
+        except Exception as e:
+            messages.error(request, f"Error al desactivar la jornada especial: {str(e)}")
+    
+    return redirect('panel_jefe_patio')
+
+
+@login_required
+def lista_empleados_estacion(request):
+    """
+    Vista AJAX para obtener empleados de la estación del jefe de patio
+    """
+    # Verificar que el usuario sea jefe de patio
+    if not hasattr(request.user, 'rol') or request.user.rol != 'jefe_patio':
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    
+    empleados = UsuarioBiometrico.objects.filter(
+        estacion__jefe=request.user,
+        activo=True
+    ).values('id', 'nombre', 'cedula')
+    
+    return JsonResponse({'empleados': list(empleados)})
+
+
+def obtener_inicio_semana(fecha):
+    """
+    Obtiene el domingo que inicia la semana para una fecha dada
+    """
+    # Ajustar para que domingo sea día 0
+    dias_desde_domingo = (fecha.weekday() + 1) % 7
+    return fecha - timedelta(days=dias_desde_domingo)
+
+
+@login_required
+def resumenes_semanales(request):
+    """
+    Vista para mostrar los resúmenes semanales de horas trabajadas
+    Solo accesible para admin y rrhh
+    """
+    if not hasattr(request.user, 'rol') or request.user.rol not in ['admin', 'rrhh']:
+        return HttpResponseForbidden("No tienes permisos para acceder a esta página.")
+    
+    from API.models import ResumenSemanal, TarifaHoraExtra
+    from django.db.models import Q
+    
+    # Obtener parámetros de filtrado
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    empleado_id = request.GET.get('empleado')
+    estacion_id = request.GET.get('estacion')
+    
+    # Consulta base
+    resumenes = ResumenSemanal.objects.select_related(
+        'empleado', 'empleado__estacion', 'empleado__turno'
+    ).all()
+    
+    # Aplicar filtros
+    if fecha_inicio:
+        try:
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+            resumenes = resumenes.filter(fecha_inicio_semana__gte=fecha_inicio_dt)
+        except ValueError:
+            pass
+    
+    if fecha_fin:
+        try:
+            fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+            resumenes = resumenes.filter(fecha_inicio_semana__lte=fecha_fin_dt)
+        except ValueError:
+            pass
+    
+    if empleado_id:
+        resumenes = resumenes.filter(empleado_id=empleado_id)
+    
+    if estacion_id:
+        resumenes = resumenes.filter(empleado__estacion_id=estacion_id)
+    
+    # Ordenar por empleado y fecha
+    resumenes = resumenes.order_by('empleado__nombre', '-fecha_inicio_semana')
+    
+    # Agrupar resúmenes por empleado
+    empleados_con_resumenes = {}
+    for resumen in resumenes:
+        empleado_nombre = resumen.empleado.nombre
+        if empleado_nombre not in empleados_con_resumenes:
+            empleados_con_resumenes[empleado_nombre] = {
+                'empleado': resumen.empleado,
+                'resumenes': []
+            }
+        empleados_con_resumenes[empleado_nombre]['resumenes'].append(resumen)
+    
+    # Obtener listas para filtros
+    empleados = UsuarioBiometrico.objects.filter(activo=True).order_by('nombre')
+    estaciones = EstacionServicio.objects.all().order_by('nombre')
+    tarifas = TarifaHoraExtra.objects.filter(activa=True)
+    
+    context = {
+        'resumenes': resumenes,
+        'empleados_con_resumenes': empleados_con_resumenes,
+        'empleados': empleados,
+        'estaciones': estaciones,
+        'tarifas': tarifas,
+        'filtros': {
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'empleado_id': empleado_id,
+            'estacion_id': estacion_id,
+        }
+    }
+    
+    return render(request, 'frontend/resumenes_semanales.html', context)
+
+
+@login_required
+def generar_resumen_semanal(request):
+    """
+    Vista para generar resúmenes semanales masivamente
+    Solo accesible para admin y rrhh
+    """
+    if not hasattr(request.user, 'rol') or request.user.rol not in ['admin', 'rrhh']:
+        return HttpResponseForbidden("No tienes permisos para acceder a esta función.")
+    
+    from API.models import ResumenSemanal
+    
+    if request.method == 'POST':
+        fecha_inicio_str = request.POST.get('fecha_inicio')
+        empleado_id = request.POST.get('empleado_id')
+        
+        try:
+            fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+            fecha_inicio_semana = obtener_inicio_semana(fecha_inicio)
+            
+            if empleado_id:
+                # Generar para un empleado específico
+                empleado = get_object_or_404(UsuarioBiometrico, id=empleado_id)
+                empleados = [empleado]
+            else:
+                # Generar para todos los empleados activos
+                empleados = UsuarioBiometrico.objects.filter(activo=True)
+            
+            resumen_creados = 0
+            resumen_actualizados = 0
+            
+            for empleado in empleados:
+                # Calcular resumen semanal
+                datos_resumen = empleado.calcular_resumen_semanal(fecha_inicio_semana)
+                
+                # Crear o actualizar el resumen
+                resumen, created = ResumenSemanal.objects.update_or_create(
+                    empleado=empleado,
+                    fecha_inicio_semana=fecha_inicio_semana,
+                    defaults=datos_resumen
+                )
+                
+                if created:
+                    resumen_creados += 1
+                else:
+                    resumen_actualizados += 1
+            
+            if resumen_creados > 0 or resumen_actualizados > 0:
+                mensaje = f"Resúmenes procesados: {resumen_creados} creados, {resumen_actualizados} actualizados"
+                messages.success(request, mensaje)
+            else:
+                messages.info(request, "No se procesaron resúmenes")
+                
+        except Exception as e:
+            messages.error(request, f"Error al generar resúmenes: {str(e)}")
+    
+    return redirect('resumenes_semanales')
+
+
+@login_required
+def descargar_pdf_resumen(request, resumen_id):
+    """
+    Vista para descargar un resumen semanal en PDF
+    Solo accesible para admin y rrhh
+    """
+    if not hasattr(request.user, 'rol') or request.user.rol not in ['admin', 'rrhh']:
+        return HttpResponseForbidden("No tienes permisos para descargar este archivo.")
+    
+    try:
+        # Importaciones condicionales para ReportLab
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import letter, A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from io import BytesIO
+    except ImportError:
+        messages.error(request, "ReportLab no está instalado. Instale con: pip install reportlab")
+        return redirect('resumenes_semanales')
+    
+    from django.http import HttpResponse
+    
+    try:
+        resumen = get_object_or_404(ResumenSemanal, id=resumen_id)
+        
+        # Crear el archivo PDF en memoria
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        
+        # Estilos
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=1  # Centrado
+        )
+        
+        # Contenido del PDF
+        story = []
+        
+        # Título
+        title = Paragraph(f"Resumen Semanal - {resumen.empleado.nombre}", title_style)
+        story.append(title)
+        
+        # Información básica
+        info_data = [
+            ['Empleado:', resumen.empleado.nombre],
+            ['Cédula:', resumen.empleado.cedula or 'N/A'],
+            ['Estación:', resumen.empleado.estacion.nombre if resumen.empleado.estacion else 'N/A'],
+            ['Turno:', resumen.empleado.turno.nombre if resumen.empleado.turno else 'N/A'],
+            ['Semana:', f"{resumen.fecha_inicio_semana} al {resumen.fecha_fin_semana}"],
+            ['Número de Semana:', str(resumen.calcular_numero_semana())],
+        ]
+        
+        info_table = Table(info_data, colWidths=[2*inch, 3*inch])
+        info_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('BACKGROUND', (1, 0), (1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        story.append(info_table)
+        story.append(Spacer(1, 20))
+        
+        # Tabla de horas
+        horas_data = [
+            ['Tipo de Horas', 'Cantidad', 'Costo'],
+            ['Horas Normales', f"{resumen.horas_normales:.2f}", 'N/A'],
+            ['Horas Extra Diurno', f"{resumen.horas_extra_diurno:.2f}", f"${resumen.costo_horas_extra_diurno:.2f}"],
+            ['Horas Extra Nocturno', f"{resumen.horas_extra_nocturno:.2f}", f"${resumen.costo_horas_extra_nocturno:.2f}"],
+            ['Horas Extra Feriado Diurno', f"{resumen.horas_extra_feriado_diurno:.2f}", f"${resumen.costo_horas_extra_feriado_diurno:.2f}"],
+            ['Horas Extra Feriado Nocturno', f"{resumen.horas_extra_feriado_nocturno:.2f}", f"${resumen.costo_horas_extra_feriado_nocturno:.2f}"],
+            ['TOTAL HORAS TRABAJADAS', f"{resumen.total_horas_trabajadas:.2f}", ''],
+            ['TOTAL HORAS EXTRAS', f"{resumen.total_horas_extras:.2f}", f"${resumen.costo_total_horas_extras:.2f}"],
+        ]
+        
+        horas_table = Table(horas_data, colWidths=[3*inch, 1.5*inch, 1.5*inch])
+        horas_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('BACKGROUND', (0, 1), (-1, -3), colors.beige),
+            ('BACKGROUND', (0, -2), (-1, -1), colors.lightblue),
+            ('FONTNAME', (0, -2), (-1, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        story.append(horas_table)
+        
+        # Generar el PDF
+        doc.build(story)
+        
+        # Preparar la respuesta
+        buffer.seek(0)
+        response = HttpResponse(buffer, content_type='application/pdf')
+        filename = f"resumen_semanal_{resumen.empleado.nombre}_{resumen.fecha_inicio_semana}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f"Error al generar el PDF: {str(e)}")
+        return redirect('resumenes_semanales')
     
     return render(request, 'frontend/reporte_horas.html', context)

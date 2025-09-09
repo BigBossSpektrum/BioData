@@ -105,9 +105,19 @@
             <i class="bi bi-calendar-check me-2"></i><span class="sidebar-text">Resumen Asistencias</span>
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link text-white d-flex align-items-center" href="{% url 'resumenes_semanales' %}">
+            <i class="bi bi-calendar-week me-2"></i><span class="sidebar-text">Resúmenes Semanales</span>
+          </a>
+        </li>
       {% endif %}
 
       {% if user.rol == 'jefe_patio' %}
+        <li class="nav-item">
+          <a class="nav-link text-white d-flex align-items-center" href="{% url 'panel_jefe_patio' %}">
+            <i class="bi bi-person-gear me-2"></i><span class="sidebar-text">Panel Jefe de Patio</span>
+          </a>
+        </li>
         <li class="nav-item">
           <a class="nav-link text-white d-flex align-items-center" href="{% url 'historial_asistencia' %}">
             <i class="bi bi-clock-history me-2"></i><span class="sidebar-text">Historial de Asistencias</span>
@@ -134,6 +144,11 @@
         <li class="nav-item">
           <a class="nav-link text-white d-flex align-items-center" href="{% url 'resumen_asistencias_diarias' %}">
             <i class="bi bi-calendar-check me-2"></i><span class="sidebar-text">Resumen Asistencias</span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white d-flex align-items-center" href="{% url 'resumenes_semanales' %}">
+            <i class="bi bi-calendar-week me-2"></i><span class="sidebar-text">Resúmenes Semanales</span>
           </a>
         </li>
         <li class="nav-item">

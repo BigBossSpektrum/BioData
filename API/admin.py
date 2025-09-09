@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from .models import CustomUser, UsuarioBiometrico, JornadaLaboral, RegistroAsistencia, EstacionServicio
+from .models import CustomUser, UsuarioBiometrico, JornadaLaboral, RegistroAsistencia, EstacionServicio, JornadaEspecial, TarifaHoraExtra, ResumenSemanal, FeriadoNacional
 
 # ---------- Admin CustomUser ----------
 @admin.register(CustomUser)
@@ -345,6 +345,60 @@ class RegistroAsistenciaAdmin(admin.ModelAdmin):
     # date_hierarchy = 'timestamp'  # Comentado por problemas de timezone
 
 
+# ---------- Admin JornadaEspecial ----------
+@admin.register(JornadaEspecial)
+class JornadaEspecialAdmin(admin.ModelAdmin):
+    list_display = ('empleado', 'fecha_inicio', 'fecha_fin', 'horas_programadas', 'activa', 'aprobada_por', 'fecha_aprobacion')
+    list_filter = ('activa', 'fecha_inicio', 'fecha_aprobacion', 'aprobada_por')
+    search_fields = ('empleado__nombre', 'empleado__cedula', 'aprobada_por__username')
+    ordering = ('-fecha_inicio',)
+    list_per_page = 25
+    
+    fieldsets = (
+        ('Información del Empleado', {
+            'fields': ('empleado',)
+        }),
+        ('Fechas y Horarios', {
+            'fields': ('fecha_inicio', 'fecha_fin', 'hora_inicio_programada', 'hora_fin_programada', 'horas_programadas')
+        }),
+        ('Aprobación', {
+            'fields': ('aprobada_por', 'fecha_aprobacion', 'activa')
+        }),
+        ('Observaciones', {
+            'fields': ('observaciones',),
+            'classes': ('collapse',)
+        })
+    )
+    
+    readonly_fields = ('fecha_aprobacion',)
+    
+    def get_queryset(self, request):
+        """Filtrar por jefe de patio si no es admin"""
+        qs = super().get_queryset(request)
+        if hasattr(request.user, 'rol') and request.user.rol == 'jefe_patio':
+            # Solo mostrar jornadas especiales de empleados de su estación
+            return qs.filter(empleado__estacion__jefe=request.user)
+        return qs
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Filtrar empleados por estación del jefe de patio"""
+        if db_field.name == "empleado":
+            if hasattr(request.user, 'rol') and request.user.rol == 'jefe_patio':
+                # Solo mostrar empleados de la estación del jefe de patio
+                kwargs["queryset"] = UsuarioBiometrico.objects.filter(estacion__jefe=request.user)
+        elif db_field.name == "aprobada_por":
+            if hasattr(request.user, 'rol') and request.user.rol == 'jefe_patio':
+                # Solo permitir que se asigne a sí mismo
+                kwargs["queryset"] = CustomUser.objects.filter(id=request.user.id)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        """Asignar automáticamente el jefe de patio que aprueba"""
+        if not change:  # Solo en creación
+            obj.aprobada_por = request.user
+        super().save_model(request, obj, form, change)
+
+
 # ---------- Admin EstacionServicio ----------
 @admin.register(EstacionServicio)
 class EstacionServicioAdmin(admin.ModelAdmin):
@@ -392,6 +446,75 @@ class EstacionServicioAdmin(admin.ModelAdmin):
             return format_html('<a href="{}">{} registros</a>', url, count)
         return "0 registros"
     registros_hoy.short_description = 'Registros Hoy'
+
+
+# ---------- Admin TarifaHoraExtra ----------
+@admin.register(TarifaHoraExtra)
+class TarifaHoraExtraAdmin(admin.ModelAdmin):
+    list_display = ('tipo', 'tarifa_por_hora', 'activa')
+    list_filter = ('tipo', 'activa')
+    list_editable = ('tarifa_por_hora', 'activa')
+    ordering = ('tipo',)
+
+
+# ---------- Admin ResumenSemanal ----------
+@admin.register(ResumenSemanal)
+class ResumenSemanalAdmin(admin.ModelAdmin):
+    list_display = (
+        'empleado', 'fecha_inicio_semana', 'fecha_fin_semana', 
+        'total_horas_trabajadas', 'total_horas_extras', 'costo_total_horas_extras'
+    )
+    list_filter = (
+        'fecha_inicio_semana', 'empleado__estacion', 'empleado__turno'
+    )
+    search_fields = ('empleado__nombre', 'empleado__cedula')
+    readonly_fields = (
+        'total_horas_trabajadas', 'total_horas_extras', 
+        'costo_horas_extra_diurno', 'costo_horas_extra_nocturno',
+        'costo_horas_extra_feriado_diurno', 'costo_horas_extra_feriado_nocturno',
+        'costo_total_horas_extras', 'fecha_creacion', 'fecha_actualizacion'
+    )
+    
+    fieldsets = (
+        ('Información Básica', {
+            'fields': ('empleado', 'fecha_inicio_semana', 'fecha_fin_semana')
+        }),
+        ('Horas Trabajadas', {
+            'fields': ('horas_normales', 'total_horas_trabajadas')
+        }),
+        ('Horas Extras por Tipo', {
+            'fields': (
+                'horas_extra_diurno', 'horas_extra_nocturno',
+                'horas_extra_feriado_diurno', 'horas_extra_feriado_nocturno',
+                'total_horas_extras'
+            )
+        }),
+        ('Costos Calculados', {
+            'fields': (
+                'costo_horas_extra_diurno', 'costo_horas_extra_nocturno',
+                'costo_horas_extra_feriado_diurno', 'costo_horas_extra_feriado_nocturno',
+                'costo_total_horas_extras'
+            ),
+            'classes': ('collapse',)
+        }),
+        ('Metadatos', {
+            'fields': ('fecha_creacion', 'fecha_actualizacion'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('empleado', 'empleado__estacion')
+
+
+# ---------- Admin FeriadoNacional ----------
+@admin.register(FeriadoNacional)
+class FeriadoNacionalAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'fecha', 'activo')
+    list_filter = ('activo', 'fecha')
+    list_editable = ('activo',)
+    search_fields = ('nombre',)
+    ordering = ('-fecha',)
 
 
 # ---------- Configuración adicional del Admin ----------

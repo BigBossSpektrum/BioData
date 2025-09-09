@@ -51,6 +51,59 @@
     font-size: 1.1em;
 }
 
+/* Estilos para tabla con no-wrap */
+.table-container {
+    overflow-x: auto;
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: white;
+}
+
+.table {
+    margin-bottom: 0;
+    min-width: 1200px; /* Ancho mínimo para forzar scroll horizontal si es necesario */
+}
+
+.table td, .table th {
+    white-space: nowrap;
+    vertical-align: middle;
+    padding: 12px 8px;
+    text-overflow: ellipsis;
+}
+
+.table th {
+    position: sticky;
+    top: 0;
+    background-color: #212529 !important;
+    z-index: 10;
+}
+
+/* Anchos específicos para columnas */
+.table th:nth-child(1), .table td:nth-child(1) { width: 30px; min-width: 30px; } /* # */
+.table th:nth-child(2), .table td:nth-child(2) { width: 100px; min-width: 100px; } /* Día */
+.table th:nth-child(3), .table td:nth-child(3) { width: 30px; min-width: 30px; } /* ID Usuario */
+.table th:nth-child(4), .table td:nth-child(4) { width: 150px; min-width: 150px; } /* Nombre */
+.table th:nth-child(5), .table td:nth-child(5) { width: 150px; min-width: 150px; } /* Estación */
+.table th:nth-child(6), .table td:nth-child(6) { width: 100px; min-width: 100px; } /* Entrada */
+.table th:nth-child(7), .table td:nth-child(7) { width: 100px; min-width: 100px; } /* Salida */
+.table th:nth-child(8), .table td:nth-child(8) { width: 80px; min-width: 80px; } /* Horas Trabajadas */
+.table th:nth-child(9), .table td:nth-child(9) { width: 140px; min-width: 140px; } /* Tipo de Turno */
+.table th:nth-child(10), .table td:nth-child(10) { width: 120px; min-width: 120px; } /* Horas Extras */
+.table th:nth-child(11), .table td:nth-child(11) { width: 180px; min-width: 180px; } /* Aprobado */
+
+/* Ajustes para badges y botones */
+.badge {
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+
+.btn-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    white-space: nowrap;
+}
+
 @media (max-width: 768px) {
     .pagination-lg .page-link {
         padding: 0.5rem 0.75rem;
@@ -59,6 +112,10 @@
     
     .pagination-container {
         padding: 1rem;
+    }
+    
+    .table {
+        font-size: 0.85rem;
     }
 }
 </style>
@@ -100,29 +157,42 @@
         </div>
     </div>
 
-    <table class="table table-bordered table-striped align-middle">
-        <thead class="table-dark text-center">
-            <tr>
-                <th>#</th>
-                <th>Día</th>
-                <th>ID Usuario</th>
-                <th>Nombre</th>
-                <th>Estación</th>
-                <th>Entrada</th>
-                <th>Salida</th>
-                <th>Horas Trabajadas</th>
-                <th>Tipo de Turno</th>
-                <th>Horas Extras</th>
-                <th>Aprobado</th>
-            </tr>
-        </thead>
+    <div class="table-container">
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>#</th>
+                    <th>Día</th>
+                    <th>ID Usuario</th>
+                    <th>Nombre</th>
+                    <th>Estación</th>
+                    <th>Entrada</th>
+                    <th>Salida</th>
+                    <th>Horas Trabajadas</th>
+                    <th>Tipo de Turno</th>
+                    <th>Horas Extras</th>
+                    <th>Aprobado</th>
+                </tr>
+            </thead>
         <tbody class="text-center">
         {% for r in registros %}
             <tr>
                 <td>{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
                 <td class="col-dia">{{ r.dia }}</td>
                 <td>{{ r.user_id }}</td>
-                <td>{{ r.nombre }}</td>
+                <td>
+                    <div class="d-flex align-items-center justify-content-center">
+                        <div>
+                            {{ r.nombre }}
+                            {% if r.es_jornada_especial %}
+                                <span class="badge bg-primary ms-2" data-bs-toggle="tooltip" 
+                                      title="Jornada Especial de {{ r.jornada_especial_info.horas_programadas }}h{% if r.jornada_especial_info.observaciones %} - {{ r.jornada_especial_info.observaciones }}{% endif %}">
+                                    <i class="bi bi-star"></i> 12H
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
                 <td>{{ r.estacion|default:"-" }}</td>
                 <td>
                     {% if r.entrada %}
@@ -196,10 +266,11 @@
             </tr>
         {% endfor %}
             <tr id="sinCoincidencias" style="display: none;">
-                <td colspan="10" class="text-center text-muted">No se encontraron resultados con el filtro aplicado.</td>
+                <td colspan="11" class="text-center text-muted">No se encontraron resultados con el filtro aplicado.</td>
             </tr>
         </tbody>
     </table>
+    </div>
 
     <!-- Paginación -->
     {% if page_obj.has_other_pages %}

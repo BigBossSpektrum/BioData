@@ -355,9 +355,22 @@ class UsuarioBiometrico(models.Model):
     def calcular_horas_dia(self, fecha):
         """
         Calcula las horas trabajadas en un día específico
+        Ahora incluye lógica para jornadas especiales de 12 horas
         """
         from datetime import datetime, timedelta
         
+        # Verificar si hay una jornada especial activa para esta fecha
+        jornada_especial = JornadaEspecial.objects.filter(
+            empleado=self,
+            activa=True,
+            fecha_inicio__lte=fecha,
+            fecha_fin__gte=fecha
+        ).first()
+        
+        if jornada_especial:
+            return self._calcular_horas_jornada_especial(fecha, jornada_especial)
+        
+        # Lógica original para jornadas normales
         if not self.turno:
             return {
                 'horas_trabajadas': 0, 
@@ -521,6 +534,294 @@ class UsuarioBiometrico(models.Model):
             'estado': estado,
             'mensaje': mensaje
         }
+        
+        if registros.count() == 1:
+            registro = registros.first()
+            if registro.status == 0:  # Solo entrada
+                return {
+                    'horas_trabajadas': 0,
+                    'horas_extras': 0,
+                    'registros': list(registros),
+                    'entrada': registro,
+                    'salida': None,
+                    'estado': 'falta_salida',
+                    'mensaje': 'Falta registro de salida'
+                }
+            else:  # Solo salida
+                return {
+                    'horas_trabajadas': 0,
+                    'horas_extras': 0,
+                    'registros': list(registros),
+                    'entrada': None,
+                    'salida': registro,
+                    'estado': 'falta_entrada',
+                    'mensaje': 'Falta registro de entrada'
+                }
+        
+        if not entradas.exists():
+            return {
+                'horas_trabajadas': 0,
+                'horas_extras': 0,
+                'registros': list(registros),
+                'estado': 'sin_entradas',
+                'mensaje': 'No hay registros de entrada'
+            }
+        
+        if not salidas.exists():
+            return {
+                'horas_trabajadas': 0,
+                'horas_extras': 0,
+                'registros': list(registros),
+                'entrada': entradas.first(),
+                'salida': None,
+                'estado': 'falta_salida',
+                'mensaje': 'Falta registro de salida'
+            }
+        
+        # Para turnos nocturnos, tomar la última entrada del día anterior y la primera salida del día actual
+        if self.turno.es_nocturno:
+            # Entrada: última del día anterior (después de las 20:00)
+            entrada_limite = timezone.make_aware(datetime.combine(fecha - timedelta(days=1), datetime.min.time().replace(hour=20)))
+            entrada = entradas.filter(timestamp__gte=entrada_limite).last()
+            
+            # Salida: primera del día actual (antes de las 10:00)  
+            salida_limite = timezone.make_aware(datetime.combine(fecha, datetime.min.time().replace(hour=10)))
+            salida = salidas.filter(timestamp__lte=salida_limite).first()
+        else:
+            # Para turnos diurnos, tomar la primera entrada y última salida del día
+            entrada = entradas.first()
+            salida = salidas.last()
+        
+        if not entrada:
+            return {
+                'horas_trabajadas': 0,
+                'horas_extras': 0,
+                'registros': list(registros),
+                'entrada': None,
+                'salida': salida,
+                'estado': 'falta_entrada',
+                'mensaje': 'No se encontró entrada válida para esta jornada'
+            }
+        
+        if not salida:
+            return {
+                'horas_trabajadas': 0,
+                'horas_extras': 0,
+                'registros': list(registros),
+                'entrada': entrada,
+                'salida': None,
+                'estado': 'falta_salida',
+                'mensaje': 'No se encontró salida válida para esta jornada'
+            }
+        
+        # Verificar si entrada y salida son iguales (mismo timestamp)
+        if entrada.timestamp == salida.timestamp:
+            return {
+                'horas_trabajadas': 0,
+                'horas_extras': 0,
+                'registros': list(registros),
+                'entrada': entrada,
+                'salida': salida,
+                'estado': 'registros_iguales',
+                'mensaje': 'Entrada y salida tienen el mismo horario - Registro incompleto'
+            }
+        
+        # Calcular horas trabajadas usando el nuevo método detallado
+        detalle_horas = self.turno.calcular_horas_normales_y_extras(entrada.timestamp, salida.timestamp)
+        
+        horas_trabajadas = detalle_horas['horas_totales']
+        horas_extras = detalle_horas['horas_extras']
+        horas_normales = detalle_horas['horas_normales']
+        
+        # Determinar estado basado en horas trabajadas
+        if horas_trabajadas == 0:
+            estado = 'sin_tiempo'
+            mensaje = 'No se pudo calcular tiempo trabajado'
+        elif horas_extras > 0:
+            estado = 'con_extras'
+            mensaje = f'Jornada con {decimal_a_tiempo(horas_normales)} normales + {decimal_a_tiempo(horas_extras)} extras'
+        else:
+            estado = 'normal'
+            mensaje = f'Jornada con {decimal_a_tiempo(horas_normales)} horas trabajadas'
+        
+        return {
+            'horas_trabajadas': horas_trabajadas,
+            'horas_extras': horas_extras,
+            'horas_normales': horas_normales,
+            'horas_trabajadas_formato': decimal_a_tiempo(horas_trabajadas),
+            'horas_extras_formato': decimal_a_tiempo(horas_extras),
+            'horas_normales_formato': decimal_a_tiempo(horas_normales),
+            'registros': list(registros),
+            'entrada': entrada,
+            'salida': salida,
+            'estado': estado,
+            'mensaje': mensaje
+        }
+
+    def _calcular_horas_jornada_especial(self, fecha, jornada_especial):
+        """
+        Calcula las horas trabajadas para jornadas especiales de 12 horas
+        Lógica: marca la primera entrada del día y la salida sea el siguiente registro
+        sin importar que sea del día siguiente
+        """
+        from datetime import datetime, timedelta
+        
+        # Para jornadas especiales, buscar en un rango amplio que incluya el día siguiente
+        fecha_inicio = datetime.combine(fecha, datetime.min.time())
+        fecha_fin = datetime.combine(fecha + timedelta(days=2), datetime.max.time())
+        
+        # Obtener todos los registros del empleado en el rango de fechas
+        registros = RegistroAsistencia.objects.filter(
+            user=self,
+            timestamp__gte=timezone.make_aware(fecha_inicio),
+            timestamp__lte=timezone.make_aware(fecha_fin)
+        ).order_by('timestamp')
+        
+        if registros.count() == 0:
+            return {
+                'horas_trabajadas': 0,
+                'horas_extras': 0,
+                'registros': list(registros),
+                'estado': 'sin_registros',
+                'mensaje': 'No hay registros para esta jornada especial',
+                'jornada_especial': True
+            }
+        
+        # Buscar la primera entrada del día
+        primera_entrada = None
+        siguiente_salida = None
+        
+        for registro in registros:
+            # Si encontramos una entrada y aún no tenemos una
+            if registro.status == 0 and primera_entrada is None:
+                # Verificar que la entrada sea en la fecha de la jornada especial
+                if registro.timestamp.date() == fecha:
+                    primera_entrada = registro
+            
+            # Si ya tenemos una entrada, buscar la siguiente salida
+            elif primera_entrada and registro.status == 1 and siguiente_salida is None:
+                siguiente_salida = registro
+                break
+        
+        if not primera_entrada:
+            return {
+                'horas_trabajadas': 0,
+                'horas_extras': 0,
+                'registros': list(registros),
+                'entrada': None,
+                'salida': None,
+                'estado': 'falta_entrada',
+                'mensaje': 'No se encontró entrada para esta jornada especial',
+                'jornada_especial': True
+            }
+        
+        if not siguiente_salida:
+            return {
+                'horas_trabajadas': 0,
+                'horas_extras': 0,
+                'registros': list(registros),
+                'entrada': primera_entrada,
+                'salida': None,
+                'estado': 'falta_salida',
+                'mensaje': 'No se encontró salida para esta jornada especial',
+                'jornada_especial': True
+            }
+        
+        # Calcular horas usando el método de la jornada especial
+        detalle_horas = jornada_especial.calcular_horas_trabajadas(
+            primera_entrada.timestamp, 
+            siguiente_salida.timestamp
+        )
+        
+        horas_trabajadas = detalle_horas['horas_totales']
+        horas_extras = detalle_horas['horas_extras']
+        horas_normales = detalle_horas['horas_normales']
+        
+        # Determinar estado
+        if horas_trabajadas == 0:
+            estado = 'sin_tiempo'
+            mensaje = 'No se pudo calcular tiempo trabajado en jornada especial'
+        elif horas_extras > 0:
+            estado = 'jornada_especial_con_extras'
+            mensaje = f'Jornada especial: {decimal_a_tiempo(horas_normales)} normales + {decimal_a_tiempo(horas_extras)} extras'
+        else:
+            estado = 'jornada_especial_normal'
+            mensaje = f'Jornada especial: {decimal_a_tiempo(horas_normales)} horas'
+        
+        return {
+            'horas_trabajadas': horas_trabajadas,
+            'horas_extras': horas_extras,
+            'horas_normales': horas_normales,
+            'horas_trabajadas_formato': decimal_a_tiempo(horas_trabajadas),
+            'horas_extras_formato': decimal_a_tiempo(horas_extras),
+            'horas_normales_formato': decimal_a_tiempo(horas_normales),
+            'registros': list(registros),
+            'entrada': primera_entrada,
+            'salida': siguiente_salida,
+            'estado': estado,
+            'mensaje': mensaje,
+            'jornada_especial': True,
+            'jornada_especial_info': jornada_especial
+        }
+
+    def calcular_resumen_semanal(self, fecha_inicio_semana):
+        """
+        Calcula el resumen semanal para un empleado desde domingo hasta lunes
+        """
+        from datetime import timedelta
+        
+        # Calcular fecha fin (lunes siguiente)
+        fecha_fin_semana = fecha_inicio_semana + timedelta(days=7)
+        
+        # Inicializar contadores
+        horas_normales = 0
+        horas_extra_diurno = 0
+        horas_extra_nocturno = 0
+        horas_extra_feriado_diurno = 0
+        horas_extra_feriado_nocturno = 0
+        
+        # Obtener feriados de la semana
+        feriados = set(
+            FeriadoNacional.objects.filter(
+                fecha__gte=fecha_inicio_semana,
+                fecha__lt=fecha_fin_semana,
+                activo=True
+            ).values_list('fecha', flat=True)
+        )
+        
+        # Calcular día por día
+        current_date = fecha_inicio_semana
+        while current_date < fecha_fin_semana:
+            calculo_dia = self.calcular_horas_dia(current_date)
+            
+            if calculo_dia['horas_trabajadas'] > 0:
+                horas_normales += calculo_dia['horas_normales']
+                
+                # Clasificar horas extras
+                if calculo_dia['horas_extras'] > 0:
+                    es_feriado = current_date in feriados
+                    es_nocturno = self.turno and self.turno.es_nocturno
+                    
+                    if es_feriado and es_nocturno:
+                        horas_extra_feriado_nocturno += calculo_dia['horas_extras']
+                    elif es_feriado and not es_nocturno:
+                        horas_extra_feriado_diurno += calculo_dia['horas_extras']
+                    elif not es_feriado and es_nocturno:
+                        horas_extra_nocturno += calculo_dia['horas_extras']
+                    else:
+                        horas_extra_diurno += calculo_dia['horas_extras']
+            
+            current_date += timedelta(days=1)
+        
+        return {
+            'fecha_inicio_semana': fecha_inicio_semana,
+            'fecha_fin_semana': fecha_fin_semana,
+            'horas_normales': horas_normales,
+            'horas_extra_diurno': horas_extra_diurno,
+            'horas_extra_nocturno': horas_extra_nocturno,
+            'horas_extra_feriado_diurno': horas_extra_feriado_diurno,
+            'horas_extra_feriado_nocturno': horas_extra_feriado_nocturno,
+        }
 
     def obtener_registros_periodo(self, fecha_inicio, fecha_fin):
         """
@@ -539,6 +840,134 @@ class UsuarioBiometrico(models.Model):
             fecha_actual += timedelta(days=1)
         
         return resultados
+
+
+class JornadaEspecial(models.Model):
+    """
+    Modelo para jornadas especiales de 12 horas que pueden pasar de un día a otro
+    """
+    empleado = models.ForeignKey(
+        'UsuarioBiometrico',
+        on_delete=models.CASCADE,
+        related_name='jornadas_especiales'
+    )
+    fecha_inicio = models.DateField(
+        help_text="Fecha en que inicia la jornada especial"
+    )
+    fecha_fin = models.DateField(
+        help_text="Fecha en que termina la jornada especial (puede ser al día siguiente)"
+    )
+    hora_inicio_programada = models.TimeField(
+        help_text="Hora programada de inicio de la jornada especial"
+    )
+    hora_fin_programada = models.TimeField(
+        help_text="Hora programada de fin de la jornada especial"
+    )
+    horas_programadas = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        default=12.00,
+        help_text="Horas programadas para esta jornada especial"
+    )
+    aprobada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        limit_choices_to={'rol': 'jefe_patio'},
+        help_text="Jefe de patio que aprobó esta jornada especial"
+    )
+    fecha_aprobacion = models.DateTimeField(
+        default=timezone.now,
+        help_text="Fecha y hora en que se aprobó esta jornada especial"
+    )
+    activa = models.BooleanField(
+        default=True,
+        help_text="Indica si la jornada especial está activa"
+    )
+    observaciones = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Observaciones adicionales sobre la jornada especial"
+    )
+
+    def clean(self):
+        """Validaciones del modelo"""
+        if self.fecha_fin < self.fecha_inicio:
+            raise ValidationError("La fecha de fin no puede ser anterior a la fecha de inicio")
+        
+        # Validar que no hay solapamiento con otras jornadas especiales activas
+        jornadas_solapadas = JornadaEspecial.objects.filter(
+            empleado=self.empleado,
+            activa=True,
+            fecha_inicio__lte=self.fecha_fin,
+            fecha_fin__gte=self.fecha_inicio
+        )
+        
+        if self.pk:
+            jornadas_solapadas = jornadas_solapadas.exclude(pk=self.pk)
+        
+        if jornadas_solapadas.exists():
+            raise ValidationError("Ya existe una jornada especial activa para este empleado en las fechas seleccionadas")
+
+    def esta_activa_en_fecha(self, fecha):
+        """
+        Verifica si la jornada especial está activa en una fecha específica
+        """
+        return (
+            self.activa and 
+            self.fecha_inicio <= fecha <= self.fecha_fin
+        )
+
+    def calcular_horas_trabajadas(self, entrada, salida):
+        """
+        Calcula las horas trabajadas para jornadas especiales de 12 horas
+        Toma la primera entrada del día y la siguiente salida (puede ser del día siguiente)
+        """
+        if not entrada or not salida:
+            return {
+                'horas_normales': 0,
+                'horas_extras': 0,
+                'horas_totales': 0
+            }
+        
+        # Convertir a datetime locales
+        entrada_dt = entrada if hasattr(entrada, 'date') else entrada
+        salida_dt = salida if hasattr(salida, 'date') else salida
+        
+        # Asegurar que salida sea posterior a entrada
+        if salida_dt <= entrada_dt:
+            return {
+                'horas_normales': 0,
+                'horas_extras': 0,
+                'horas_totales': 0
+            }
+        
+        # Calcular tiempo total trabajado
+        tiempo_trabajado = salida_dt - entrada_dt
+        horas_totales = round(tiempo_trabajado.total_seconds() / 3600, 2)
+        
+        # Para jornadas especiales de 12 horas:
+        # - Hasta 12 horas son normales
+        # - Más de 12 horas son extras
+        if horas_totales <= 12:
+            horas_normales = horas_totales
+            horas_extras = 0
+        else:
+            horas_normales = 12.0
+            horas_extras = round(horas_totales - 12.0, 2)
+        
+        return {
+            'horas_normales': horas_normales,
+            'horas_extras': horas_extras,
+            'horas_totales': horas_totales
+        }
+
+    def __str__(self):
+        return f"{self.empleado.nombre} - Jornada especial {self.fecha_inicio} al {self.fecha_fin}"
+
+    class Meta:
+        verbose_name = "Jornada Especial"
+        verbose_name_plural = "Jornadas Especiales"
+        ordering = ['-fecha_inicio']
 
 
 class RegistroAsistencia(models.Model):
@@ -651,6 +1080,206 @@ class RegistroAsistencia(models.Model):
         verbose_name = "Registro de Asistencia"
         verbose_name_plural = "Registros de Asistencia"
         ordering = ['-id']  # Ordenar por ID en lugar de timestamp para evitar errores
+
+
+class TarifaHoraExtra(models.Model):
+    """
+    Modelo para definir las tarifas de horas extras según el tipo
+    """
+    TIPO_CHOICES = [
+        ('diurno', 'Diurno'),
+        ('nocturno', 'Nocturno'),
+        ('feriado_diurno', 'Feriado Diurno'),
+        ('feriado_nocturno', 'Feriado Nocturno'),
+    ]
+    
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, unique=True)
+    tarifa_por_hora = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        help_text="Tarifa en pesos por hora extra"
+    )
+    activa = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return f"{self.get_tipo_display()} - ${self.tarifa_por_hora}"
+    
+    class Meta:
+        verbose_name = "Tarifa Hora Extra"
+        verbose_name_plural = "Tarifas Horas Extras"
+
+
+class ResumenSemanal(models.Model):
+    """
+    Modelo para almacenar el resumen semanal de horas trabajadas de cada empleado
+    """
+    empleado = models.ForeignKey(
+        'UsuarioBiometrico',
+        on_delete=models.CASCADE,
+        related_name='resumenes_semanales'
+    )
+    
+    # Rango de la semana (domingo a lunes)
+    fecha_inicio_semana = models.DateField(
+        help_text="Domingo que inicia la semana"
+    )
+    fecha_fin_semana = models.DateField(
+        help_text="Lunes que termina la semana"
+    )
+    
+    # Horas trabajadas
+    horas_normales = models.DecimalField(
+        max_digits=6, 
+        decimal_places=2, 
+        default=0.00
+    )
+    
+    # Horas extras por tipo
+    horas_extra_diurno = models.DecimalField(
+        max_digits=6, 
+        decimal_places=2, 
+        default=0.00
+    )
+    horas_extra_nocturno = models.DecimalField(
+        max_digits=6, 
+        decimal_places=2, 
+        default=0.00
+    )
+    horas_extra_feriado_diurno = models.DecimalField(
+        max_digits=6, 
+        decimal_places=2, 
+        default=0.00
+    )
+    horas_extra_feriado_nocturno = models.DecimalField(
+        max_digits=6, 
+        decimal_places=2, 
+        default=0.00
+    )
+    
+    # Totales
+    total_horas_trabajadas = models.DecimalField(
+        max_digits=6, 
+        decimal_places=2, 
+        default=0.00
+    )
+    total_horas_extras = models.DecimalField(
+        max_digits=6, 
+        decimal_places=2, 
+        default=0.00
+    )
+    
+    # Costos calculados
+    costo_horas_extra_diurno = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0.00
+    )
+    costo_horas_extra_nocturno = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0.00
+    )
+    costo_horas_extra_feriado_diurno = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0.00
+    )
+    costo_horas_extra_feriado_nocturno = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0.00
+    )
+    costo_total_horas_extras = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        default=0.00
+    )
+    
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    
+    def calcular_numero_semana(self):
+        """Calcula el número de semana del año"""
+        return self.fecha_inicio_semana.isocalendar()[1]
+    
+    def calcular_costos(self):
+        """Calcula los costos de las horas extras basado en las tarifas actuales"""
+        from decimal import Decimal
+        
+        try:
+            tarifa_diurno = TarifaHoraExtra.objects.get(tipo='diurno', activa=True)
+            self.costo_horas_extra_diurno = Decimal(str(self.horas_extra_diurno)) * tarifa_diurno.tarifa_por_hora
+        except TarifaHoraExtra.DoesNotExist:
+            self.costo_horas_extra_diurno = Decimal('0')
+            
+        try:
+            tarifa_nocturno = TarifaHoraExtra.objects.get(tipo='nocturno', activa=True)
+            self.costo_horas_extra_nocturno = Decimal(str(self.horas_extra_nocturno)) * tarifa_nocturno.tarifa_por_hora
+        except TarifaHoraExtra.DoesNotExist:
+            self.costo_horas_extra_nocturno = Decimal('0')
+            
+        try:
+            tarifa_feriado_diurno = TarifaHoraExtra.objects.get(tipo='feriado_diurno', activa=True)
+            self.costo_horas_extra_feriado_diurno = Decimal(str(self.horas_extra_feriado_diurno)) * tarifa_feriado_diurno.tarifa_por_hora
+        except TarifaHoraExtra.DoesNotExist:
+            self.costo_horas_extra_feriado_diurno = Decimal('0')
+            
+        try:
+            tarifa_feriado_nocturno = TarifaHoraExtra.objects.get(tipo='feriado_nocturno', activa=True)
+            self.costo_horas_extra_feriado_nocturno = Decimal(str(self.horas_extra_feriado_nocturno)) * tarifa_feriado_nocturno.tarifa_por_hora
+        except TarifaHoraExtra.DoesNotExist:
+            self.costo_horas_extra_feriado_nocturno = Decimal('0')
+            
+        self.costo_total_horas_extras = (
+            self.costo_horas_extra_diurno + 
+            self.costo_horas_extra_nocturno + 
+            self.costo_horas_extra_feriado_diurno + 
+            self.costo_horas_extra_feriado_nocturno
+        )
+    
+    def save(self, *args, **kwargs):
+        from decimal import Decimal
+        
+        # Calcular totales
+        self.total_horas_extras = (
+            Decimal(str(self.horas_extra_diurno)) + 
+            Decimal(str(self.horas_extra_nocturno)) + 
+            Decimal(str(self.horas_extra_feriado_diurno)) + 
+            Decimal(str(self.horas_extra_feriado_nocturno))
+        )
+        self.total_horas_trabajadas = Decimal(str(self.horas_normales)) + self.total_horas_extras
+        
+        # Calcular costos
+        self.calcular_costos()
+        
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        semana_num = self.calcular_numero_semana()
+        return f"{self.empleado.nombre} - Semana {semana_num} ({self.fecha_inicio_semana} al {self.fecha_fin_semana})"
+    
+    class Meta:
+        verbose_name = "Resumen Semanal"
+        verbose_name_plural = "Resúmenes Semanales"
+        unique_together = ['empleado', 'fecha_inicio_semana']
+        ordering = ['-fecha_inicio_semana', 'empleado__nombre']
+
+
+class FeriadoNacional(models.Model):
+    """
+    Modelo para definir los feriados nacionales
+    """
+    fecha = models.DateField(unique=True)
+    nombre = models.CharField(max_length=100)
+    activo = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return f"{self.nombre} - {self.fecha}"
+    
+    class Meta:
+        verbose_name = "Feriado Nacional"
+        verbose_name_plural = "Feriados Nacionales"
+        ordering = ['fecha']
 
 
 
