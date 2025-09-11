@@ -236,7 +236,7 @@ def filtrar_asistencias(request):
     return render(request, 'tabla_biometrico.html', context)
 
 def historial_asistencia(request):
-    registros = RegistroAsistencia.objects.select_related('user', 'estacion_servicio').order_by('user_id', 'timestamp')
+    registros = RegistroAsistencia.objects.select_related('user', 'user__estacion', 'estacion_servicio').order_by('user_id', 'timestamp')
     
     # Filtro por jefe de patio - solo ver registros de su estación asignada
     registros = aplicar_filtro_jefe_patio(registros, request.user)

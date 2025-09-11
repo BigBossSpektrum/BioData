@@ -43,10 +43,21 @@ def lista_usuarios(request):
         usuarios_biometricos = UsuarioBiometrico.objects.select_related('estacion').filter(estacion__in=estaciones_jefe)
     else:
         usuarios_biometricos = UsuarioBiometrico.objects.none()
+    
+    # Obtener la estación del último registro de asistencia para cada usuario
+    usuarios_con_estacion = []
+    for usuario in usuarios_biometricos:
+        ultimo_registro = RegistroAsistencia.objects.filter(user=usuario).select_related('estacion_servicio').order_by('-timestamp').first()
+        estacion_nombre = ultimo_registro.estacion_servicio.nombre if ultimo_registro and ultimo_registro.estacion_servicio else "Sin asignar"
+        
+        # Agregar el atributo estacion_servicio_nombre al usuario
+        usuario.estacion_servicio_nombre = estacion_nombre
+        usuarios_con_estacion.append(usuario)
+    
     estaciones = EstacionServicio.objects.all()
-    print(f"[DEBUG] Usuarios encontrados: {usuarios_biometricos.count()}, Estaciones: {estaciones.count()}")
+    print(f"[DEBUG] Usuarios encontrados: {len(usuarios_con_estacion)}, Estaciones: {estaciones.count()}")
     return render(request, 'usuarios.html', {
-        'usuarios': usuarios_biometricos,
+        'usuarios': usuarios_con_estacion,
         'estaciones': estaciones,
     })
 
