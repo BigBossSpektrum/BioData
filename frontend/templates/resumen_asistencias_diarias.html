@@ -530,9 +530,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Test específico para los casos problemáticos
-    console.log("=== TESTS DE VERIFICACIÓN ===");
-    testCaso("21:59"); // RUBILCE DURAN
-    testCaso("13:57"); // OSCAR ROJAS
+    console.log("=== TESTS DE VERIFICACIÓN (CON MARGEN 1 HORA - SIN CONFUSIÓN MADRUGADA) ===");
+    testCaso("21:59"); // RUBILCE DURAN - debería ser Turno 3 (nocturno)
+    testCaso("13:57"); // OSCAR ROJAS - debería ser Turno 2 (tarde)
+    testCaso("06:15"); // Caso límite - debería ser Turno 1 (mañana)
+    testCaso("12:55"); // Caso límite - debería ser Turno 1 (mañana)
+    testCaso("13:05"); // Caso límite - debería ser Turno 2 (tarde)
+    testCaso("20:55"); // Caso límite - debería ser Turno 2 (tarde)
+    testCaso("21:05"); // Caso límite - debería ser Turno 3 (nocturno)
+    testCaso("05:30"); // Madrugada - debería ser Turno 1 (mañana, no nocturno)
+    testCaso("02:00"); // Madrugada - debería ser Turno 1 (mañana, no nocturno)
     testCaso("07:00"); // Caso normal
     testCaso("14:00"); // Caso normal
     testCaso("22:00"); // Caso normal
@@ -634,17 +641,70 @@ function determinarTurno(horaEntrada, tipoTurnoOriginal) {
     
     const minutosEntrada = horaAMinutos(horaEntrada);
     
-    // Horarios en minutos: 7:00=420, 14:00=840, 22:00=1320
+    // Horarios en minutos con margen de 1 hora antes: 
+    // 6:00-13:00 para Turno 1, 13:00-21:00 para Turno 2, 21:00-06:00 para Turno 3
+    // IMPORTANTE: Las horas de madrugada (00:00-06:00) se consideran turno de mañana 
+    // por defecto, a menos que haya evidencia clara de turno nocturno
     const horarios = [
-        { nombre: 'Turno 1 (7:00-14:00)', hora: '07:00', minutos: 420 },
-        { nombre: 'Turno 2 (14:00-22:00)', hora: '14:00', minutos: 840 },
-        { nombre: 'Turno 3 (22:00-07:00)', hora: '22:00', minutos: 1320 }
+        { 
+            nombre: 'Turno 1 (7:00-14:00)', 
+            hora: '07:00', 
+            minutos: 420,
+            margenInicio: 360,  // 6:00 = 360 minutos
+            margenFin: 780      // 13:00 = 780 minutos
+        },
+        { 
+            nombre: 'Turno 2 (14:00-22:00)', 
+            hora: '14:00', 
+            minutos: 840,
+            margenInicio: 780,  // 13:00 = 780 minutos
+            margenFin: 1260     // 21:00 = 1260 minutos
+        },
+        { 
+            nombre: 'Turno 3 (22:00-07:00)', 
+            hora: '22:00', 
+            minutos: 1320,
+            margenInicio: 1260, // 21:00 = 1260 minutos
+            margenFin: 360      // 6:00 = 360 minutos (del día siguiente)
+        }
     ];
     
+    // Determinar el turno basado en los rangos con margen
+    // REGLA ESPECIAL: Las horas de madrugada (0:00-6:00) se asignan a turno mañana
+    // por defecto para evitar confusión con salidas de turno nocturno
+    if (minutosEntrada >= 0 && minutosEntrada < 360) {  // 00:00 - 06:00
+        // Madrugada: por defecto es entrada temprana de turno mañana
+        return {
+            turno: 'Turno 1 (7:00-14:00)',
+            horaEstandar: '07:00'
+        };
+    }
+    
+    for (let turno of horarios) {
+        if (turno.nombre === 'Turno 3 (22:00-07:00)') {
+            // Turno nocturno: solo desde 21:00 hasta 23:59 (entrada nocturna)
+            // Excluimos madrugada para evitar confusión con entradas de mañana
+            if (minutosEntrada >= turno.margenInicio) {  // Solo 21:00-23:59
+                return {
+                    turno: turno.nombre,
+                    horaEstandar: turno.hora
+                };
+            }
+        } else {
+            // Turnos diurnos
+            if (minutosEntrada >= turno.margenInicio && minutosEntrada < turno.margenFin) {
+                return {
+                    turno: turno.nombre,
+                    horaEstandar: turno.hora
+                };
+            }
+        }
+    }
+    
+    // Si no encaja en ningún rango con margen, usar la lógica anterior como fallback
     let mejorTurno = horarios[0];
     let menorDistancia = Math.abs(minutosEntrada - horarios[0].minutos);
     
-    // Buscar el turno más cercano
     for (let i = 1; i < horarios.length; i++) {
         let distancia = Math.abs(minutosEntrada - horarios[i].minutos);
         

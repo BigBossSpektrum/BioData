@@ -135,8 +135,14 @@ def detectar_tipo_turno_detallado(entrada_datetime, salida_datetime=None):
     """
     Detecta el tipo de turno con información detallada.
     Un turno nocturno real debe cumplir:
-    - Entrada alrededor de las 22:00 (entre 20:00 y 23:59)
+    - Entrada alrededor de las 22:00 (entre 21:00 y 23:59)
     - Salida al día siguiente alrededor de las 6:00 (entre 00:00 y 8:00)
+    
+    NOTA: Se aplica un margen de 1 hora antes de cada turno para determinar correctamente
+    el tipo de turno al que pertenece la entrada.
+    
+    IMPORTANTE: Las horas de madrugada (00:00-06:00) se consideran turno de mañana SOLO si
+    no hay evidencia de que sea un turno nocturno (requiere entrada nocturna previa).
     
     Args:
         entrada_datetime (datetime): Fecha y hora de entrada
@@ -166,40 +172,53 @@ def detectar_tipo_turno_detallado(entrada_datetime, salida_datetime=None):
         fecha_salida = salida_datetime.date()
         
         # Condiciones para turno nocturno real:
-        # 1. Entrada entre 20:00 y 23:59
+        # 1. Entrada entre 21:00 y 23:59 (margen de 1 hora antes de 22:00)
         # 2. Salida entre 00:00 y 8:00 del día siguiente
         # 3. La salida debe ser al día siguiente
-        entrada_nocturna = time(20, 0) <= hora_entrada <= time(23, 59)
+        entrada_nocturna = time(21, 0) <= hora_entrada <= time(23, 59)
         salida_nocturna = time(0, 0) <= hora_salida <= time(8, 0)
         diferencia_dias = (fecha_salida - fecha_entrada).days
         
         if entrada_nocturna and salida_nocturna and diferencia_dias == 1:
             es_nocturno = True
             tipo = 'nocturno'
-            descripcion = 'Turno nocturno (20:00 - 08:00)'
+            descripcion = 'Turno nocturno (22:00 - 06:00)'
         else:
-            # Clasificar como turno diurno basado en hora de entrada
-            if time(5, 0) <= hora_entrada < time(14, 0):
+            # Clasificar como turno diurno basado en hora de entrada con margen de 1 hora
+            # NOTA: Las horas de madrugada solo se consideran nocturnas si hay entrada nocturna válida
+            if time(6, 0) <= hora_entrada < time(13, 0):  # Turno mañana
                 tipo = 'mañana'
-                descripcion = 'Turno de mañana (05:00 - 14:00)'
-            elif time(14, 0) <= hora_entrada < time(22, 0):
+                descripcion = 'Turno de mañana (07:00 - 14:00)'
+            elif time(13, 0) <= hora_entrada < time(21, 0):  # Turno tarde
                 tipo = 'tarde'
                 descripcion = 'Turno de tarde (14:00 - 22:00)'
+            elif time(21, 0) <= hora_entrada <= time(23, 59):  # Entrada nocturna tardía
+                tipo = 'nocturno'
+                descripcion = 'Turno nocturno (22:00 - 06:00)'
+            elif time(0, 0) <= hora_entrada < time(6, 0):  # Madrugada - por defecto mañana
+                # Sin entrada nocturna previa, probablemente es entrada temprana de mañana
+                tipo = 'mañana'
+                descripcion = 'Turno de mañana - entrada muy temprana (07:00 - 14:00)'
             else:
                 tipo = 'irregular'
                 descripcion = 'Horario irregular'
     else:
-        # Sin salida, solo clasificar por entrada
-        if time(5, 0) <= hora_entrada < time(14, 0):
+        # Sin salida, solo clasificar por entrada con margen de 1 hora
+        # IMPORTANTE: Ser más conservador con las horas de madrugada
+        if time(6, 0) <= hora_entrada < time(13, 0):  # Turno mañana normal
             tipo = 'mañana'
-            descripcion = 'Turno de mañana (05:00 - 14:00)'
-        elif time(14, 0) <= hora_entrada < time(22, 0):
+            descripcion = 'Turno de mañana (07:00 - 14:00)'
+        elif time(13, 0) <= hora_entrada < time(21, 0):  # Turno tarde
             tipo = 'tarde'
             descripcion = 'Turno de tarde (14:00 - 22:00)'
-        elif time(20, 0) <= hora_entrada <= time(23, 59):
-            # Posible inicio de turno nocturno, pero sin salida no podemos confirmarlo
+        elif time(21, 0) <= hora_entrada <= time(23, 59):  # Entrada nocturna
             tipo = 'posible_nocturno'
-            descripcion = 'Posible inicio de turno nocturno'
+            descripcion = 'Posible inicio de turno nocturno (22:00 - 06:00)'
+        elif time(0, 0) <= hora_entrada < time(6, 0):  # Madrugada - AMBIGUO
+            # En madrugada sin más contexto, es más probable que sea entrada de mañana
+            # que salida de nocturno sin registrar la entrada
+            tipo = 'mañana'
+            descripcion = 'Turno de mañana - entrada muy temprana (07:00 - 14:00)'
         else:
             tipo = 'irregular'
             descripcion = 'Horario irregular'
