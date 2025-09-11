@@ -63,7 +63,6 @@ def crear_jornada_especial_ejemplo():
     empleado, created = UsuarioBiometrico.objects.get_or_create(
         nombre='Juan Carlos Trabajador',
         defaults={
-            'cedula': '12345678',
             'biometrico_id': 999,
             'estacion': estacion,
             'activo': True

@@ -114,7 +114,6 @@ def test_sistema_completo_ramiro():
     # Crear usuario simulado
     usuario_ramiro = UsuarioBiometrico(
         nombre="RAMIRO DE JESUS AMADO",
-        cedula="12345678",
         turno=JornadaLaboral(
             nombre='Mañana',
             tipo_jornada='manana',

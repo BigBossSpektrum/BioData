@@ -55,10 +55,9 @@ class CustomUser(AbstractUser):
 
 class JornadaLaboral(models.Model):
     JORNADA_CHOICES = [
-        ('manana', 'Mañana (6:00 - 14:00)'),
+        ('manana', 'Mañana (7:00 - 14:00)'),
         ('tarde', 'Tarde (14:00 - 22:00)'),
-        ('nocturno', 'Nocturno (22:00 - 6:00)'),
-        ('personalizada', 'Personalizada'),
+        ('nocturno', 'Nocturno (22:00 - 7:00)'),
     ]
     
     nombre = models.CharField(max_length=50)
@@ -870,7 +869,6 @@ class UsuarioBiometrico(models.Model):
         return {
             'empleado': empleado_obj,
             'nombre_completo': empleado_obj.nombre,
-            'cedula': empleado_obj.biometrico_id or 'N/A',
             'area': area,
             'cargo': cargo,
             'fecha': fecha,

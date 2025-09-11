@@ -163,11 +163,11 @@
                 <tr>
                     <th>#</th>
                     <th>Día</th>
-                    <th>ID Usuario</th>
                     <th>Nombre</th>
                     <th>Estación</th>
                     <th>Entrada</th>
                     <th>Salida</th>
+                    <th>Horas de Retraso</th>
                     <th>Horas Trabajadas</th>
                     <th>Tipo de Turno</th>
                     <th>Horas Extras</th>
@@ -179,7 +179,6 @@
             <tr>
                 <td>{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
                 <td class="col-dia">{{ r.dia }}</td>
-                <td>{{ r.user_id }}</td>
                 <td>
                     <div class="d-flex align-items-center justify-content-center">
                         <div>
@@ -210,6 +209,7 @@
                         <span class="text-muted">-</span>
                     {% endif %}
                 </td>
+                <td></td>
                 <td>
                     {% if r.horas_trabajadas_hhmm and r.entrada|date:"H:i" != r.salida|date:"H:i" %}
                         {{ r.horas_trabajadas_hhmm }}

@@ -354,7 +354,6 @@ def calcular_horas_trabajadas():
 @login_required
 def resumen_asistencias_diarias(request):
     nombre = request.GET.get('nombre')
-    cedula = request.GET.get('cedula')
     estacion = request.GET.get('estacion')
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
@@ -366,8 +365,6 @@ def resumen_asistencias_diarias(request):
 
     if nombre:
         registros_qs = registros_qs.filter(user__nombre__icontains=nombre)
-    # if cedula:
-    #     registros_qs = registros_qs.filter(user__cedula__icontains=cedula)  # Campo cedula removido
     if estacion:
         registros_qs = registros_qs.filter(estacion_servicio__nombre__icontains=estacion)
     if fecha_inicio:
@@ -522,7 +519,6 @@ def resumen_asistencias_diarias(request):
                         'dia': entrada.date().strftime('%Y-%m-%d'),
                         'user_id': usuario.id,
                         'nombre': usuario.nombre,
-                        'cedula': 'N/A',  # Campo cedula removido del modelo
                         'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia and registros_dia[0].estacion_servicio else '',
                         'entrada': entrada,
                         'salida': salida,
@@ -552,8 +548,7 @@ def resumen_asistencias_diarias(request):
             search_query.lower() in r['nombre'].lower() or
             search_query.lower() in str(r['user_id']).lower() or
             search_query.lower() in r['estacion'].lower()
-            # Comentado: campo cedula removido del modelo
-            # (r['cedula'] and search_query.lower() in r['cedula'].lower())
+
         )]
 
     if fecha_desde:
@@ -592,7 +587,6 @@ def resumen_asistencias_diarias(request):
         'paginator': paginator,
         'page_obj': page_obj,
         'nombre': nombre,
-        'cedula': 'N/A',  # Campo cedula removido del modelo
         'estacion': estacion,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin,
@@ -911,7 +905,7 @@ def lista_empleados_estacion(request):
     empleados = UsuarioBiometrico.objects.filter(
         estacion__jefe=request.user,
         activo=True
-    ).values('id', 'nombre')  # Removido 'cedula'
+    ).values('id', 'nombre')
     
     return JsonResponse({'empleados': list(empleados)})
 
@@ -1149,7 +1143,6 @@ def descargar_pdf_resumen(request, resumen_id):
         # Información básica
         info_data = [
             ['Empleado:', resumen.empleado.nombre],
-            ['Cédula:', 'N/A'],  # Campo cedula removido del modelo
             ['Estación:', resumen.empleado.estacion.nombre if resumen.empleado.estacion else 'N/A'],
             ['Turno:', resumen.empleado.turno.nombre if resumen.empleado.turno else 'N/A'],
             ['Rango de Fechas:', f"{resumen.fecha_inicio_semana} al {resumen.fecha_fin_semana}"],

@@ -81,7 +81,7 @@ def main():
     if usuarios_bio_la_juana.exists():
         print("   📋 Usuarios biométricos:")
         for usuario in usuarios_bio_la_juana[:10]:  # Mostrar máximo 10
-            print(f"     - {usuario.nombre} (Cédula: {usuario.cedula}) | Activo: {usuario.activo}")
+            print(f"     - {usuario.nombre} (ID: {usuario.biometrico_id}) | Activo: {usuario.activo}")
 
 if __name__ == "__main__":
     main()

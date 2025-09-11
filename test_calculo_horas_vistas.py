@@ -46,7 +46,6 @@ def test_calculo_horas_en_vistas():
     usuario_test = UsuarioBiometrico.objects.create(
         biometrico_id=999,
         nombre='Usuario Test',
-        cedula='12345678',
         turno=jornada_manana,
         estacion=estacion_test
     )
