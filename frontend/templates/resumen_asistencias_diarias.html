@@ -81,14 +81,14 @@
 
 /* Anchos específicos para columnas - responsive */
 .table th:nth-child(1), .table td:nth-child(1) { width: 4%; } /* # */
-.table th:nth-child(2), .table td:nth-child(2) { width: 9%; white-space: nowrap; } /* Día */
-.table th:nth-child(3), .table td:nth-child(3) { width: 6%; } /* ID Usuario */
-.table th:nth-child(4), .table td:nth-child(4) { width: 15%; } /* Nombre */
-.table th:nth-child(5), .table td:nth-child(5) { width: 12%; } /* Estación */
-.table th:nth-child(6), .table td:nth-child(6) { width: 8%; } /* Entrada */
-.table th:nth-child(7), .table td:nth-child(7) { width: 8%; } /* Salida */
-.table th:nth-child(8), .table td:nth-child(8) { width: 10%; } /* Horas Trabajadas */
-.table th:nth-child(9), .table td:nth-child(9) { width: 12%; } /* Tipo de Turno */
+.table th:nth-child(2), .table td:nth-child(2) { width: 8%; white-space: nowrap; } /* Día */
+.table th:nth-child(3), .table td:nth-child(3) { width: 14%; } /* Nombre */
+.table th:nth-child(4), .table td:nth-child(4) { width: 10%; } /* Estación */
+.table th:nth-child(5), .table td:nth-child(5) { width: 7%; } /* Entrada */
+.table th:nth-child(6), .table td:nth-child(6) { width: 7%; } /* Salida */
+.table th:nth-child(7), .table td:nth-child(7) { width: 9%; } /* Horas de Retraso */
+.table th:nth-child(8), .table td:nth-child(8) { width: 9%; } /* Horas Trabajadas */
+.table th:nth-child(9), .table td:nth-child(9) { width: 11%; } /* Tipo de Turno */
 .table th:nth-child(10), .table td:nth-child(10) { width: 8%; } /* Horas Extras */
 .table th:nth-child(11), .table td:nth-child(11) { width: 9%; } /* Aprobado */
 
@@ -117,6 +117,29 @@
     .table {
         font-size: 0.85rem;
     }
+}
+
+/* Estilos para horas de retraso */
+.text-orange {
+    color: #ff8c00 !important;
+}
+
+.horas-retraso {
+    font-weight: 500;
+}
+
+.horas-retraso .text-success {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.horas-retraso .text-danger {
+    animation: pulso-retraso 2s infinite;
+}
+
+@keyframes pulso-retraso {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 </style>
 
@@ -154,6 +177,42 @@
             <button type="button" class="btn btn-outline-secondary w-100" onclick="limpiarFiltros()">
                 <i class="bi bi-x-circle"></i> Limpiar
             </button>
+        </div>
+    </div>
+
+    <!-- Resumen de Retrasos -->
+    <div class="row mb-3" id="resumen-retrasos" style="display: none;">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body py-2">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bi bi-clock text-success me-2"></i>
+                                <span class="small">Sin Retraso: <strong id="count-sin-retraso" class="text-success">0</strong></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bi bi-clock-history text-info me-2"></i>
+                                <span class="small">Retraso Leve: <strong id="count-retraso-leve" class="text-info">0</strong></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                                <span class="small">Retraso Moderado: <strong id="count-retraso-moderado" class="text-warning">0</strong></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="bi bi-exclamation-circle text-danger me-2"></i>
+                                <span class="small">Retraso Grave: <strong id="count-retraso-grave" class="text-danger">0</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -209,7 +268,11 @@
                         <span class="text-muted">-</span>
                     {% endif %}
                 </td>
-                <td></td>
+                <td class="horas-retraso" 
+                    data-entrada="{{ r.entrada|date:'H:i'|default:'' }}" 
+                    data-tipo-turno="{{ r.tipo_turno|default:'mañana' }}">
+                    <!-- Se calculará con JavaScript -->
+                </td>
                 <td>
                     {% if r.horas_trabajadas_hhmm and r.entrada|date:"H:i" != r.salida|date:"H:i" %}
                         {{ r.horas_trabajadas_hhmm }}
@@ -465,7 +528,183 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+    
+    // Test específico para los casos problemáticos
+    console.log("=== TESTS DE VERIFICACIÓN ===");
+    testCaso("21:59"); // RUBILCE DURAN
+    testCaso("13:57"); // OSCAR ROJAS
+    testCaso("07:00"); // Caso normal
+    testCaso("14:00"); // Caso normal
+    testCaso("22:00"); // Caso normal
+    console.log("=== FIN TESTS ===");
+    
+    // Calcular horas de retraso
+    calcularHorasRetraso();
 });
+
+function testCaso(hora) {
+    const resultado = determinarTurno(hora, "");
+    const retraso = calcularDiferenciaMinutos(resultado.horaEstandar, hora, resultado.turno);
+    console.log(`${hora} -> ${resultado.turno} (${resultado.horaEstandar}) -> Retraso: ${retraso}min`);
+}
+
+function calcularHorasRetraso() {
+    // Horarios estándar de entrada para cada turno
+    const horariosEntrada = {
+        'turno1': '07:00',  // 7:00 a 14:00
+        'turno2': '14:00',  // 14:00 a 22:00
+        'turno3': '22:00'   // 22:00 a 7:00 (nocturno)
+    };
+    
+    // Contadores para el resumen
+    let contadores = {
+        sinRetraso: 0,
+        retrasoLeve: 0,     // 1-29 minutos
+        retrasoModerado: 0, // 30-59 minutos  
+        retrasoGrave: 0     // 60+ minutos
+    };
+    
+    // Obtener todas las celdas de horas de retraso
+    const celdasRetraso = document.querySelectorAll('.horas-retraso');
+    
+    celdasRetraso.forEach(function(celda) {
+        const horaEntrada = celda.getAttribute('data-entrada');
+        const tipoTurnoOriginal = celda.getAttribute('data-tipo-turno') || 'mañana';
+        
+        if (!horaEntrada || horaEntrada === '') {
+            celda.innerHTML = '<span class="text-muted">-</span>';
+            return;
+        }
+        
+        // Determinar el turno correcto basado en la hora de entrada
+        const turnoCorrectoYHoraEstandar = determinarTurno(horaEntrada, tipoTurnoOriginal);
+        const horaEstandar = turnoCorrectoYHoraEstandar.horaEstandar;
+        const turno = turnoCorrectoYHoraEstandar.turno;
+        
+        // Debug: agregar información de depuración
+        console.log(`Entrada: ${horaEntrada}, Turno: ${turno}, Hora estándar: ${horaEstandar}`);
+        
+        // Calcular retraso
+        const retraso = calcularDiferenciaMinutos(horaEstandar, horaEntrada, turno);
+        
+        console.log(`Retraso calculado: ${retraso} minutos para ${horaEntrada}`);
+        
+        if (retraso > 0) {
+            const horasRetraso = Math.floor(retraso / 60);
+            const minutosRetraso = retraso % 60;
+            
+            let textoRetraso = '';
+            if (horasRetraso > 0) {
+                textoRetraso += horasRetraso + 'h ';
+            }
+            if (minutosRetraso > 0) {
+                textoRetraso += minutosRetraso + 'm';
+            }
+            
+            // Aplicar color según la gravedad del retraso y actualizar contadores
+            let claseColor = '';
+            if (retraso >= 60) { // 1 hora o más
+                claseColor = 'text-danger fw-bold';
+                contadores.retrasoGrave++;
+            } else if (retraso >= 30) { // 30 minutos o más
+                claseColor = 'text-warning fw-bold';
+                contadores.retrasoModerado++;
+            } else if (retraso >= 1) { // 1 minuto o más
+                claseColor = 'text-orange fw-bold';
+                contadores.retrasoLeve++;
+            }
+            
+            celda.innerHTML = `<span class="${claseColor}" title="Retraso de ${textoRetraso} respecto a ${horaEstandar} (${turno})">${textoRetraso}</span>`;
+        } else {
+            celda.innerHTML = `<span class="text-success" title="A tiempo para ${turno} (${horaEstandar})">✓</span>`;
+            contadores.sinRetraso++;
+        }
+    });
+    
+    // Actualizar resumen de retrasos
+    actualizarResumenRetrasos(contadores);
+}
+
+function determinarTurno(horaEntrada, tipoTurnoOriginal) {
+    // Convertir hora a minutos para facilitar comparaciones
+    function horaAMinutos(hora) {
+        const [horas, minutos] = hora.split(':').map(Number);
+        return horas * 60 + minutos;
+    }
+    
+    const minutosEntrada = horaAMinutos(horaEntrada);
+    
+    // Horarios en minutos: 7:00=420, 14:00=840, 22:00=1320
+    const horarios = [
+        { nombre: 'Turno 1 (7:00-14:00)', hora: '07:00', minutos: 420 },
+        { nombre: 'Turno 2 (14:00-22:00)', hora: '14:00', minutos: 840 },
+        { nombre: 'Turno 3 (22:00-07:00)', hora: '22:00', minutos: 1320 }
+    ];
+    
+    let mejorTurno = horarios[0];
+    let menorDistancia = Math.abs(minutosEntrada - horarios[0].minutos);
+    
+    // Buscar el turno más cercano
+    for (let i = 1; i < horarios.length; i++) {
+        let distancia = Math.abs(minutosEntrada - horarios[i].minutos);
+        
+        // Para el turno nocturno, considerar también la distancia al día siguiente
+        if (horarios[i].minutos === 1320 && minutosEntrada <= 420) {
+            // Si es madrugada (0:00-7:00), calcular distancia desde 22:00 del día anterior
+            distancia = Math.abs((minutosEntrada + 1440) - 1320);
+        }
+        
+        if (distancia < menorDistancia) {
+            menorDistancia = distancia;
+            mejorTurno = horarios[i];
+        }
+    }
+    
+    return {
+        turno: mejorTurno.nombre,
+        horaEstandar: mejorTurno.hora
+    };
+}
+
+function calcularDiferenciaMinutos(horaEstandar, horaReal, turno) {
+    // Convertir horas a minutos desde medianoche
+    function horaAMinutos(hora) {
+        const [horas, minutos] = hora.split(':').map(Number);
+        return horas * 60 + minutos;
+    }
+    
+    const minutosEstandar = horaAMinutos(horaEstandar);
+    const minutosReal = horaAMinutos(horaReal);
+    
+    // Calcular diferencia básica
+    let diferencia = minutosReal - minutosEstandar;
+    
+    // Manejar turno nocturno (22:00)
+    if (horaEstandar === '22:00') {
+        if (minutosReal >= 0 && minutosReal <= 420) { 
+            // Entre 00:00 y 07:00 - entrada del día siguiente
+            // Calcular tiempo transcurrido desde las 22:00 del día anterior
+            diferencia = minutosReal + (24 * 60) - minutosEstandar;
+        }
+    }
+    
+    // Si la diferencia es negativa, no hay retraso (llegó antes)
+    return Math.max(0, diferencia);
+}
+
+function actualizarResumenRetrasos(contadores) {
+    // Actualizar contadores en el resumen
+    document.getElementById('count-sin-retraso').textContent = contadores.sinRetraso;
+    document.getElementById('count-retraso-leve').textContent = contadores.retrasoLeve;
+    document.getElementById('count-retraso-moderado').textContent = contadores.retrasoModerado;
+    document.getElementById('count-retraso-grave').textContent = contadores.retrasoGrave;
+    
+    // Mostrar el resumen si hay datos
+    const totalRegistros = contadores.sinRetraso + contadores.retrasoLeve + contadores.retrasoModerado + contadores.retrasoGrave;
+    if (totalRegistros > 0) {
+        document.getElementById('resumen-retrasos').style.display = 'block';
+    }
+}
 
 function limpiarFiltros() {
     // Redirigir a la página sin parámetros de filtro
