@@ -51,57 +51,240 @@
     font-size: 1.1em;
 }
 
-/* Estilos para tabla responsive sin scroll */
+/* Estilos para tabla responsive sin scroll - Colores Frescos */
 .table-container {
     width: 100%;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    background: white;
+    border-radius: 18px;
+    box-shadow: 0 12px 35px rgba(16, 185, 129, 0.15);
+    background: linear-gradient(135deg, #f0fdfa 0%, #ecfdf5 50%, #f0f9ff 100%);
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+.table-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #3b82f6 100%);
+    z-index: 1;
 }
 
 .table {
     margin-bottom: 0;
     width: 100%;
-    table-layout: fixed; /* Distribución uniforme de columnas */
+    table-layout: fixed;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(15px);
+    border-radius: 0 0 18px 18px;
+    overflow: hidden;
+    min-width: 100%;
 }
 
 .table td, .table th {
     vertical-align: middle;
-    padding: 8px 4px;
+    padding: 14px 10px;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    border-color: rgba(16, 185, 129, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    line-height: 1.4;
+    text-align: center !important;
+}
+
+/* Centrar contenido interno de las celdas */
+.table td > *, .table th > * {
+    text-align: center !important;
+}
+
+.table td div, .table td span {
+    text-align: center !important;
+    justify-content: center !important;
+}
+
+/* Centrar elementos flexbox */
+.table td .d-flex {
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+}
+
+.table td .badge,
+.table td .btn {
+    margin: 0 auto !important;
 }
 
 .table th {
     position: sticky;
     top: 0;
-    background-color: #212529 !important;
+    background: linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #3b82f6 100%) !important;
+    color: white !important;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-size: 0.85rem;
     z-index: 10;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255, 255, 255, 0.9);
+    border-bottom: 1px solid rgba(16, 185, 129, 0.05);
+    text-align: center !important;
+}
+
+.table tbody tr td {
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+
+.table tr {
+    text-align: center !important;
+}
+
+.table tbody tr:nth-child(even) {
+    background: linear-gradient(135deg, rgba(240, 253, 250, 0.8) 0%, rgba(236, 253, 245, 0.8) 100%);
+}
+
+.table tbody tr:hover {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(6, 182, 212, 0.08) 50%, rgba(59, 130, 246, 0.08) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.15);
+    border-radius: 8px;
+}
+
+.table tbody tr:hover td {
+    border-color: rgba(16, 185, 129, 0.2);
 }
 
 /* Anchos específicos para columnas - responsive */
-.table th:nth-child(1), .table td:nth-child(1) { width: 4%; } /* # */
-.table th:nth-child(2), .table td:nth-child(2) { width: 8%; white-space: nowrap; } /* Día */
-.table th:nth-child(3), .table td:nth-child(3) { width: 14%; } /* Nombre */
-.table th:nth-child(4), .table td:nth-child(4) { width: 10%; } /* Estación */
-.table th:nth-child(5), .table td:nth-child(5) { width: 7%; } /* Entrada */
-.table th:nth-child(6), .table td:nth-child(6) { width: 7%; } /* Salida */
-.table th:nth-child(7), .table td:nth-child(7) { width: 9%; } /* Horas de Retraso */
-.table th:nth-child(8), .table td:nth-child(8) { width: 9%; } /* Horas Trabajadas */
-.table th:nth-child(9), .table td:nth-child(9) { width: 10%; } /* Tipo de Turno */
-.table th:nth-child(10), .table td:nth-child(10) { width: 8%; } /* Horas Extras */
-.table th:nth-child(11), .table td:nth-child(11) { width: 8%; } /* Aprobado */
+.table th:nth-child(1), .table td:nth-child(1) { width: 3%; text-align: center; } /* # */
+.table th:nth-child(2), .table td:nth-child(2) { width: 10%; white-space: nowrap; text-align: center; } /* Día */
+.table th:nth-child(3), .table td:nth-child(3) { width: 16%; min-width: 120px; text-align: center; } /* Nombre */
+.table th:nth-child(4), .table td:nth-child(4) { width: 10%; text-align: center; } /* Estación */
+.table th:nth-child(5), .table td:nth-child(5) { width: 10%; text-align: center; white-space: nowrap; } /* Entrada */
+.table th:nth-child(6), .table td:nth-child(6) { width: 12%; text-align: center; white-space: nowrap; } /* Salida */
 
-/* Ajustes para badges y botones */
+/* Permitir wrap para "Sin salida registrada" */
+.table td:nth-child(6) .text-danger {
+    white-space: normal !important;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.2;
+    font-size: 0.85em;
+}
+.table th:nth-child(7), .table td:nth-child(7) { width: 12%; text-align: center; } /* Horas de Retraso */
+.table th:nth-child(8), .table td:nth-child(8) { width: 10%; text-align: center; white-space: nowrap; } /* Horas Trabajadas */
+.table th:nth-child(9), .table td:nth-child(9) { width: 12%; text-align: center; } /* Tipo de Turno */
+.table th:nth-child(10), .table td:nth-child(10) { width: 10%; text-align: center; } /* Horas Extras */
+.table th:nth-child(11), .table td:nth-child(11) { width: 12%; text-align: center; } /* Aprobado */
+
+/* Ajustes para badges y botones - Colores Frescos */
 .badge {
     font-size: 0.8em;
     white-space: nowrap;
+    padding: 0.5rem 0.75rem;
+    border-radius: 30px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+}
+
+.badge:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.badge.bg-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%) !important;
+    border-color: rgba(59, 130, 246, 0.3);
+    color: white !important;
+}
+
+.badge.bg-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border-color: rgba(16, 185, 129, 0.3);
+    color: white !important;
+}
+
+.badge.bg-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: #1f2937 !important;
+    border-color: rgba(245, 158, 11, 0.3);
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.badge.bg-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    border-color: rgba(239, 68, 68, 0.3);
+    color: white !important;
+}
+
+.badge.bg-secondary {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%) !important;
+    border-color: rgba(107, 114, 128, 0.3);
+    color: white !important;
+}
+
+.badge.bg-dark {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 100%) !important;
+    border-color: rgba(31, 41, 55, 0.3);
+    color: white !important;
 }
 
 .btn-sm {
     font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
+    padding: 0.4rem 0.8rem;
     white-space: nowrap;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+    border-width: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.btn-sm:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.btn-outline-success {
+    border-color: #10b981;
+    color: #10b981;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+}
+
+.btn-outline-success:hover {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+}
+
+.btn-outline-danger {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+}
+
+.btn-outline-danger:hover {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
 }
 
 @media (max-width: 768px) {
@@ -115,31 +298,262 @@
     }
     
     .table {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
+        min-width: 800px; /* Asegurar ancho mínimo para scroll horizontal */
+    }
+    
+    .table-container {
+        overflow-x: auto; /* Permitir scroll horizontal en móviles */
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.12);
+    }
+    
+    .table td, .table th {
+        padding: 10px 6px;
+        min-height: 45px;
+    }
+    
+    .table th {
+        font-size: 0.7rem;
+        padding: 12px 6px;
+    }
+    
+    /* Ajustar anchos para móvil */
+    .table th:nth-child(1), .table td:nth-child(1) { width: 40px; min-width: 40px; } /* # */
+    .table th:nth-child(2), .table td:nth-child(2) { width: 80px; min-width: 80px; } /* Día */
+    .table th:nth-child(3), .table td:nth-child(3) { width: 140px; min-width: 140px; } /* Nombre */
+    .table th:nth-child(4), .table td:nth-child(4) { width: 80px; min-width: 80px; } /* Estación */
+    .table th:nth-child(5), .table td:nth-child(5) { width: 70px; min-width: 70px; } /* Entrada */
+    .table th:nth-child(6), .table td:nth-child(6) { width: 70px; min-width: 70px; } /* Salida */
+    .table th:nth-child(7), .table td:nth-child(7) { width: 90px; min-width: 90px; } /* Horas de Retraso */
+    .table th:nth-child(8), .table td:nth-child(8) { width: 90px; min-width: 90px; } /* Horas Trabajadas */
+    .table th:nth-child(9), .table td:nth-child(9) { width: 100px; min-width: 100px; } /* Tipo de Turno */
+    .table th:nth-child(10), .table td:nth-child(10) { width: 80px; min-width: 80px; } /* Horas Extras */
+    .table th:nth-child(11), .table td:nth-child(11) { width: 120px; min-width: 120px; } /* Aprobado */
+    
+    .badge {
+        font-size: 0.65em;
+        padding: 0.25rem 0.4rem;
+        border-radius: 20px;
+    }
+    
+    .btn-sm {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 18px;
+    }
+    
+    .horas-retraso .text-success,
+    .horas-retraso .text-info,
+    .horas-retraso .text-warning,
+    .horas-retraso .text-danger {
+        font-size: 0.8em;
+        padding: 0.15rem 0.3rem;
+        border-radius: 8px;
+    }
+    
+    .table tbody tr:hover {
+        transform: none; /* Desactivar el hover en móviles */
+    }
+    
+    #resumen-total .col-md-3 {
+        margin-bottom: 1rem;
+    }
+    
+    #resumen-total h4 {
+        font-size: 1.5rem;
+    }
+    
+    #resumen-total .fs-1 {
+        font-size: 2rem !important;
+    }
+    
+    .table-container,
+    #resumen-total .card {
+        box-shadow: 0 8px 25px rgba(16, 185, 129, 0.12);
     }
 }
 
-/* Estilos para horas de retraso */
+/* Estilos para horas de retraso - Colores Frescos */
 .text-orange {
-    color: #ff8c00 !important;
+    color: #f59e0b !important;
 }
 
 .horas-retraso {
-    font-weight: 500;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .horas-retraso .text-success {
-    font-size: 1.2em;
+    font-size: 1.1em;
     font-weight: bold;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.12) 100%);
+    color: #065f46 !important;
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+    border-left: 4px solid #10b981;
+    border-right: 1px solid rgba(16, 185, 129, 0.2);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+.horas-retraso .text-info {
+    font-size: 1.1em;
+    font-weight: bold;
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(14, 165, 233, 0.12) 100%);
+    color: #0c4a6e !important;
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+    border-left: 4px solid #06b6d4;
+    border-right: 1px solid rgba(6, 182, 212, 0.2);
+    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.15);
+}
+
+.horas-retraso .text-warning {
+    font-size: 1.1em;
+    font-weight: bold;
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.12) 100%);
+    color: #92400e !important;
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+    border-left: 4px solid #f59e0b;
+    border-right: 1px solid rgba(245, 158, 11, 0.2);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
 }
 
 .horas-retraso .text-danger {
-    animation: pulso-retraso 2s infinite;
+    font-size: 1.1em;
+    font-weight: bold;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.12) 100%);
+    color: #991b1b !important;
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+    border-left: 4px solid #ef4444;
+    border-right: 1px solid rgba(239, 68, 68, 0.2);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+    animation: pulso-retraso-fresco 2s infinite;
 }
 
-@keyframes pulso-retraso {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+@keyframes pulso-retraso-fresco {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+    }
+    50% { 
+        opacity: 0.85; 
+        transform: scale(1.03);
+        box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
+    }
+}
+
+/* Estilos para el resumen total - Colores Frescos */
+.bg-gradient {
+    background: linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #3b82f6 100%) !important;
+}
+
+#resumen-total .card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+    overflow: hidden;
+    box-shadow: 0 12px 35px rgba(16, 185, 129, 0.15);
+}
+
+#resumen-total .card:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 20px 50px rgba(16, 185, 129, 0.2);
+}
+
+#resumen-total .bg-white.bg-opacity-20 {
+    backdrop-filter: blur(15px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 15px;
+}
+
+#resumen-total .bg-white.bg-opacity-20:hover {
+    background: rgba(255, 255, 255, 0.35) !important;
+    transform: translateY(-3px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 25px rgba(255, 255, 255, 0.2);
+}
+
+/* Coherencia entre tabla y resumen */
+.table-container,
+#resumen-total .card {
+    box-shadow: 0 12px 35px rgba(16, 185, 129, 0.15);
+}
+
+#resumen-total .card-header {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.08) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+}
+
+/* Iconos con colores frescos */
+#resumen-total .text-white-50 {
+    color: rgba(255, 255, 255, 0.7) !important;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Animaciones suaves para elementos interactivos */
+.table tbody tr,
+.badge,
+.btn-sm,
+.horas-retraso > span,
+#resumen-total .bg-white.bg-opacity-20 {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Efecto de iluminación sutil */
+.table-container::before,
+#resumen-total .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.03) 0%, rgba(6, 182, 212, 0.03) 50%, rgba(59, 130, 246, 0.03) 100%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+#resumen-total .card::before {
+    opacity: 0.7;
+}
+
+/* Indicadores de estado con nuevos colores */
+#resumen-total .text-success {
+    color: #10b981 !important;
+}
+
+#resumen-total .text-danger {
+    color: #ef4444 !important;
+}
+
+#resumen-total .text-warning {
+    color: #f59e0b !important;
+}
+
+@media (max-width: 768px) {
+    #resumen-total .col-md-3 {
+        margin-bottom: 1rem;
+    }
+    
+    #resumen-total h4 {
+        font-size: 1.5rem;
+    }
+    
+    #resumen-total .fs-1 {
+        font-size: 2rem !important;
+    }
+    
+    .table-container,
+    #resumen-total .card {
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+    }
 }
 
 /* Estilos para fila de totales */
@@ -259,10 +673,10 @@
                     <th>Estación</th>
                     <th>Entrada</th>
                     <th>Salida</th>
-                    <th>Horas de Retraso</th>
-                    <th>Horas Trabajadas</th>
-                    <th>Tipo de Turno</th>
-                    <th>Horas Extras</th>
+                    <th>H.Retraso</th>
+                    <th>H.T</th>
+                    <th>T.Turno</th>
+                    <th>H.Extras</th>
                     <th>Aprobado</th>
                 </tr>
             </thead>
@@ -318,15 +732,12 @@
                     {% if r.es_turno_nocturno %}
                         <div class="badge bg-dark" data-bs-toggle="tooltip" data-bs-placement="top" 
                              title="{% if r.mensaje_turno %}{{ r.mensaje_turno }}{% else %}{{ r.descripcion_turno }}{% endif %}">
-                            <i class="bi bi-moon-stars"></i> Nocturno
-                            {% if r.diferencia_dias > 0 %}
-                                <br><small>({{ r.diferencia_dias }} día{{ r.diferencia_dias|pluralize }})</small>
-                            {% endif %}
+                            Nocturno
                         </div>
                     {% else %}
                         <div class="badge bg-warning text-dark" data-bs-toggle="tooltip" data-bs-placement="top" 
                              title="{{ r.descripcion_turno }}">
-                            <i class="bi bi-sun"></i> {{ r.tipo_turno|title }}
+                             {{ r.tipo_turno|title }}
                         </div>
                     {% endif %}
                 </td>
@@ -374,6 +785,86 @@
             </tr>
         </tbody>
     </table>
+    </div>
+
+    <!-- Resumen Total -->
+    <div class="row mt-4 mb-4" id="resumen-total">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-header bg-transparent border-0 text-white text-center py-3">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="bi bi-calculator me-2"></i>
+                        RESUMEN TOTAL DEL FILTRO ACTUAL
+                    </h5>
+                </div>
+                <div class="card-body text-dark">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <div class="bg-white bg-opacity-20 rounded-3 p-3 h-100">
+                                <div class="mb-2">
+                                    <i class="bi bi-people-fill fs-1 text-dark-50"></i>
+                                </div>
+                                <h4 class="mb-1 fw-bold" id="total-registros">0</h4>
+                                <p class="mb-0 small">Registros Total</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="bg-white bg-opacity-20 rounded-3 p-3 h-100">
+                                <div class="mb-2">
+                                    <i class="bi bi-clock-history fs-1 text-dark-50"></i>
+                                </div>
+                                <h4 class="mb-1 fw-bold" id="total-horas-trabajadas">00:00</h4>
+                                <p class="mb-0 small">Horas Trabajadas</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="bg-white bg-opacity-20 rounded-3 p-3 h-100">
+                                <div class="mb-2">
+                                    <i class="bi bi-plus-circle-fill fs-1 text-dark-50"></i>
+                                </div>
+                                <h4 class="mb-1 fw-bold" id="total-horas-extras">00:00</h4>
+                                <p class="mb-0 small">Horas Extras</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="bg-white bg-opacity-20 rounded-3 p-3 h-100">
+                                <div class="mb-2">
+                                    <i class="bi bi-clipboard-check-fill fs-1 text-dark-50"></i>
+                                </div>
+                                <h4 class="mb-1 fw-bold" id="total-horas-extras-aprobadas">00:00</h4>
+                                <p class="mb-0 small">Extras Aprobadas</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="bg-white bg-opacity-20 rounded-3 p-3">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-check-circle-fill text-success me-2 fs-5"></i>
+                                            <span class="fw-bold">Aprobadas: <span id="extras-aprobadas-count">0</span></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-x-circle-fill text-danger me-2 fs-5"></i>
+                                            <span class="fw-bold">Rechazadas: <span id="extras-rechazadas-count">0</span></span>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-clock-fill text-warning me-2 fs-5"></i>
+                                            <span class="fw-bold">Pendientes: <span id="extras-pendientes-count">0</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Paginación -->
@@ -589,9 +1080,114 @@ document.addEventListener('DOMContentLoaded', function() {
     // Calcular horas de retraso
     calcularHorasRetraso();
     
-    // Calcular totales de horas trabajadas y aprobadas
-    calcularTotales();
+    // Calcular resumen total
+    calcularResumenTotal();
 });
+
+function calcularResumenTotal() {
+    let totalRegistros = 0;
+    let totalMinutosTrabajados = 0;
+    let totalMinutosExtras = 0;
+    let totalMinutosExtrasAprobadas = 0;
+    let contadorAprobadas = 0;
+    let contadorRechazadas = 0;
+    let contadorPendientes = 0;
+    
+    // Obtener todas las filas visibles de la tabla (excluyendo las ocultas por filtros)
+    const filasVisibles = document.querySelectorAll('tbody tr:not(#sinCoincidencias)');
+    
+    filasVisibles.forEach(function(fila) {
+        // Verificar si la fila está visible (no filtrada)
+        if (fila.style.display !== 'none') {
+            totalRegistros++;
+            
+            // Obtener horas trabajadas (columna 8)
+            const horasTrabajadas = fila.cells[7].textContent.trim();
+            if (horasTrabajadas && horasTrabajadas !== '-') {
+                const minutosTrabajados = convertirHHMMaMinutos(horasTrabajadas);
+                totalMinutosTrabajados += minutosTrabajados;
+            }
+            
+            // Obtener horas extras (columna 10)
+            const horasExtraElement = fila.cells[9].querySelector('.badge');
+            if (horasExtraElement) {
+                const horasExtras = horasExtraElement.textContent.trim();
+                if (horasExtras && horasExtras !== '-') {
+                    const minutosExtras = convertirHHMMaMinutos(horasExtras);
+                    totalMinutosExtras += minutosExtras;
+                }
+            }
+            
+            // Verificar estado de aprobación (columna 11)
+            const estadoAprobacion = fila.cells[10];
+            const badgeAprobado = estadoAprobacion.querySelector('.badge.bg-success');
+            const badgeRechazado = estadoAprobacion.querySelector('.badge.bg-danger');
+            const badgePendiente = estadoAprobacion.querySelector('.badge.bg-secondary');
+            const botonesAprobacion = estadoAprobacion.querySelectorAll('button');
+            
+            if (badgeAprobado) {
+                contadorAprobadas++;
+                // Si está aprobado y tiene horas extras, sumar a aprobadas
+                if (horasExtraElement) {
+                    const horasExtras = horasExtraElement.textContent.trim();
+                    if (horasExtras && horasExtras !== '-') {
+                        const minutosExtrasAprobadas = convertirHHMMaMinutos(horasExtras);
+                        totalMinutosExtrasAprobadas += minutosExtrasAprobadas;
+                    }
+                }
+            } else if (badgeRechazado) {
+                contadorRechazadas++;
+            } else if (badgePendiente || botonesAprobacion.length > 0) {
+                contadorPendientes++;
+            }
+        }
+    });
+    
+    // Actualizar los elementos del resumen
+    document.getElementById('total-registros').textContent = totalRegistros.toLocaleString();
+    document.getElementById('total-horas-trabajadas').textContent = convertirMinutosAHHMM(totalMinutosTrabajados);
+    document.getElementById('total-horas-extras').textContent = convertirMinutosAHHMM(totalMinutosExtras);
+    document.getElementById('total-horas-extras-aprobadas').textContent = convertirMinutosAHHMM(totalMinutosExtrasAprobadas);
+    
+    document.getElementById('extras-aprobadas-count').textContent = contadorAprobadas;
+    document.getElementById('extras-rechazadas-count').textContent = contadorRechazadas;
+    document.getElementById('extras-pendientes-count').textContent = contadorPendientes;
+    
+    // Mostrar el resumen solo si hay registros
+    const resumenElement = document.getElementById('resumen-total');
+    if (totalRegistros > 0) {
+        resumenElement.style.display = 'block';
+    } else {
+        resumenElement.style.display = 'none';
+    }
+}
+
+function convertirHHMMaMinutos(horaTexto) {
+    // Convertir formato HH:MM a minutos totales
+    if (!horaTexto || horaTexto === '-') return 0;
+    
+    // Limpiar el texto de espacios y caracteres extraños
+    const horaLimpia = horaTexto.replace(/[^\d:]/g, '');
+    const partes = horaLimpia.split(':');
+    
+    if (partes.length === 2) {
+        const horas = parseInt(partes[0]) || 0;
+        const minutos = parseInt(partes[1]) || 0;
+        return (horas * 60) + minutos;
+    }
+    
+    return 0;
+}
+
+function convertirMinutosAHHMM(minutosTotales) {
+    // Convertir minutos totales a formato HH:MM
+    if (minutosTotales === 0) return '00:00';
+    
+    const horas = Math.floor(minutosTotales / 60);
+    const minutos = minutosTotales % 60;
+    
+    return `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}`;
+}
 
 function testCaso(hora) {
     const resultado = determinarTurno(hora, "");

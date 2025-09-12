@@ -72,9 +72,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         sinCoincidencias.style.display = visibles === 0 ? '' : 'none';
         
-        // Recalcular totales después de aplicar filtros
-        if (typeof calcularTotales === 'function') {
-            calcularTotales();
+        // Actualizar resumen total después de aplicar filtros
+        if (typeof calcularResumenTotal === 'function') {
+            calcularResumenTotal();
         }
     }
 
