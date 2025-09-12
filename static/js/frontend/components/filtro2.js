@@ -1,4 +1,17 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // Funciones helper para el spinner de carga (en caso de que no estén definidas globalmente)
+    function safeMostrarCargando() {
+        if (typeof mostrarCargando === 'function') {
+            mostrarCargando();
+        }
+    }
+    
+    function safeMostrarCargandoTemporal(duracion = 300) {
+        if (typeof mostrarCargandoTemporal === 'function') {
+            mostrarCargandoTemporal(duracion);
+        }
+    }
+    
     const inputTexto = document.getElementById('filtroUsuarios');
     const inputDesde = document.getElementById('filtroDesde');
     const inputHasta = document.getElementById('filtroHasta');
@@ -6,7 +19,60 @@ document.addEventListener('DOMContentLoaded', function () {
     const filas = Array.from(document.querySelectorAll('tbody tr')).filter(f => !f.id);
     const sinCoincidencias = document.getElementById('sinCoincidencias');
 
+    // Verificar si hay filtros aplicados desde el backend
+    function hayFiltrosAplicados() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const filtrosBackend = ['nombre', 'estacion', 'fecha_inicio', 'fecha_fin', 'search', 'fecha_desde', 'fecha_hasta', 'estado'];
+        
+        // Verificar filtros de URL
+        for (let filtro of filtrosBackend) {
+            if (urlParams.get(filtro) && urlParams.get(filtro).trim() !== '') {
+                return true;
+            }
+        }
+        
+        // Verificar filtros de formulario
+        if (inputTexto && inputTexto.value.trim() !== '') return true;
+        if (inputDesde && inputDesde.value.trim() !== '') return true;
+        if (inputHasta && inputHasta.value.trim() !== '') return true;
+        if (selectEstado && selectEstado.value.trim() !== '') return true;
+        
+        return false;
+    }
+
+    // Mostrar/ocultar contenido basado en filtros
+    function toggleContenidoPorFiltros() {
+        const hayFiltros = hayFiltrosAplicados();
+        const mensajeSinFiltros = document.getElementById('mensaje-sin-filtros');
+        const tablaDatos = document.getElementById('tabla-datos');
+        const resumenTotal = document.getElementById('resumen-total');
+        const resumenRetrasos = document.getElementById('resumen-retrasos');
+        
+        if (hayFiltros) {
+            // Mostrar datos y ocultar mensaje
+            if (mensajeSinFiltros) mensajeSinFiltros.style.display = 'none';
+            if (tablaDatos) tablaDatos.style.display = 'block';
+        } else {
+            // Ocultar datos y mostrar mensaje (si existe)
+            if (mensajeSinFiltros) mensajeSinFiltros.style.display = 'block';
+            if (tablaDatos) tablaDatos.style.display = 'none';
+            if (resumenTotal) resumenTotal.style.display = 'none';
+            if (resumenRetrasos) resumenRetrasos.style.display = 'none';
+        }
+    }
+
     function aplicarFiltros() {
+        // Mostrar indicador de carga temporal para filtros locales
+        safeMostrarCargandoTemporal(300);
+        
+        // Verificar estado de filtros primero
+        toggleContenidoPorFiltros();
+        
+        // Si no hay filtros aplicados, no procesar la tabla
+        if (!hayFiltrosAplicados()) {
+            return;
+        }
+
         const texto = inputTexto.value.toLowerCase();
         const desde = inputDesde.value;
         const hasta = inputHasta.value;
@@ -72,6 +138,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         sinCoincidencias.style.display = visibles === 0 ? '' : 'none';
         
+        // Actualizar estado de contenido por filtros
+        toggleContenidoPorFiltros();
+        
         // Actualizar resumen total después de aplicar filtros
         if (typeof window.calcularResumenTotal === 'function') {
             console.log('🔄 Llamando a calcularResumenTotal desde filtro...');
@@ -86,6 +155,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Función para actualizar URL con filtros y recargar la página
     function aplicarFiltrosConPaginacion() {
+        // Mostrar indicador de carga para navegación
+        safeMostrarCargando();
+        
         const params = new URLSearchParams(window.location.search);
         
         // Mantener filtros existentes (nombre, cedula, estacion, fecha_inicio, fecha_fin)
@@ -122,11 +194,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Aplicar filtros inmediatamente para la página actual (sin recargar)
-    inputTexto.addEventListener('input', aplicarFiltros);
-    inputDesde.addEventListener('change', aplicarFiltros);
-    inputHasta.addEventListener('change', aplicarFiltros);
+    inputTexto.addEventListener('input', function() {
+        aplicarFiltros();
+        toggleContenidoPorFiltros();
+    });
+    inputDesde.addEventListener('change', function() {
+        aplicarFiltros();
+        toggleContenidoPorFiltros();
+    });
+    inputHasta.addEventListener('change', function() {
+        aplicarFiltros();
+        toggleContenidoPorFiltros();
+    });
     if (selectEstado) {
-        selectEstado.addEventListener('change', aplicarFiltros);
+        selectEstado.addEventListener('change', function() {
+            aplicarFiltros();
+            toggleContenidoPorFiltros();
+        });
     }
 
     // Aplicar filtros con paginación después de un breve delay para evitar múltiples recargas
@@ -143,5 +227,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Aplicar filtros iniciales
+    toggleContenidoPorFiltros(); // Verificar estado inicial
     aplicarFiltros();
 });
