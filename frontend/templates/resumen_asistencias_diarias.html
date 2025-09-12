@@ -161,21 +161,26 @@
 
     <!-- Filtros -->
     <div class="row mb-3">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input type="text" id="filtroUsuarios" class="form-control" placeholder="Buscar por nombre, estación..." value="{{ search_query }}">
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <input type="date" id="filtroDesde" class="form-control" placeholder="Desde" value="{{ fecha_desde }}">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <input type="date" id="filtroHasta" class="form-control" placeholder="Hasta" value="{{ fecha_hasta }}">
         </div>
         <div class="col-md-2">
             <button type="button" class="btn btn-outline-secondary w-100" onclick="limpiarFiltros()">
                 <i class="bi bi-x-circle"></i> Limpiar
+            </button>
+        </div>
+        <div class="col-md-3">
+            <button type="button" class="btn btn-success w-100" onclick="exportarExcel()">
+                <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
             </button>
         </div>
     </div>
@@ -769,6 +774,34 @@ function actualizarResumenRetrasos(contadores) {
 function limpiarFiltros() {
     // Redirigir a la página sin parámetros de filtro
     window.location.href = window.location.pathname;
+}
+
+function exportarExcel() {
+    // Obtener los parámetros de filtro actuales
+    const params = new URLSearchParams();
+    
+    // Obtener valores de los filtros
+    const search = document.getElementById('filtroUsuarios').value;
+    const fechaDesde = document.getElementById('filtroDesde').value;
+    const fechaHasta = document.getElementById('filtroHasta').value;
+    
+    // Agregar parámetros existentes de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('nombre')) params.set('nombre', urlParams.get('nombre'));
+    if (urlParams.get('estacion')) params.set('estacion', urlParams.get('estacion'));
+    if (urlParams.get('fecha_inicio')) params.set('fecha_inicio', urlParams.get('fecha_inicio'));
+    if (urlParams.get('fecha_fin')) params.set('fecha_fin', urlParams.get('fecha_fin'));
+    
+    // Agregar filtros del frontend
+    if (search) params.set('search', search);
+    if (fechaDesde) params.set('fecha_desde', fechaDesde);
+    if (fechaHasta) params.set('fecha_hasta', fechaHasta);
+    
+    // Construir URL de exportación
+    const exportUrl = '{% url "exportar_resumen_asistencias_excel" %}?' + params.toString();
+    
+    // Abrir en nueva ventana para descargar
+    window.open(exportUrl, '_blank');
 }
 
 function irAPagina() {

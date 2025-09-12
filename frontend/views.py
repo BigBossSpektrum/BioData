@@ -8,6 +8,10 @@ from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
 from django.utils import timezone
 from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado
+from django.http import HttpResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 from .utils_filters import aplicar_filtro_jefe_patio, obtener_info_estacion_jefe
 from django.http import HttpResponseForbidden, HttpResponseRedirect, JsonResponse
 from django.urls import reverse
@@ -596,6 +600,278 @@ def resumen_asistencias_diarias(request):
         **info_estacion
     }
     return render(request, 'resumen_asistencias_diarias.html', context)
+
+@login_required
+def exportar_resumen_asistencias_excel(request):
+    """Vista para exportar el resumen de asistencias diarias filtrado a Excel"""
+    
+    # Obtener los mismos filtros que la vista principal
+    nombre = request.GET.get('nombre')
+    estacion = request.GET.get('estacion')
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    search_query = request.GET.get('search', '').strip()
+    fecha_desde = request.GET.get('fecha_desde', '').strip()
+    fecha_hasta = request.GET.get('fecha_hasta', '').strip()
+
+    # Reutilizar la misma lógica de filtrado que en resumen_asistencias_diarias
+    registros_qs = RegistroAsistencia.objects.select_related('user', 'user__estacion').all()
+    
+    # Aplicar filtro por jefe de patio
+    from .utils_filters import aplicar_filtro_jefe_patio
+    registros_qs = aplicar_filtro_jefe_patio(registros_qs, request.user)
+
+    if nombre:
+        registros_qs = registros_qs.filter(user__nombre__icontains=nombre)
+    if estacion:
+        registros_qs = registros_qs.filter(estacion_servicio__nombre__icontains=estacion)
+    if fecha_inicio:
+        registros_qs = registros_qs.filter(timestamp__date__gte=fecha_inicio)
+    if fecha_fin:
+        registros_qs = registros_qs.filter(timestamp__date__lte=fecha_fin)
+
+    registros_qs = registros_qs.order_by('user__id', 'timestamp')
+
+    # Procesar registros (misma lógica que en resumen_asistencias_diarias)
+    asistencia_por_usuario_fecha = defaultdict(lambda: defaultdict(list))
+    for r in registros_qs:
+        fecha = localtime(r.timestamp).date()
+        asistencia_por_usuario_fecha[r.user][fecha].append(r)
+
+    registros = []
+    for usuario, dias in asistencia_por_usuario_fecha.items():
+        fechas_ordenadas = sorted(dias.keys())
+        for idx, fecha in enumerate(fechas_ordenadas):
+            registros_dia = dias[fecha]
+            registros_dia.sort(key=lambda r: r.timestamp)
+
+            timestamps = [localtime(r.timestamp) for r in registros_dia]
+            
+            # Lógica de entrada/salida (mismo código que en resumen_asistencias_diarias)
+            entrada = None
+            salida = None
+            
+            if len(timestamps) >= 2:
+                posibles_entradas_nocturnas = []
+                posibles_salidas_nocturnas = []
+                
+                for ts in timestamps:
+                    if time(20, 0) <= ts.time() <= time(23, 59):
+                        posibles_entradas_nocturnas.append(ts)
+                    elif time(0, 0) <= ts.time() <= time(8, 0):
+                        posibles_salidas_nocturnas.append(ts)
+                
+                if posibles_entradas_nocturnas and posibles_salidas_nocturnas:
+                    entrada = max(posibles_entradas_nocturnas)
+                    
+                    salidas_mismo_dia = [ts for ts in posibles_salidas_nocturnas if ts.date() == entrada.date()]
+                    salidas_dia_siguiente = [ts for ts in posibles_salidas_nocturnas if ts.date() > entrada.date()]
+                    
+                    if salidas_dia_siguiente:
+                        salida = min(salidas_dia_siguiente)
+                    elif salidas_mismo_dia:
+                        salida = min(salidas_mismo_dia)
+                    else:
+                        if idx + 1 < len(fechas_ordenadas):
+                            next_fecha = fechas_ordenadas[idx + 1]
+                            next_registros_dia = dias[next_fecha]
+                            for r in sorted(next_registros_dia, key=lambda r: r.timestamp):
+                                ts = localtime(r.timestamp)
+                                if time(0, 0) <= ts.time() <= time(8, 0):
+                                    salida = ts
+                                    break
+                
+                if not entrada or not salida:
+                    if posibles_entradas_nocturnas and not salida:
+                        entrada = max(posibles_entradas_nocturnas)
+                        if idx + 1 < len(fechas_ordenadas):
+                            next_fecha = fechas_ordenadas[idx + 1]
+                            next_registros_dia = dias[next_fecha]
+                            for r in sorted(next_registros_dia, key=lambda r: r.timestamp):
+                                ts = localtime(r.timestamp)
+                                if time(0, 0) <= ts.time() <= time(8, 0):
+                                    salida = ts
+                                    break
+                        
+                        if not salida:
+                            entrada = timestamps[0]
+                            salida = timestamps[-1]
+                    else:
+                        entrada = timestamps[0]
+                        salida = timestamps[-1]
+            else:
+                entrada = timestamps[0] if timestamps else None
+                salida = timestamps[0] if timestamps else None
+
+            info_turno = detectar_tipo_turno_detallado(entrada, salida if len(timestamps) > 1 else None)
+
+            horas_trabajadas = 0.0
+            resultado_turno = None
+            if salida and entrada:
+                if hasattr(usuario, 'turno') and usuario.turno:
+                    horas_trabajadas = usuario.turno.calcular_horas_trabajadas(entrada, salida)
+                else:
+                    if len(timestamps) > 1:
+                        resultado_turno = calcular_diferencia_dias_turno_nocturno(entrada, salida)
+                        horas_trabajadas = resultado_turno['duracion_horas']
+                    else:
+                        delta = salida - entrada
+                        if delta.total_seconds() < 0:
+                            delta += timedelta(days=1)
+                        horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+
+            horas_extra = 0.0
+            if horas_trabajadas > 8:
+                horas_extra = round(horas_trabajadas - 8, 2)
+
+            aprobados = [r.aprobado for r in registros_dia]
+            aprobado = None
+            if aprobados:
+                if all(a is True for a in aprobados):
+                    aprobado = True
+                elif any(a is False for a in aprobados):
+                    aprobado = False
+
+            # Verificar jornada especial
+            fecha_registro = entrada.date() if entrada else None
+            jornada_especial_info = None
+            es_jornada_especial = False
+            
+            if fecha_registro:
+                jornada_especial = JornadaEspecial.objects.filter(
+                    empleado=usuario,
+                    activa=True,
+                    fecha_inicio__lte=fecha_registro,
+                    fecha_fin__gte=fecha_registro
+                ).first()
+                
+                if jornada_especial:
+                    es_jornada_especial = True
+                    jornada_especial_info = {
+                        'horas_programadas': jornada_especial.horas_programadas,
+                        'observaciones': jornada_especial.observaciones
+                    }
+
+            registros.append({
+                'dia': entrada.date().strftime('%Y-%m-%d'),
+                'nombre': usuario.nombre,
+                'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia and registros_dia[0].estacion_servicio else '',
+                'entrada': entrada.strftime('%H:%M') if entrada else '',
+                'salida': salida.strftime('%H:%M') if salida and salida != entrada else '',
+                'horas_trabajadas': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_trabajadas) if salida and horas_trabajadas is not None else '',
+                'horas_extra': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_extra) if salida and horas_extra > 0 else '',
+                'tipo_turno': info_turno['descripcion'],
+                'aprobado': 'Aprobado' if aprobado is True else 'Rechazado' if aprobado is False else 'Pendiente' if horas_extra > 0 else '',
+                'es_jornada_especial': es_jornada_especial,
+                'jornada_especial_info': jornada_especial_info,
+            })
+
+    # Aplicar filtros adicionales
+    if search_query:
+        registros = [r for r in registros if (
+            search_query.lower() in r['nombre'].lower() or
+            search_query.lower() in r['estacion'].lower()
+        )]
+
+    if fecha_desde:
+        try:
+            fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+            registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() >= fecha_desde_obj]
+        except ValueError:
+            pass
+
+    if fecha_hasta:
+        try:
+            fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() <= fecha_hasta_obj]
+        except ValueError:
+            pass
+
+    # Ordenar registros por fecha más reciente
+    registros.sort(key=lambda x: datetime.strptime(x['dia'], '%Y-%m-%d'), reverse=True)
+
+    # Crear el archivo Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Resumen Asistencias"
+
+    # Estilos
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="2E86AB", end_color="2E86AB", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    
+    cell_alignment = Alignment(horizontal="center", vertical="center")
+    border_thin = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    # Encabezados
+    headers = [
+        "Día", "Nombre", "Estación", "Entrada", "Salida", 
+        "Horas Trabajadas", "Tipo de Turno", "Horas Extras", "Aprobado"
+    ]
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = border_thin
+
+    # Datos
+    for row, registro in enumerate(registros, 2):
+        # Formatear día
+        try:
+            fecha_obj = datetime.strptime(registro['dia'], '%Y-%m-%d')
+            dia_formateado = fecha_obj.strftime('%d/%m/%Y')
+        except:
+            dia_formateado = registro['dia']
+
+        # Nombre con indicador de jornada especial
+        nombre_texto = registro['nombre']
+        if registro['es_jornada_especial']:
+            horas_prog = registro['jornada_especial_info'].get('horas_programadas', '12')
+            nombre_texto += f" ⭐ {horas_prog}H"
+
+        data = [
+            dia_formateado,
+            nombre_texto,
+            registro['estacion'] or '-',
+            registro['entrada'] or '-',
+            registro['salida'] or 'Sin salida registrada' if registro['entrada'] and not registro['salida'] else registro['salida'] or '-',
+            registro['horas_trabajadas'] or '-',
+            registro['tipo_turno'],
+            registro['horas_extra'] or '-',
+            registro['aprobado'] or '-'
+        ]
+        
+        for col, value in enumerate(data, 1):
+            cell = ws.cell(row=row, column=col, value=value)
+            cell.alignment = cell_alignment
+            cell.border = border_thin
+
+    # Ajustar ancho de columnas
+    column_widths = [12, 25, 15, 10, 10, 15, 20, 12, 12]
+    for col, width in enumerate(column_widths, 1):
+        ws.column_dimensions[get_column_letter(col)].width = width
+
+    # Crear respuesta HTTP
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    
+    # Nombre del archivo con fecha actual
+    fecha_actual = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'resumen_asistencias_{fecha_actual}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    # Guardar el archivo en la respuesta
+    wb.save(response)
+    
+    return response
     
 @login_required
 def aprobar_horas_extra(request, usuario_id, dia):
