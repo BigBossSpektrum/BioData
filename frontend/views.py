@@ -815,6 +815,62 @@ def exportar_resumen_asistencias_excel(request):
     # Ordenar registros por fecha más reciente
     registros.sort(key=lambda x: datetime.strptime(x['dia'], '%Y-%m-%d'), reverse=True)
 
+    # Función para calcular horas de retraso
+    def calcular_horas_retraso(entrada_str, tipo_turno):
+        """Calcula las horas de retraso basado en la entrada y tipo de turno"""
+        if not entrada_str:
+            return ""
+        
+        try:
+            hora_entrada = datetime.strptime(entrada_str, '%H:%M').time()
+            minutos_entrada = hora_entrada.hour * 60 + hora_entrada.minute
+            
+            # Horarios estándar con margen de 1 hora
+            horarios = {
+                'Turno 1 (7:00-14:00)': {'estandar': 420, 'inicio': 360, 'fin': 780},  # 7:00, margen 6:00-13:00
+                'Turno 2 (14:00-22:00)': {'estandar': 840, 'inicio': 780, 'fin': 1260},  # 14:00, margen 13:00-21:00  
+                'Turno 3 (22:00-07:00)': {'estandar': 1320, 'inicio': 1260, 'fin': 360}   # 22:00, margen 21:00-06:00
+            }
+            
+            # Determinar turno correcto basado en hora de entrada
+            turno_detectado = None
+            if 0 <= minutos_entrada < 360:  # 00:00-06:00 - Turno mañana (no nocturno)
+                turno_detectado = 'Turno 1 (7:00-14:00)'
+            elif 360 <= minutos_entrada < 780:  # 06:00-13:00
+                turno_detectado = 'Turno 1 (7:00-14:00)'
+            elif 780 <= minutos_entrada < 1260:  # 13:00-21:00
+                turno_detectado = 'Turno 2 (14:00-22:00)'
+            elif 1260 <= minutos_entrada <= 1440:  # 21:00-23:59
+                turno_detectado = 'Turno 3 (22:00-07:00)'
+            
+            if not turno_detectado:
+                return ""
+                
+            hora_estandar = horarios[turno_detectado]['estandar']
+            
+            # Calcular retraso
+            if turno_detectado == 'Turno 3 (22:00-07:00)' and minutos_entrada < 360:
+                # Entrada nocturna del día siguiente
+                retraso = (minutos_entrada + 1440) - hora_estandar
+            else:
+                retraso = minutos_entrada - hora_estandar
+            
+            if retraso > 0:
+                horas_retraso = retraso // 60
+                minutos_retraso = retraso % 60
+                
+                if horas_retraso > 0 and minutos_retraso > 0:
+                    return f"{horas_retraso}h {minutos_retraso}m"
+                elif horas_retraso > 0:
+                    return f"{horas_retraso}h"
+                else:
+                    return f"{minutos_retraso}m"
+            else:
+                return "A tiempo"
+                
+        except Exception:
+            return ""
+
     # Crear el archivo Excel
     wb = Workbook()
     ws = wb.active
@@ -833,9 +889,13 @@ def exportar_resumen_asistencias_excel(request):
         bottom=Side(style='thin')
     )
 
-    # Encabezados
+    # Estilos para resumen
+    summary_font = Font(bold=True, color="FFFFFF")
+    summary_fill = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
+    
+    # Encabezados (agregamos columna de Horas de Retraso)
     headers = [
-        "Día", "Nombre", "Estación", "Entrada", "Salida", 
+        "Día", "Nombre", "Estación", "Entrada", "Salida", "Horas de Retraso",
         "Horas Trabajadas", "Tipo de Turno", "Horas Extras", "Aprobado"
     ]
     
@@ -846,7 +906,19 @@ def exportar_resumen_asistencias_excel(request):
         cell.alignment = header_alignment
         cell.border = border_thin
 
-    # Datos
+    # Datos con variables para cálculo de resumen
+    total_registros = len(registros)
+    total_minutos_trabajados = 0
+    total_minutos_extras = 0
+    total_minutos_extras_aprobadas = 0
+    contador_aprobadas = 0
+    contador_rechazadas = 0
+    contador_pendientes = 0
+    contador_sin_retraso = 0
+    contador_retraso_leve = 0
+    contador_retraso_moderado = 0
+    contador_retraso_grave = 0
+    
     for row, registro in enumerate(registros, 2):
         # Formatear día
         try:
@@ -861,12 +933,65 @@ def exportar_resumen_asistencias_excel(request):
             horas_prog = registro['jornada_especial_info'].get('horas_programadas', '12')
             nombre_texto += f" ⭐ {horas_prog}H"
 
+        # Calcular horas de retraso
+        horas_retraso = calcular_horas_retraso(registro['entrada'], registro['tipo_turno'])
+        
+        # Contabilizar tipos de retraso para resumen
+        if horas_retraso == "A tiempo":
+            contador_sin_retraso += 1
+        elif horas_retraso and horas_retraso != "":
+            # Extraer minutos del retraso para clasificar
+            retraso_minutos = 0
+            if 'h' in horas_retraso and 'm' in horas_retraso:
+                partes = horas_retraso.replace('h', '').replace('m', '').split()
+                if len(partes) == 2:
+                    retraso_minutos = int(partes[0]) * 60 + int(partes[1])
+            elif 'h' in horas_retraso:
+                retraso_minutos = int(horas_retraso.replace('h', '')) * 60
+            elif 'm' in horas_retraso:
+                retraso_minutos = int(horas_retraso.replace('m', ''))
+            
+            if retraso_minutos >= 60:
+                contador_retraso_grave += 1
+            elif retraso_minutos >= 30:
+                contador_retraso_moderado += 1
+            elif retraso_minutos >= 1:
+                contador_retraso_leve += 1
+
+        # Calcular totales para resumen
+        if registro['horas_trabajadas']:
+            try:
+                partes = registro['horas_trabajadas'].split(':')
+                if len(partes) == 2:
+                    total_minutos_trabajados += int(partes[0]) * 60 + int(partes[1])
+            except:
+                pass
+
+        if registro['horas_extra']:
+            try:
+                partes = registro['horas_extra'].split(':')
+                if len(partes) == 2:
+                    minutos_extras = int(partes[0]) * 60 + int(partes[1])
+                    total_minutos_extras += minutos_extras
+                    
+                    # Contabilizar por estado de aprobación
+                    if registro['aprobado'] == 'Aprobado':
+                        total_minutos_extras_aprobadas += minutos_extras
+                        contador_aprobadas += 1
+                    elif registro['aprobado'] == 'Rechazado':
+                        contador_rechazadas += 1
+                    elif registro['aprobado'] == 'Pendiente':
+                        contador_pendientes += 1
+            except:
+                pass
+
         data = [
             dia_formateado,
             nombre_texto,
             registro['estacion'] or '-',
             registro['entrada'] or '-',
             registro['salida'] or 'Sin salida registrada' if registro['entrada'] and not registro['salida'] else registro['salida'] or '-',
+            horas_retraso or '-',
             registro['horas_trabajadas'] or '-',
             registro['tipo_turno'],
             registro['horas_extra'] or '-',
@@ -878,8 +1003,56 @@ def exportar_resumen_asistencias_excel(request):
             cell.alignment = cell_alignment
             cell.border = border_thin
 
-    # Ajustar ancho de columnas
-    column_widths = [12, 25, 15, 10, 10, 15, 20, 12, 12]
+    # Agregar resumen total al final
+    if registros:
+        summary_row = len(registros) + 3  # Dejar una fila en blanco
+        
+        # Función para convertir minutos a HH:MM
+        def minutos_a_hhmm(minutos):
+            if minutos == 0:
+                return "00:00"
+            horas = minutos // 60
+            mins = minutos % 60
+            return f"{horas:02d}:{mins:02d}"
+        
+        # Título del resumen
+        ws.cell(row=summary_row, column=1, value="RESUMEN TOTAL").font = summary_font
+        ws.cell(row=summary_row, column=1).fill = summary_fill
+        ws.cell(row=summary_row, column=1).alignment = header_alignment
+        
+        # Merge cells para el título
+        ws.merge_cells(f"A{summary_row}:J{summary_row}")
+        
+        # Datos del resumen
+        summary_data = [
+            ["Total de Registros:", total_registros],
+            ["Total Horas Trabajadas:", minutos_a_hhmm(total_minutos_trabajados)],
+            ["Total Horas Extras:", minutos_a_hhmm(total_minutos_extras)],
+            ["Horas Extras Aprobadas:", minutos_a_hhmm(total_minutos_extras_aprobadas)],
+            ["", ""],  # Fila en blanco
+            ["ESTADO DE HORAS EXTRAS:", ""],
+            ["Aprobadas:", contador_aprobadas],
+            ["Rechazadas:", contador_rechazadas],
+            ["Pendientes:", contador_pendientes],
+            ["", ""],  # Fila en blanco
+            ["RESUMEN DE RETRASOS:", ""],
+            ["Sin Retraso:", contador_sin_retraso],
+            ["Retraso Leve (1-29 min):", contador_retraso_leve],
+            ["Retraso Moderado (30-59 min):", contador_retraso_moderado],
+            ["Retraso Grave (60+ min):", contador_retraso_grave],
+        ]
+        
+        for i, (label, value) in enumerate(summary_data):
+            row_num = summary_row + 1 + i
+            ws.cell(row=row_num, column=1, value=label).font = Font(bold=True)
+            ws.cell(row=row_num, column=2, value=value)
+            
+            # Aplicar borde a las celdas del resumen
+            ws.cell(row=row_num, column=1).border = border_thin
+            ws.cell(row=row_num, column=2).border = border_thin
+
+    # Ajustar ancho de columnas (agregamos una columna más)
+    column_widths = [12, 25, 15, 10, 10, 15, 15, 20, 12, 12]
     for col, width in enumerate(column_widths, 1):
         ws.column_dimensions[get_column_letter(col)].width = width
 
