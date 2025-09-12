@@ -602,8 +602,10 @@ def aprobar_horas_extra(request, usuario_id, dia):
     if request.method == 'POST' and hasattr(request.user, 'rol') and request.user.rol == 'jefe_patio':
         try:
             usuario = UsuarioBiometrico.objects.get(id=usuario_id)
-            if not usuario.estacion or usuario.estacion.jefe_id != request.user.id:
-                print("[APROBACION] Usuario no autorizado para este jefe de patio")
+            # Permitir aprobar si el usuario no tiene estación asignada (cualquier jefe puede aprobar)
+            # o si el usuario pertenece a la estación del jefe que hace la petición
+            if usuario.estacion and usuario.estacion.jefe_id != request.user.id:
+                print(f"[APROBACION] Usuario {usuario.nombre} (ID: {usuario_id}) no autorizado para jefe de patio {request.user.username}")
                 return HttpResponseForbidden("No autorizado para este usuario")
         except UsuarioBiometrico.DoesNotExist:
             print("[APROBACION] Usuario no encontrado")
@@ -629,8 +631,10 @@ def rechazar_horas_extra(request, usuario_id, dia):
     if request.method == 'POST' and hasattr(request.user, 'rol') and request.user.rol == 'jefe_patio':
         try:
             usuario = UsuarioBiometrico.objects.get(id=usuario_id)
-            if not usuario.estacion or usuario.estacion.jefe_id != request.user.id:
-                print("[RECHAZO] Usuario no autorizado para este jefe de patio")
+            # Permitir rechazar si el usuario no tiene estación asignada (cualquier jefe puede rechazar)
+            # o si el usuario pertenece a la estación del jefe que hace la petición
+            if usuario.estacion and usuario.estacion.jefe_id != request.user.id:
+                print(f"[RECHAZO] Usuario {usuario.nombre} (ID: {usuario_id}) no autorizado para jefe de patio {request.user.username}")
                 return HttpResponseForbidden("No autorizado para este usuario")
         except UsuarioBiometrico.DoesNotExist:
             print("[RECHAZO] Usuario no encontrado")
