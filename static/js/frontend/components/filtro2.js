@@ -41,6 +41,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         sinCoincidencias.style.display = visibles === 0 ? '' : 'none';
+        
+        // Actualizar resumen total después de aplicar filtros
+        if (typeof calcularResumenTotal === 'function') {
+            calcularResumenTotal();
+        }
     }
 
     // Función para actualizar URL con filtros y recargar la página
