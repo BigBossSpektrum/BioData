@@ -73,8 +73,14 @@ document.addEventListener('DOMContentLoaded', function () {
         sinCoincidencias.style.display = visibles === 0 ? '' : 'none';
         
         // Actualizar resumen total después de aplicar filtros
-        if (typeof calcularResumenTotal === 'function') {
+        if (typeof window.calcularResumenTotal === 'function') {
+            console.log('🔄 Llamando a calcularResumenTotal desde filtro...');
+            window.calcularResumenTotal();
+        } else if (typeof calcularResumenTotal === 'function') {
+            console.log('🔄 Llamando a calcularResumenTotal (referencia local) desde filtro...');
             calcularResumenTotal();
+        } else {
+            console.warn('⚠️ calcularResumenTotal no está disponible');
         }
     }
 

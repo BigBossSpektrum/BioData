@@ -166,7 +166,7 @@
 }
 
 /* Anchos específicos para columnas - responsive */
-.table th:nth-child(1), .table td:nth-child(1) { width: 3%; text-align: center; } /* # */
+.table th:nth-child(1), .table td:nth-child(1) { width: 5%; text-align: center; } /* # */
 .table th:nth-child(2), .table td:nth-child(2) { width: 10%; white-space: nowrap; text-align: center; } /* Día */
 .table th:nth-child(3), .table td:nth-child(3) { width: 16%; min-width: 120px; text-align: center; } /* Nombre */
 .table th:nth-child(4), .table td:nth-child(4) { width: 10%; text-align: center; } /* Estación */
@@ -315,7 +315,7 @@
     
     .table th {
         font-size: 0.7rem;
-        padding: 12px 6px;
+        padding: 10px 6px;
     }
     
     /* Ajustar anchos para móvil */
@@ -576,7 +576,7 @@
 }
 </style>
 
-<div class="container mt-4">
+<div class="container-fluid mt-4" style="width: 100%; margin: 0 auto;">
     <h2 class="mb-4">Resumen de Asistencias Diarias</h2>
     
     <!-- Indicador para jefe de patio -->
@@ -594,7 +594,7 @@
 
     <!-- Filtros -->
     <div class="row mb-3">
-        <div class="col-md-2">
+        <div class="col-md-4">
             <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input type="text" id="filtroUsuarios" class="form-control" placeholder="Buscar por nombre, estación..." value="{{ search_query }}">
@@ -605,15 +605,6 @@
         </div>
         <div class="col-md-2">
             <input type="date" id="filtroHasta" class="form-control" placeholder="Hasta" value="{{ fecha_hasta }}">
-        </div>
-        <div class="col-md-2">
-            <select id="filtroEstado" class="form-select">
-                <option value="">Estado</option>
-                <option value="aprobado" {% if estado_filtro == 'aprobado' %}selected{% endif %}>Aprobado</option>
-                <option value="rechazado" {% if estado_filtro == 'rechazado' %}selected{% endif %}>Rechazado</option>
-                <option value="pendiente" {% if estado_filtro == 'pendiente' %}selected{% endif %}>Pendiente</option>
-                <option value="sin_horas_extra" {% if estado_filtro == 'sin_horas_extra' %}selected{% endif %}>Sin Horas Extra</option>
-            </select>
         </div>
         <div class="col-md-2">
             <button type="button" class="btn btn-outline-secondary w-100" onclick="limpiarFiltros()">
@@ -775,14 +766,7 @@
             <tr id="sinCoincidencias" style="display: none;">
                 <td colspan="11" class="text-center text-muted">No se encontraron resultados con el filtro aplicado.</td>
             </tr>
-            <!-- Fila de totales -->
-            <tr class="table-warning fw-bold" id="fila-totales">
-                <td colspan="7" class="text-end">TOTALES:</td>
-                <td class="text-center" id="total-horas-trabajadas">-</td>
-                <td class="text-center">-</td>
-                <td class="text-center" id="total-horas-aprobadas">-</td>
-                <td class="text-center">-</td>
-            </tr>
+
         </tbody>
     </table>
     </div>
@@ -813,7 +797,7 @@
                                 <div class="mb-2">
                                     <i class="bi bi-clock-history fs-1 text-dark-50"></i>
                                 </div>
-                                <h4 class="mb-1 fw-bold" id="total-horas-trabajadas">00:00</h4>
+                                <h4 class="mb-1 fw-bold" id="resumen-total-horas-trabajadas">00:00</h4>
                                 <p class="mb-0 small">Horas Trabajadas</p>
                             </div>
                         </div>
@@ -915,7 +899,7 @@
                         {% if page_obj.has_previous %}
                             <li class="page-item">
                                 <a class="page-link rounded-pill me-1 shadow-sm" 
-                                   href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}" 
+                                   href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" 
                                    aria-label="Primera página"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
@@ -925,7 +909,7 @@
                             </li>
                             <li class="page-item">
                                 <a class="page-link rounded-pill me-1 shadow-sm" 
-                                   href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}" 
+                                   href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" 
                                    aria-label="Página anterior"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
@@ -957,7 +941,7 @@
                             {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                                 <li class="page-item">
                                     <a class="page-link rounded-pill mx-1 shadow-sm text-dark" 
-                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}"
+                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}"
                                        data-bs-toggle="tooltip" 
                                        data-bs-placement="top" 
                                        title="Ir a la página {{ num }}">
@@ -967,7 +951,7 @@
                             {% elif num == 1 and page_obj.number > 4 %}
                                 <li class="page-item">
                                     <a class="page-link rounded-pill mx-1 shadow-sm text-dark" 
-                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}">
+                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">
                                         {{ num }}
                                     </a>
                                 </li>
@@ -980,7 +964,7 @@
                                 </li>
                                 <li class="page-item">
                                     <a class="page-link rounded-pill mx-1 shadow-sm text-dark" 
-                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}">
+                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">
                                         {{ num }}
                                     </a>
                                 </li>
@@ -991,7 +975,7 @@
                         {% if page_obj.has_next %}
                             <li class="page-item">
                                 <a class="page-link rounded-pill ms-1 shadow-sm" 
-                                   href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}" 
+                                   href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" 
                                    aria-label="Página siguiente"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
@@ -1001,7 +985,7 @@
                             </li>
                             <li class="page-item">
                                 <a class="page-link rounded-pill ms-1 shadow-sm" 
-                                   href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}" 
+                                   href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" 
                                    aria-label="Última página"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
@@ -1085,6 +1069,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function calcularResumenTotal() {
+    console.log('🔄 Calculando resumen total...');
     let totalRegistros = 0;
     let totalMinutosTrabajados = 0;
     let totalMinutosExtras = 0;
@@ -1093,65 +1078,116 @@ function calcularResumenTotal() {
     let contadorRechazadas = 0;
     let contadorPendientes = 0;
     
-    // Obtener todas las filas visibles de la tabla (excluyendo las ocultas por filtros)
-    const filasVisibles = document.querySelectorAll('tbody tr:not(#sinCoincidencias)');
+    // Obtener todas las filas visibles de la tabla (excluyendo las ocultas por filtros y filas especiales)
+    const filasVisibles = document.querySelectorAll('tbody tr:not(#sinCoincidencias):not(#fila-totales)');
+    console.log(`📊 Filas encontradas: ${filasVisibles.length}`);
     
     filasVisibles.forEach(function(fila) {
         // Verificar si la fila está visible (no filtrada)
         if (fila.style.display !== 'none') {
             totalRegistros++;
+            let horasExtras = ''; // Declarar la variable al inicio del bucle
             
-            // Obtener horas trabajadas (columna 8)
-            const horasTrabajadas = fila.cells[7].textContent.trim();
-            if (horasTrabajadas && horasTrabajadas !== '-') {
-                const minutosTrabajados = convertirHHMMaMinutos(horasTrabajadas);
-                totalMinutosTrabajados += minutosTrabajados;
+            console.log(`👀 Procesando fila visible ${totalRegistros}`);
+            
+            // Obtener horas trabajadas (columna 8 - índice 7)
+            const celdaHorasTrabajadas = fila.cells[7];
+            if (celdaHorasTrabajadas) {
+                let horasTrabajadas = celdaHorasTrabajadas.textContent.trim();
+                
+                // Limpiar texto de elementos HTML internos si los hay
+                const spanElement = celdaHorasTrabajadas.querySelector('span.text-muted');
+                if (spanElement && spanElement.textContent.trim() === '-') {
+                    horasTrabajadas = '-';
+                }
+                
+                console.log(`⏰ Horas trabajadas raw: "${horasTrabajadas}"`);
+                
+                if (horasTrabajadas && horasTrabajadas !== '-' && horasTrabajadas !== '') {
+                    const minutosTrabajados = convertirHHMMaMinutos(horasTrabajadas);
+                    totalMinutosTrabajados += minutosTrabajados;
+                    console.log(`✅ Sumando ${horasTrabajadas} = ${minutosTrabajados} minutos. Total: ${totalMinutosTrabajados}`);
+                } else {
+                    console.log(`❌ Horas trabajadas no válidas: "${horasTrabajadas}"`);
+                }
             }
             
-            // Obtener horas extras (columna 10)
-            const horasExtraElement = fila.cells[9].querySelector('.badge');
-            if (horasExtraElement) {
-                const horasExtras = horasExtraElement.textContent.trim();
+            // Obtener horas extras (columna 10 - índice 9)
+            const celdaHorasExtras = fila.cells[9];
+            if (celdaHorasExtras) {
+                const horasExtraElement = celdaHorasExtras.querySelector('.badge');
+                
+                if (horasExtraElement) {
+                    horasExtras = horasExtraElement.textContent.trim();
+                } else {
+                    // Si no hay badge, obtener directamente el texto de la celda
+                    const textoCompleto = celdaHorasExtras.textContent.trim();
+                    // Verificar si no es solo un guión
+                    if (textoCompleto && textoCompleto !== '-') {
+                        horasExtras = textoCompleto;
+                    }
+                }
+                
                 if (horasExtras && horasExtras !== '-') {
                     const minutosExtras = convertirHHMMaMinutos(horasExtras);
                     totalMinutosExtras += minutosExtras;
                 }
             }
             
-            // Verificar estado de aprobación (columna 11)
+            // Verificar estado de aprobación (columna 11 - índice 10)
             const estadoAprobacion = fila.cells[10];
-            const badgeAprobado = estadoAprobacion.querySelector('.badge.bg-success');
-            const badgeRechazado = estadoAprobacion.querySelector('.badge.bg-danger');
-            const badgePendiente = estadoAprobacion.querySelector('.badge.bg-secondary');
-            const botonesAprobacion = estadoAprobacion.querySelectorAll('button');
-            
-            if (badgeAprobado) {
-                contadorAprobadas++;
-                // Si está aprobado y tiene horas extras, sumar a aprobadas
-                if (horasExtraElement) {
-                    const horasExtras = horasExtraElement.textContent.trim();
+            if (estadoAprobacion) {
+                const badgeAprobado = estadoAprobacion.querySelector('.badge.bg-success');
+                const badgeRechazado = estadoAprobacion.querySelector('.badge.bg-danger');
+                const badgePendiente = estadoAprobacion.querySelector('.badge.bg-secondary');
+                const botonesAprobacion = estadoAprobacion.querySelectorAll('button');
+                const textoAprobacion = estadoAprobacion.textContent.trim().toLowerCase();
+                
+                if (badgeAprobado || textoAprobacion.includes('aprobado')) {
+                    contadorAprobadas++;
+                    // Si está aprobado y tiene horas extras, sumar a aprobadas
                     if (horasExtras && horasExtras !== '-') {
                         const minutosExtrasAprobadas = convertirHHMMaMinutos(horasExtras);
                         totalMinutosExtrasAprobadas += minutosExtrasAprobadas;
                     }
+                } else if (badgeRechazado || textoAprobacion.includes('rechazado')) {
+                    contadorRechazadas++;
+                } else if (badgePendiente || botonesAprobacion.length > 0 || textoAprobacion.includes('pendiente')) {
+                    contadorPendientes++;
                 }
-            } else if (badgeRechazado) {
-                contadorRechazadas++;
-            } else if (badgePendiente || botonesAprobacion.length > 0) {
-                contadorPendientes++;
             }
         }
     });
     
     // Actualizar los elementos del resumen
     document.getElementById('total-registros').textContent = totalRegistros.toLocaleString();
-    document.getElementById('total-horas-trabajadas').textContent = convertirMinutosAHHMM(totalMinutosTrabajados);
+    
+    const elementoHorasTrabajadas = document.getElementById('resumen-total-horas-trabajadas');
+    const horasFormatadas = convertirMinutosAHHMM(totalMinutosTrabajados);
+    if (elementoHorasTrabajadas) {
+        elementoHorasTrabajadas.textContent = horasFormatadas;
+        console.log(`✅ Actualizando resumen horas trabajadas: ${horasFormatadas}`);
+    } else {
+        console.error('❌ No se encontró el elemento resumen-total-horas-trabajadas');
+    }
+    
     document.getElementById('total-horas-extras').textContent = convertirMinutosAHHMM(totalMinutosExtras);
     document.getElementById('total-horas-extras-aprobadas').textContent = convertirMinutosAHHMM(totalMinutosExtrasAprobadas);
     
     document.getElementById('extras-aprobadas-count').textContent = contadorAprobadas;
     document.getElementById('extras-rechazadas-count').textContent = contadorRechazadas;
     document.getElementById('extras-pendientes-count').textContent = contadorPendientes;
+    
+    // Log de resultados para debugging
+    console.log('📈 Resumen calculado:', {
+        totalRegistros,
+        totalMinutosTrabajados,
+        totalMinutosExtras,
+        totalMinutosExtrasAprobadas,
+        contadorAprobadas,
+        contadorRechazadas,
+        contadorPendientes
+    });
     
     // Mostrar el resumen solo si hay registros
     const resumenElement = document.getElementById('resumen-total');
@@ -1162,18 +1198,25 @@ function calcularResumenTotal() {
     }
 }
 
+// Hacer la función disponible globalmente
+window.calcularResumenTotal = calcularResumenTotal;
+
 function convertirHHMMaMinutos(horaTexto) {
     // Convertir formato HH:MM a minutos totales
-    if (!horaTexto || horaTexto === '-') return 0;
+    if (!horaTexto || horaTexto === '-' || horaTexto.trim() === '') {
+        return 0;
+    }
     
-    // Limpiar el texto de espacios y caracteres extraños
-    const horaLimpia = horaTexto.replace(/[^\d:]/g, '');
+    // Limpiar el texto de espacios y caracteres extraños, pero mantener los dos puntos
+    const horaLimpia = horaTexto.replace(/[^\d:]/g, '').trim();
+    
     const partes = horaLimpia.split(':');
     
     if (partes.length === 2) {
         const horas = parseInt(partes[0]) || 0;
         const minutos = parseInt(partes[1]) || 0;
-        return (horas * 60) + minutos;
+        const resultado = (horas * 60) + minutos;
+        return resultado;
     }
     
     return 0;
@@ -1488,7 +1531,6 @@ function exportarExcel() {
     const search = document.getElementById('filtroUsuarios').value;
     const fechaDesde = document.getElementById('filtroDesde').value;
     const fechaHasta = document.getElementById('filtroHasta').value;
-    const estado = document.getElementById('filtroEstado') ? document.getElementById('filtroEstado').value : '';
     
     // Agregar parámetros existentes de la URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -1501,7 +1543,6 @@ function exportarExcel() {
     if (search) params.set('search', search);
     if (fechaDesde) params.set('fecha_desde', fechaDesde);
     if (fechaHasta) params.set('fecha_hasta', fechaHasta);
-    if (estado) params.set('estado', estado);
     
     // Construir URL de exportación
     const exportUrl = '{% url "exportar_resumen_asistencias_excel" %}?' + params.toString();
@@ -1691,6 +1732,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<!-- Botón de debug temporal - REMOVER EN PRODUCCIÓN -->
+<div class="position-fixed" style="bottom: 20px; right: 20px; z-index: 1000;">
+    <button class="btn btn-sm btn-warning" onclick="calcularResumenTotal()" title="Debug: Recalcular resumen">
+        <i class="bi bi-calculator"></i> Debug
+    </button>
+</div>
 
 <script src="{% static 'js/frontend/components/filtro2.js' %}"></script>
 {% endblock %}
