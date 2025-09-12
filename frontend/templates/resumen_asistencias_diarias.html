@@ -88,9 +88,9 @@
 .table th:nth-child(6), .table td:nth-child(6) { width: 7%; } /* Salida */
 .table th:nth-child(7), .table td:nth-child(7) { width: 9%; } /* Horas de Retraso */
 .table th:nth-child(8), .table td:nth-child(8) { width: 9%; } /* Horas Trabajadas */
-.table th:nth-child(9), .table td:nth-child(9) { width: 11%; } /* Tipo de Turno */
+.table th:nth-child(9), .table td:nth-child(9) { width: 10%; } /* Tipo de Turno */
 .table th:nth-child(10), .table td:nth-child(10) { width: 8%; } /* Horas Extras */
-.table th:nth-child(11), .table td:nth-child(11) { width: 9%; } /* Aprobado */
+.table th:nth-child(11), .table td:nth-child(11) { width: 8%; } /* Aprobado */
 
 /* Ajustes para badges y botones */
 .badge {
@@ -141,6 +141,25 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
 }
+
+/* Estilos para fila de totales */
+#fila-totales {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+    border: 2px solid #f39c12 !important;
+    font-weight: bold !important;
+    font-size: 1.1em !important;
+}
+
+#fila-totales td {
+    border-top: 2px solid #f39c12 !important;
+    padding: 12px 8px !important;
+}
+
+#total-horas-trabajadas, #total-horas-aprobadas {
+    color: #d68910 !important;
+    font-weight: bold !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
 </style>
 
 <div class="container mt-4">
@@ -161,7 +180,7 @@
 
     <!-- Filtros -->
     <div class="row mb-3">
-        <div class="col-md-3">
+        <div class="col-md-2">
             <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input type="text" id="filtroUsuarios" class="form-control" placeholder="Buscar por nombre, estación..." value="{{ search_query }}">
@@ -174,11 +193,20 @@
             <input type="date" id="filtroHasta" class="form-control" placeholder="Hasta" value="{{ fecha_hasta }}">
         </div>
         <div class="col-md-2">
+            <select id="filtroEstado" class="form-select">
+                <option value="">Estado</option>
+                <option value="aprobado" {% if estado_filtro == 'aprobado' %}selected{% endif %}>Aprobado</option>
+                <option value="rechazado" {% if estado_filtro == 'rechazado' %}selected{% endif %}>Rechazado</option>
+                <option value="pendiente" {% if estado_filtro == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                <option value="sin_horas_extra" {% if estado_filtro == 'sin_horas_extra' %}selected{% endif %}>Sin Horas Extra</option>
+            </select>
+        </div>
+        <div class="col-md-2">
             <button type="button" class="btn btn-outline-secondary w-100" onclick="limpiarFiltros()">
                 <i class="bi bi-x-circle"></i> Limpiar
             </button>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <button type="button" class="btn btn-success w-100" onclick="exportarExcel()">
                 <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
             </button>
@@ -316,13 +344,13 @@
                         {% elif r.aprobado is False %}
                             <span class="badge bg-danger">Rechazado</span>
                         {% elif request.user.rol == 'jefe_patio' %}
-                            <form method="post" action="{% url 'aprobar_horas_extra' r.user_id r.dia %}" style="display:inline;">
+                            <form method="post" action="{% url 'aprobar_horas_extra' r.user_id r.dia %}" style="display:inline;" class="form-aprobar" data-empleado="{{ r.nombre }}" data-horas="{{ r.horas_extra_hhmm }}" data-dia="{{ r.dia }}">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-success">Aprobar</button>
+                                <button type="button" class="btn btn-sm btn-outline-success btn-confirmar-aprobacion">Aprobar</button>
                             </form>
-                            <form method="post" action="{% url 'rechazar_horas_extra' r.user_id r.dia %}" style="display:inline; margin-left: 4px;">
+                            <form method="post" action="{% url 'rechazar_horas_extra' r.user_id r.dia %}" style="display:inline; margin-left: 4px;" class="form-rechazar" data-empleado="{{ r.nombre }}" data-horas="{{ r.horas_extra_hhmm }}" data-dia="{{ r.dia }}">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Rechazar</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-confirmar-rechazo">Rechazar</button>
                             </form>
                         {% else %}
                             <span class="badge bg-secondary">Pendiente</span>
@@ -335,6 +363,14 @@
         {% endfor %}
             <tr id="sinCoincidencias" style="display: none;">
                 <td colspan="11" class="text-center text-muted">No se encontraron resultados con el filtro aplicado.</td>
+            </tr>
+            <!-- Fila de totales -->
+            <tr class="table-warning fw-bold" id="fila-totales">
+                <td colspan="7" class="text-end">TOTALES:</td>
+                <td class="text-center" id="total-horas-trabajadas">-</td>
+                <td class="text-center">-</td>
+                <td class="text-center" id="total-horas-aprobadas">-</td>
+                <td class="text-center">-</td>
             </tr>
         </tbody>
     </table>
@@ -388,7 +424,7 @@
                         {% if page_obj.has_previous %}
                             <li class="page-item">
                                 <a class="page-link rounded-pill me-1 shadow-sm" 
-                                   href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" 
+                                   href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}" 
                                    aria-label="Primera página"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
@@ -398,7 +434,7 @@
                             </li>
                             <li class="page-item">
                                 <a class="page-link rounded-pill me-1 shadow-sm" 
-                                   href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" 
+                                   href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}" 
                                    aria-label="Página anterior"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
@@ -430,7 +466,7 @@
                             {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                                 <li class="page-item">
                                     <a class="page-link rounded-pill mx-1 shadow-sm text-dark" 
-                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}"
+                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}"
                                        data-bs-toggle="tooltip" 
                                        data-bs-placement="top" 
                                        title="Ir a la página {{ num }}">
@@ -440,7 +476,7 @@
                             {% elif num == 1 and page_obj.number > 4 %}
                                 <li class="page-item">
                                     <a class="page-link rounded-pill mx-1 shadow-sm text-dark" 
-                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">
+                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}">
                                         {{ num }}
                                     </a>
                                 </li>
@@ -453,7 +489,7 @@
                                 </li>
                                 <li class="page-item">
                                     <a class="page-link rounded-pill mx-1 shadow-sm text-dark" 
-                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}">
+                                       href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}">
                                         {{ num }}
                                     </a>
                                 </li>
@@ -464,7 +500,7 @@
                         {% if page_obj.has_next %}
                             <li class="page-item">
                                 <a class="page-link rounded-pill ms-1 shadow-sm" 
-                                   href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" 
+                                   href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}" 
                                    aria-label="Página siguiente"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
@@ -474,7 +510,7 @@
                             </li>
                             <li class="page-item">
                                 <a class="page-link rounded-pill ms-1 shadow-sm" 
-                                   href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}" 
+                                   href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if nombre %}&nombre={{ nombre }}{% endif %}{% if cedula %}&cedula={{ cedula }}{% endif %}{% if estacion %}&estacion={{ estacion }}{% endif %}{% if fecha_inicio %}&fecha_inicio={{ fecha_inicio }}{% endif %}{% if fecha_fin %}&fecha_fin={{ fecha_fin }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}" 
                                    aria-label="Última página"
                                    data-bs-toggle="tooltip" 
                                    data-bs-placement="top" 
@@ -552,6 +588,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Calcular horas de retraso
     calcularHorasRetraso();
+    
+    // Calcular totales de horas trabajadas y aprobadas
+    calcularTotales();
 });
 
 function testCaso(hora) {
@@ -757,6 +796,75 @@ function calcularDiferenciaMinutos(horaEstandar, horaReal, turno) {
     return Math.max(0, diferencia);
 }
 
+function calcularTotales() {
+    // Función para convertir tiempo HH:MM a minutos
+    function tiempoAMinutos(tiempo) {
+        if (!tiempo || tiempo === '-' || tiempo.trim() === '') {
+            return 0;
+        }
+        
+        // Remover espacios y extraer solo el tiempo (formato HH:MM)
+        const match = tiempo.match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+            const horas = parseInt(match[1]);
+            const minutos = parseInt(match[2]);
+            return horas * 60 + minutos;
+        }
+        return 0;
+    }
+    
+    // Función para convertir minutos a formato HH:MM
+    function minutosATiempo(minutos) {
+        if (minutos === 0) return '-';
+        const horas = Math.floor(minutos / 60);
+        const mins = minutos % 60;
+        return `${horas.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    }
+    
+    let totalMinutosTrabajadas = 0;
+    let totalMinutosAprobadas = 0;
+    
+    // Obtener todas las filas de la tabla (excluir la fila de totales y sin coincidencias)
+    const filas = document.querySelectorAll('tbody tr:not(#fila-totales):not(#sinCoincidencias)');
+    
+    filas.forEach(function(fila) {
+        // Solo procesar si la fila está visible (no filtrada)
+        if (fila.style.display !== 'none') {
+            // Columna 8: Horas Trabajadas (índice 7)
+            const celdaHorasTrabajadas = fila.cells[7];
+            if (celdaHorasTrabajadas) {
+                const textoHoras = celdaHorasTrabajadas.textContent.trim();
+                totalMinutosTrabajadas += tiempoAMinutos(textoHoras);
+            }
+            
+            // Columna 10: Horas Extras (índice 9) - solo si están aprobadas
+            const celdaHorasExtras = fila.cells[9];
+            const celdaAprobado = fila.cells[10];
+            
+            if (celdaHorasExtras && celdaAprobado) {
+                const textoAprobado = celdaAprobado.textContent.trim();
+                // Solo sumar si está aprobado
+                if (textoAprobado.includes('Aprobado')) {
+                    const textoExtras = celdaHorasExtras.textContent.trim();
+                    totalMinutosAprobadas += tiempoAMinutos(textoExtras);
+                }
+            }
+        }
+    });
+    
+    // Actualizar las celdas de totales
+    document.getElementById('total-horas-trabajadas').textContent = minutosATiempo(totalMinutosTrabajadas);
+    document.getElementById('total-horas-aprobadas').textContent = minutosATiempo(totalMinutosAprobadas);
+    
+    // Mostrar/ocultar la fila de totales según si hay datos
+    const filaTotales = document.getElementById('fila-totales');
+    if (totalMinutosTrabajadas > 0 || totalMinutosAprobadas > 0) {
+        filaTotales.style.display = '';
+    } else {
+        filaTotales.style.display = 'none';
+    }
+}
+
 function actualizarResumenRetrasos(contadores) {
     // Actualizar contadores en el resumen
     document.getElementById('count-sin-retraso').textContent = contadores.sinRetraso;
@@ -784,6 +892,7 @@ function exportarExcel() {
     const search = document.getElementById('filtroUsuarios').value;
     const fechaDesde = document.getElementById('filtroDesde').value;
     const fechaHasta = document.getElementById('filtroHasta').value;
+    const estado = document.getElementById('filtroEstado') ? document.getElementById('filtroEstado').value : '';
     
     // Agregar parámetros existentes de la URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -796,6 +905,7 @@ function exportarExcel() {
     if (search) params.set('search', search);
     if (fechaDesde) params.set('fecha_desde', fechaDesde);
     if (fechaHasta) params.set('fecha_hasta', fechaHasta);
+    if (estado) params.set('estado', estado);
     
     // Construir URL de exportación
     const exportUrl = '{% url "exportar_resumen_asistencias_excel" %}?' + params.toString();
@@ -849,7 +959,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-{% if request.GET.aprobado %}
+{% if request.GET.aprobado == '1' %}
 <script>
     Swal.fire({
         icon: 'success',
@@ -857,9 +967,134 @@ document.addEventListener('DOMContentLoaded', function() {
         text: 'Las horas extra han sido aprobadas correctamente.',
         confirmButtonColor: '#3085d6',
         confirmButtonText: 'OK'
+    }).then(() => {
+        // Limpiar el parámetro 'aprobado' de la URL para evitar que el SweetAlert aparezca nuevamente
+        const url = new URL(window.location);
+        url.searchParams.delete('aprobado');
+        window.history.replaceState({}, document.title, url.toString());
+    });
+</script>
+{% elif request.GET.aprobado == '0' %}
+<script>
+    Swal.fire({
+        icon: 'info',
+        title: 'Horas extra rechazadas',
+        text: 'Las horas extra han sido rechazadas.',
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: 'OK'
+    }).then(() => {
+        // Limpiar el parámetro 'aprobado' de la URL para evitar que el SweetAlert aparezca nuevamente
+        const url = new URL(window.location);
+        url.searchParams.delete('aprobado');
+        window.history.replaceState({}, document.title, url.toString());
     });
 </script>
 {% endif %}
+
+<script>
+// Validador con SweetAlert para confirmar aprobación de horas extras
+document.addEventListener('DOMContentLoaded', function() {
+    // Manejar confirmación de aprobación
+    document.querySelectorAll('.btn-confirmar-aprobacion').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const form = this.closest('.form-aprobar');
+            const empleado = form.dataset.empleado;
+            const horas = form.dataset.horas;
+            const dia = form.dataset.dia;
+            
+            Swal.fire({
+                title: '⚠️ Confirmar Aprobación',
+                html: `
+                    <div class="text-start">
+                        <p><strong>Empleado:</strong> ${empleado}</p>
+                        <p><strong>Fecha:</strong> ${dia}</p>
+                        <p><strong>Horas extras:</strong> ${horas}</p>
+                        <hr>
+                        <p class="text-warning"><i class="bi bi-exclamation-triangle"></i> ¿Está seguro que desea <strong>APROBAR</strong> estas horas extras?</p>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="bi bi-check-circle"></i> Sí, Aprobar',
+                cancelButtonText: '<i class="bi bi-x-circle"></i> Cancelar',
+                reverseButtons: true,
+                focusCancel: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Mostrar loading mientras se procesa
+                    Swal.fire({
+                        title: 'Procesando...',
+                        text: 'Aprobando horas extras',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Enviar el formulario
+                    form.submit();
+                }
+            });
+        });
+    });
+
+    // Manejar confirmación de rechazo
+    document.querySelectorAll('.btn-confirmar-rechazo').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const form = this.closest('.form-rechazar');
+            const empleado = form.dataset.empleado;
+            const horas = form.dataset.horas;
+            const dia = form.dataset.dia;
+            
+            Swal.fire({
+                title: '⚠️ Confirmar Rechazo',
+                html: `
+                    <div class="text-start">
+                        <p><strong>Empleado:</strong> ${empleado}</p>
+                        <p><strong>Fecha:</strong> ${dia}</p>
+                        <p><strong>Horas extras:</strong> ${horas}</p>
+                        <hr>
+                        <p class="text-danger"><i class="bi bi-exclamation-triangle"></i> ¿Está seguro que desea <strong>RECHAZAR</strong> estas horas extras?</p>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="bi bi-x-circle"></i> Sí, Rechazar',
+                cancelButtonText: '<i class="bi bi-arrow-left"></i> Cancelar',
+                reverseButtons: true,
+                focusCancel: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Mostrar loading mientras se procesa
+                    Swal.fire({
+                        title: 'Procesando...',
+                        text: 'Rechazando horas extras',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // Enviar el formulario
+                    form.submit();
+                }
+            });
+        });
+    });
+});
+</script>
 
 <script src="{% static 'js/frontend/components/filtro2.js' %}"></script>
 {% endblock %}

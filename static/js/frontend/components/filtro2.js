@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const inputTexto = document.getElementById('filtroUsuarios');
     const inputDesde = document.getElementById('filtroDesde');
     const inputHasta = document.getElementById('filtroHasta');
+    const selectEstado = document.getElementById('filtroEstado');
     const filas = Array.from(document.querySelectorAll('tbody tr')).filter(f => !f.id);
     const sinCoincidencias = document.getElementById('sinCoincidencias');
 
@@ -9,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const texto = inputTexto.value.toLowerCase();
         const desde = inputDesde.value;
         const hasta = inputHasta.value;
+        const estadoFiltro = selectEstado ? selectEstado.value : '';
         let visibles = 0;
 
         filas.forEach(fila => {
@@ -36,11 +38,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 visible = false;
             }
 
+            // Filtro por estado de aprobación
+            if (estadoFiltro && visible) {
+                const celdaAprobado = fila.cells[10]; // Columna "Aprobado" (índice 10)
+                const textoAprobado = celdaAprobado ? celdaAprobado.textContent.toLowerCase().trim() : '';
+                
+                let cumpleEstado = false;
+                
+                switch (estadoFiltro) {
+                    case 'aprobado':
+                        cumpleEstado = textoAprobado.includes('aprobado');
+                        break;
+                    case 'rechazado':
+                        cumpleEstado = textoAprobado.includes('rechazado');
+                        break;
+                    case 'pendiente':
+                        cumpleEstado = textoAprobado.includes('pendiente') || 
+                                     (celdaAprobado && (celdaAprobado.querySelector('.btn-confirmar-aprobacion') || celdaAprobado.querySelector('.btn-confirmar-rechazo')));
+                        break;
+                    case 'sin_horas_extra':
+                        cumpleEstado = textoAprobado === '-' || textoAprobado === '';
+                        break;
+                }
+                
+                if (!cumpleEstado) {
+                    visible = false;
+                }
+            }
+
             fila.style.display = visible ? '' : 'none';
             if (visible) visibles++;
         });
 
         sinCoincidencias.style.display = visibles === 0 ? '' : 'none';
+        
+        // Recalcular totales después de aplicar filtros
+        if (typeof calcularTotales === 'function') {
+            calcularTotales();
+        }
     }
 
     // Función para actualizar URL con filtros y recargar la página
@@ -67,6 +102,12 @@ document.addEventListener('DOMContentLoaded', function () {
             params.delete('fecha_hasta');
         }
         
+        if (selectEstado && selectEstado.value) {
+            params.set('estado', selectEstado.value);
+        } else {
+            params.delete('estado');
+        }
+        
         // Resetear a la primera página cuando se aplican filtros
         params.set('page', '1');
         
@@ -78,6 +119,9 @@ document.addEventListener('DOMContentLoaded', function () {
     inputTexto.addEventListener('input', aplicarFiltros);
     inputDesde.addEventListener('change', aplicarFiltros);
     inputHasta.addEventListener('change', aplicarFiltros);
+    if (selectEstado) {
+        selectEstado.addEventListener('change', aplicarFiltros);
+    }
 
     // Aplicar filtros con paginación después de un breve delay para evitar múltiples recargas
     let timeoutId;
@@ -88,6 +132,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     inputDesde.addEventListener('change', aplicarFiltrosConPaginacion);
     inputHasta.addEventListener('change', aplicarFiltrosConPaginacion);
+    if (selectEstado) {
+        selectEstado.addEventListener('change', aplicarFiltrosConPaginacion);
+    }
 
     // Aplicar filtros iniciales
     aplicarFiltros();

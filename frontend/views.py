@@ -546,6 +546,7 @@ def resumen_asistencias_diarias(request):
     search_query = request.GET.get('search', '').strip()
     fecha_desde = request.GET.get('fecha_desde', '').strip()
     fecha_hasta = request.GET.get('fecha_hasta', '').strip()
+    estado_filtro = request.GET.get('estado', '').strip()
 
     if search_query:
         registros = [r for r in registros if (
@@ -568,6 +569,17 @@ def resumen_asistencias_diarias(request):
             registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() <= fecha_hasta_obj]
         except ValueError:
             pass
+
+    # Filtro por estado de aprobación
+    if estado_filtro:
+        if estado_filtro == 'aprobado':
+            registros = [r for r in registros if r['aprobado'] is True]
+        elif estado_filtro == 'rechazado':
+            registros = [r for r in registros if r['aprobado'] is False]
+        elif estado_filtro == 'pendiente':
+            registros = [r for r in registros if r['aprobado'] is None and r['horas_extra'] > 0]
+        elif estado_filtro == 'sin_horas_extra':
+            registros = [r for r in registros if r['horas_extra'] <= 0 or r['horas_extra'] is None]
 
     # Ordenar registros por fecha más reciente
     registros.sort(key=lambda x: datetime.strptime(x['dia'], '%Y-%m-%d'), reverse=True)
@@ -597,6 +609,7 @@ def resumen_asistencias_diarias(request):
         'search_query': search_query,
         'fecha_desde': fecha_desde,
         'fecha_hasta': fecha_hasta,
+        'estado_filtro': estado_filtro,
         **info_estacion
     }
     return render(request, 'resumen_asistencias_diarias.html', context)
@@ -613,6 +626,7 @@ def exportar_resumen_asistencias_excel(request):
     search_query = request.GET.get('search', '').strip()
     fecha_desde = request.GET.get('fecha_desde', '').strip()
     fecha_hasta = request.GET.get('fecha_hasta', '').strip()
+    estado_filtro = request.GET.get('estado', '').strip()
 
     # Reutilizar la misma lógica de filtrado que en resumen_asistencias_diarias
     registros_qs = RegistroAsistencia.objects.select_related('user', 'user__estacion').all()
@@ -786,6 +800,17 @@ def exportar_resumen_asistencias_excel(request):
             registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() <= fecha_hasta_obj]
         except ValueError:
             pass
+
+    # Filtro por estado de aprobación (para exportar)
+    if estado_filtro:
+        if estado_filtro == 'aprobado':
+            registros = [r for r in registros if r['aprobado'] == 'Aprobado']
+        elif estado_filtro == 'rechazado':
+            registros = [r for r in registros if r['aprobado'] == 'Rechazado']
+        elif estado_filtro == 'pendiente':
+            registros = [r for r in registros if r['aprobado'] == 'Pendiente']
+        elif estado_filtro == 'sin_horas_extra':
+            registros = [r for r in registros if r['horas_extra'] == '' or not r['horas_extra']]
 
     # Ordenar registros por fecha más reciente
     registros.sort(key=lambda x: datetime.strptime(x['dia'], '%Y-%m-%d'), reverse=True)
