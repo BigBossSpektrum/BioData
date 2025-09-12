@@ -21,6 +21,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.utils.dateparse import parse_datetime
+from datetime import datetime
+import traceback
+import json
 User = get_user_model()
 
 class RegistroAsistenciaListView(generics.ListAPIView):
@@ -43,10 +46,21 @@ def lista_usuarios(request):
         usuarios_biometricos = UsuarioBiometrico.objects.select_related('estacion').filter(estacion__in=estaciones_jefe)
     else:
         usuarios_biometricos = UsuarioBiometrico.objects.none()
+    
+    # Obtener la estación del último registro de asistencia para cada usuario
+    usuarios_con_estacion = []
+    for usuario in usuarios_biometricos:
+        ultimo_registro = RegistroAsistencia.objects.filter(user=usuario).select_related('estacion_servicio').order_by('-timestamp').first()
+        estacion_nombre = ultimo_registro.estacion_servicio.nombre if ultimo_registro and ultimo_registro.estacion_servicio else "Sin asignar"
+        
+        # Agregar el atributo estacion_servicio_nombre al usuario
+        usuario.estacion_servicio_nombre = estacion_nombre
+        usuarios_con_estacion.append(usuario)
+    
     estaciones = EstacionServicio.objects.all()
-    print(f"[DEBUG] Usuarios encontrados: {usuarios_biometricos.count()}, Estaciones: {estaciones.count()}")
+    print(f"[DEBUG] Usuarios encontrados: {len(usuarios_con_estacion)}, Estaciones: {estaciones.count()}")
     return render(request, 'usuarios.html', {
-        'usuarios': usuarios_biometricos,
+        'usuarios': usuarios_con_estacion,
         'estaciones': estaciones,
     })
 
@@ -59,9 +73,8 @@ def crear_usuario(request):
         return redirect('no_autorizado')
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
-        cedula = request.POST.get('cedula')
         estacion_id = request.POST.get('estacion_id')
-        print(f"[DEBUG] Datos recibidos: nombre={nombre}, cedula={cedula}, estacion_id={estacion_id}")
+        print(f"[DEBUG] Datos recibidos: nombre={nombre}, estacion_id={estacion_id}")
         
         if not nombre:
             print("[ERROR] Falta el nombre.")
@@ -83,7 +96,6 @@ def crear_usuario(request):
             
         usuario_bio = UsuarioBiometrico.objects.create(
             nombre=nombre,
-            cedula=cedula,
             estacion=estacion
         )
         print(f"[DEBUG] Usuario biométrico creado en BD: {usuario_bio}")
@@ -115,7 +127,7 @@ def no_autorizado(request):
 def eliminar_usuario(request, user_id):
     print(f"[DEBUG] Ingresando a eliminar_usuario con user_id={user_id}")
     usuario = get_object_or_404(UsuarioBiometrico, id=user_id)
-    print(f"[DEBUG] Usuario encontrado: id={usuario.id}, nombre={usuario.nombre}, biometrico_id={usuario.biometrico_id}, cedula={usuario.cedula}")
+    print(f"[DEBUG] Usuario encontrado: id={usuario.id}, nombre={usuario.nombre}, biometrico_id={usuario.biometrico_id}")
     print(f"[DEBUG] Rol del usuario autenticado: {request.user.rol}")
     if request.user.rol != 'admin':
         print("[DEBUG] Usuario no autorizado para eliminar.")
@@ -152,59 +164,109 @@ def eliminar_usuario(request, user_id):
 @permission_classes([AllowAny])
 def recibir_datos_biometrico(request):
     try:
-        print(f"[DEBUG] 📥 Recibiendo datos biométrico. PATH: {request.get_full_path()}")
-        print(f"[DEBUG] Headers: {request.headers}")
-        print(f"[DEBUG] Body (JSON): {request.data}")
+        # 📊 Información de la request
+        ip_cliente = request.META.get('REMOTE_ADDR', 'IP_DESCONOCIDA')
+        user_agent = request.META.get('HTTP_USER_AGENT', 'UA_DESCONOCIDA')
+        timestamp_recepcion = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        print(f"[DEBUG] 📥 === NUEVA REQUEST BIOMÉTRICA ===")
+        print(f"[DEBUG] 🕐 Timestamp: {timestamp_recepcion}")
+        print(f"[DEBUG] 🌐 IP Cliente: {ip_cliente}")
+        print(f"[DEBUG] 🔧 User-Agent: {user_agent}")
+        print(f"[DEBUG] 📍 PATH: {request.get_full_path()}")
 
         datos = request.data
 
         if not isinstance(datos, list):
-            print("[ERROR] ❌ request.data no es una lista. Tipo:", type(datos))
+            print(f"[ERROR] ❌ IP {ip_cliente} envió datos no válidos. Tipo: {type(datos)}")
             return Response({"error": "El cuerpo debe ser una lista de registros"}, status=400)
 
-        nuevos = 0
+        total_registros = len(datos)
+        print(f"[DEBUG] 📦 Total registros recibidos: {total_registros}")
+
+        # 📊 Contadores y estadísticas
+        estaciones_stats = {}
+        registros_nuevos = 0
+        registros_duplicados = 0
+        registros_error = 0
+        usuarios_nuevos = 0
+        usuarios_actualizados = 0
 
         for i, registro in enumerate(datos):
-            print(f"[DEBUG] Procesando registro #{i}: {registro}")
+            print(f"[DEBUG] 🔄 Procesando registro #{i+1}/{total_registros}")
+            
             if not isinstance(registro, dict):
-                print(f"[ERROR] ❌ Registro #{i} no es un dict válido. Tipo: {type(registro)}")
+                print(f"[ERROR] ❌ Registro #{i+1} no es dict válido. Tipo: {type(registro)}")
+                registros_error += 1
                 continue
 
             user_id = registro.get("user_id")
-            nombre = registro.get("nombre", "").strip()  # Nuevo campo
+            nombre = registro.get("nombre", "").strip()
             timestamp_str = registro.get("timestamp")
             estacion_nombre = registro.get("estacion")
             status = registro.get("status")
 
+            # 📊 Actualizar estadísticas por estación
+            if estacion_nombre:
+                if estacion_nombre not in estaciones_stats:
+                    estaciones_stats[estacion_nombre] = {
+                        'total_enviados': 0,
+                        'nuevos': 0,
+                        'duplicados': 0,
+                        'errores': 0,
+                        'primer_timestamp': timestamp_str,
+                        'ultimo_timestamp': timestamp_str
+                    }
+                estaciones_stats[estacion_nombre]['total_enviados'] += 1
+                
+                # Actualizar rango de timestamps
+                if timestamp_str:
+                    if timestamp_str < estaciones_stats[estacion_nombre]['primer_timestamp']:
+                        estaciones_stats[estacion_nombre]['primer_timestamp'] = timestamp_str
+                    if timestamp_str > estaciones_stats[estacion_nombre]['ultimo_timestamp']:
+                        estaciones_stats[estacion_nombre]['ultimo_timestamp'] = timestamp_str
+
+            # Validaciones
             if not user_id or not timestamp_str or not estacion_nombre:
-                print(f"[ERROR] ❌ Registro incompleto: {registro}")
+                print(f"[ERROR] ❌ Registro #{i+1} incompleto: user_id={user_id}, timestamp={timestamp_str}, estacion={estacion_nombre}")
+                registros_error += 1
+                if estacion_nombre:
+                    estaciones_stats[estacion_nombre]['errores'] += 1
                 continue
 
             timestamp = parse_datetime(timestamp_str)
             if not timestamp:
-                print(f"[ERROR] ❌ Timestamp inválido: {timestamp_str}")
+                print(f"[ERROR] ❌ Timestamp inválido en registro #{i+1}: {timestamp_str}")
+                registros_error += 1
+                if estacion_nombre:
+                    estaciones_stats[estacion_nombre]['errores'] += 1
                 continue
 
             try:
                 estacion_obj = EstacionServicio.objects.get(nombre=estacion_nombre)
             except EstacionServicio.DoesNotExist:
-                print(f"[ERROR] ❌ Estación no encontrada: {estacion_nombre}")
+                print(f"[ERROR] ❌ Estación '{estacion_nombre}' no existe en BD")
+                registros_error += 1
+                if estacion_nombre:
+                    estaciones_stats[estacion_nombre]['errores'] += 1
                 continue
 
-            # Obtener o crear el usuario
-            user, created = UsuarioBiometrico.objects.get_or_create(biometrico_id=user_id)
+            # Obtener o crear usuario
+            user, user_created = UsuarioBiometrico.objects.get_or_create(biometrico_id=user_id)
 
-            if created:
+            if user_created:
                 user.nombre = nombre
                 user.save()
+                usuarios_nuevos += 1
                 print(f"[INFO] 🆕 Usuario biométrico creado: ID={user_id}, Nombre={nombre}")
             else:
                 if nombre and user.nombre != nombre:
-                    print(f"[INFO] ✏️ Nombre actualizado para biometrico_id={user_id}: '{user.nombre}' → '{nombre}'")
+                    print(f"[INFO] ✏️ Actualizando nombre: ID={user_id}, '{user.nombre}' → '{nombre}'")
                     user.nombre = nombre
                     user.save()
+                    usuarios_actualizados += 1
 
-            # Verificar si ya existe un registro igual
+            # Verificar duplicados
             duplicado = RegistroAsistencia.objects.filter(
                 user=user,
                 timestamp=timestamp,
@@ -212,28 +274,73 @@ def recibir_datos_biometrico(request):
             ).exists()
 
             if duplicado:
-                print(f"[INFO] 🔁 Registro duplicado ignorado para usuario {user.biometrico_id} a las {timestamp}")
+                print(f"[INFO] 🔁 Duplicado: Usuario {user_id} en {estacion_nombre} a las {timestamp}")
+                registros_duplicados += 1
+                estaciones_stats[estacion_nombre]['duplicados'] += 1
                 continue
 
-            # Crear nuevo registro
+            # Crear registro
             RegistroAsistencia.objects.create(
                 user=user,
                 timestamp=timestamp,
                 status=status,
                 estacion_servicio=estacion_obj
             )
-            print(f"[DEBUG] ✅ Registro creado para usuario {user.biometrico_id} a las {timestamp}")
-            nuevos += 1
+            registros_nuevos += 1
+            estaciones_stats[estacion_nombre]['nuevos'] += 1
+            print(f"[DEBUG] ✅ Nuevo registro: Usuario {user_id} en {estacion_nombre}")
 
-        print(f"[DEBUG] 🧾 Registros nuevos importados: {nuevos}")
-        return Response({"status": "ok", "registros_importados": nuevos})
+        # 📊 REPORTE FINAL DETALLADO
+        print(f"\n[DEBUG] 🏁 === REPORTE FINAL ===")
+        print(f"[DEBUG] 🌐 IP Cliente: {ip_cliente}")
+        print(f"[DEBUG] 📦 Total registros procesados: {total_registros}")
+        print(f"[DEBUG] ✅ Registros nuevos: {registros_nuevos}")
+        print(f"[DEBUG] 🔁 Registros duplicados: {registros_duplicados}")
+        print(f"[DEBUG] ❌ Registros con error: {registros_error}")
+        print(f"[DEBUG] 👤 Usuarios nuevos creados: {usuarios_nuevos}")
+        print(f"[DEBUG] ✏️ Usuarios actualizados: {usuarios_actualizados}")
+        
+        print(f"\n[DEBUG] 📊 === ESTADÍSTICAS POR ESTACIÓN ===")
+        for estacion, stats in estaciones_stats.items():
+            print(f"[DEBUG] 🏢 {estacion}:")
+            print(f"         📤 Enviados: {stats['total_enviados']}")
+            print(f"         ✅ Nuevos: {stats['nuevos']}")
+            print(f"         🔁 Duplicados: {stats['duplicados']}")
+            print(f"         ❌ Errores: {stats['errores']}")
+            print(f"         🕐 Rango: {stats['primer_timestamp']} → {stats['ultimo_timestamp']}")
+            if stats['total_enviados'] > 0:
+                print(f"         📈 Tasa éxito: {(stats['nuevos']/(stats['total_enviados'])*100):.1f}%")
+
+        # Respuesta mejorada
+        response_data = {
+            "status": "ok",
+            "timestamp_procesamiento": timestamp_recepcion,
+            "ip_cliente": ip_cliente,
+            "resumen": {
+                "total_procesados": total_registros,
+                "nuevos": registros_nuevos,
+                "duplicados": registros_duplicados,
+                "errores": registros_error,
+                "usuarios_nuevos": usuarios_nuevos,
+                "usuarios_actualizados": usuarios_actualizados
+            },
+            "estaciones": estaciones_stats
+        }
+
+        print(f"[DEBUG] 📤 Enviando respuesta: {response_data}")
+        return Response(response_data)
 
     except Exception as e:
-        print("[ERROR] ❌ Excepción no controlada:")
+        print(f"[ERROR] ❌ === EXCEPCIÓN CRÍTICA ===")
+        print(f"[ERROR] 🌐 IP Cliente: {request.META.get('REMOTE_ADDR', 'DESCONOCIDA')}")
+        print(f"[ERROR] 🕐 Timestamp: {datetime.now()}")
+        print(f"[ERROR] 📄 Traceback completo:")
         print(traceback.format_exc())
+        
         return Response({
             "error": "Excepción inesperada en el servidor",
-            "detalle": str(e)
+            "detalle": str(e),
+            "timestamp": datetime.now().isoformat()
         }, status=500)
     
 @api_view(["GET"])

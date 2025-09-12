@@ -34,14 +34,14 @@
                                         <td>Salida (ayer)</td>
                                         <td>{{ item.salida_ayer.timestamp_local|time:"H:i" }}</td>
                                         <td>
-                                            {{ item.usuario.estacion.nombre|default:"-" }}
+                                            {{ item.estacion|default:"-" }}
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>Entrada</td>
                                         <td>{{ item.entrada.timestamp_local|time:"H:i" }}</td>
                                         <td>
-                                            {{ item.usuario.estacion.nombre|default:"-" }}
+                                            {{ item.estacion|default:"-" }}
                                         </td>
                                     </tr>
                                 {% else %}
@@ -50,7 +50,7 @@
                                         <td>Entrada</td>
                                         <td>{{ item.entrada.timestamp_local|time:"H:i" }}</td>
                                         <td>
-                                            {{ item.usuario.estacion.nombre|default:"-" }}
+                                            {{ item.estacion|default:"-" }}
                                         </td>
                                     </tr>
                                 {% endif %}

@@ -1,0 +1,334 @@
+{% extends 'layout/base.html' %}
+{% load static %}
+
+{% block title %}Panel Jefe de Patio - Jornadas Especiales{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header del Panel -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="bi bi-person-gear me-2"></i>Panel Jefe de Patio
+                    </h2>
+                    <p class="text-muted mb-0">Gestión de Jornadas Especiales - {{ estacion }}</p>
+                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearJornada">
+                    <i class="bi bi-plus-circle me-2"></i>Nueva Jornada Especial
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Resumen -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">Empleados Total</h5>
+                            <h2 class="mb-0">{{ total_empleados }}</h2>
+                        </div>
+                        <i class="bi bi-people fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-0">Jornadas Especiales Activas</h5>
+                            <h2 class="mb-0">{{ jornadas_activas }}</h2>
+                        </div>
+                        <i class="bi bi-clock-history fs-1"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jornadas Especiales Activas -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-calendar-event me-2"></i>Jornadas Especiales Activas
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if jornadas_especiales %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Empleado</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Fin</th>
+                                <th>Horario Programado</th>
+                                <th>Horas</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for jornada in jornadas_especiales %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2">
+                                            {{ jornada.empleado.nombre|first|upper }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ jornada.empleado.nombre }}</strong>
+                                            {% if jornada.empleado.cedula %}
+                                                <br><small class="text-muted">CI: {{ jornada.empleado.cedula }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ jornada.fecha_inicio|date:"d/m/Y" }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ jornada.fecha_fin|date:"d/m/Y" }}</span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ jornada.hora_inicio_programada|time:"H:i" }} - 
+                                        {{ jornada.hora_fin_programada|time:"H:i" }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">{{ jornada.horas_programadas }}h</span>
+                                </td>
+                                <td>
+                                    {% if jornada.activa %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle me-1"></i>Activa
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-x-circle me-1"></i>Inactiva
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if jornada.activa %}
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="confirmarDesactivacion({{ jornada.id }}, '{{ jornada.empleado.nombre|escapejs }}')">>
+                                            <i class="bi bi-x-circle me-1"></i>Desactivar
+                                        </button>
+                                    {% endif %}
+                                    {% if jornada.observaciones %}
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                data-bs-toggle="tooltip" 
+                                                title="{{ jornada.observaciones }}">
+                                            <i class="bi bi-info-circle"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+                    <h5 class="text-muted mt-3">No hay jornadas especiales activas</h5>
+                    <p class="text-muted">Cree una nueva jornada especial para comenzar.</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearJornada">
+                        <i class="bi bi-plus-circle me-2"></i>Crear Primera Jornada
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Crear Jornada Especial -->
+<div class="modal fade" id="modalCrearJornada" tabindex="-1" aria-labelledby="modalCrearJornadaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalCrearJornadaLabel">
+                    <i class="bi bi-plus-circle me-2"></i>Nueva Jornada Especial de 12 Horas
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'crear_jornada_especial' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Información:</strong> Las jornadas especiales permiten horarios de 12 horas que pueden 
+                        extenderse al día siguiente. El sistema tomará la primera entrada del día y la siguiente salida 
+                        registrada, sin importar que sea del día siguiente.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="empleado_id" class="form-label">
+                                <i class="bi bi-person me-1"></i>Empleado *
+                            </label>
+                            <select class="form-select" name="empleado_id" id="empleado_id" required>
+                                <option value="">Seleccione un empleado...</option>
+                                {% for empleado in empleados %}
+                                    <option value="{{ empleado.id }}">
+                                        {{ empleado.nombre }}
+                                        {% if empleado.cedula %} - CI: {{ empleado.cedula }}{% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha_inicio" class="form-label">
+                                <i class="bi bi-calendar-check me-1"></i>Fecha Inicio *
+                            </label>
+                            <input type="date" class="form-control" name="fecha_inicio" id="fecha_inicio" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha_fin" class="form-label">
+                                <i class="bi bi-calendar-x me-1"></i>Fecha Fin *
+                            </label>
+                            <input type="date" class="form-control" name="fecha_fin" id="fecha_fin" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="hora_inicio" class="form-label">
+                                <i class="bi bi-clock me-1"></i>Hora Inicio *
+                            </label>
+                            <input type="time" class="form-control" name="hora_inicio" id="hora_inicio" value="06:00" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="hora_fin" class="form-label">
+                                <i class="bi bi-clock-fill me-1"></i>Hora Fin *
+                            </label>
+                            <input type="time" class="form-control" name="hora_fin" id="hora_fin" value="18:00" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="horas_programadas" class="form-label">
+                                <i class="bi bi-stopwatch me-1"></i>Horas Programadas
+                            </label>
+                            <input type="number" class="form-control" name="horas_programadas" id="horas_programadas" 
+                                   value="12.00" step="0.25" min="1" max="24">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">
+                            <i class="bi bi-chat-text me-1"></i>Observaciones
+                        </label>
+                        <textarea class="form-control" name="observaciones" id="observaciones" rows="3" 
+                                  placeholder="Motivo o detalles adicionales de la jornada especial..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>Crear Jornada Especial
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación para Desactivar -->
+<div class="modal fade" id="modalDesactivar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Confirmar Desactivación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea desactivar la jornada especial de <strong id="nombreEmpleadoDesactivar"></strong>?</p>
+                <p class="text-muted">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form method="post" id="formDesactivar" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-x-circle me-1"></i>Desactivar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+</style>
+
+<script>
+// Función para confirmar desactivación
+function confirmarDesactivacion(jornadaId, nombreEmpleado) {
+    document.getElementById('nombreEmpleadoDesactivar').textContent = nombreEmpleado;
+    document.getElementById('formDesactivar').action = `{% url 'desactivar_jornada_especial' 0 %}`.replace('0', jornadaId);
+    
+    var modal = new bootstrap.Modal(document.getElementById('modalDesactivar'));
+    modal.show();
+}
+
+// Validaciones del formulario
+document.addEventListener('DOMContentLoaded', function() {
+    // Establecer fecha mínima como hoy
+    const fechaInicio = document.getElementById('fecha_inicio');
+    const fechaFin = document.getElementById('fecha_fin');
+    const hoy = new Date().toISOString().split('T')[0];
+    
+    fechaInicio.min = hoy;
+    fechaFin.min = hoy;
+    
+    // Validar que la fecha fin no sea anterior a la fecha inicio
+    fechaInicio.addEventListener('change', function() {
+        fechaFin.min = this.value;
+        if (fechaFin.value && fechaFin.value < this.value) {
+            fechaFin.value = this.value;
+        }
+    });
+    
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+
+{% endblock %}

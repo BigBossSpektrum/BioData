@@ -1,0 +1,11 @@
+{% if tiene_extras %}
+    <span class="badge bg-warning text-dark">
+        <i class="bi bi-clock-fill"></i>
+        Extras: {{ formato }}
+    </span>
+{% else %}
+    <span class="badge bg-success">
+        <i class="bi bi-check-circle-fill"></i>
+        Sin extras
+    </span>
+{% endif %}

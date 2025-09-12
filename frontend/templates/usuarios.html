@@ -37,7 +37,7 @@
         <td>{{ usuario.id }}</td>
         <td>{{ usuario.biometrico_id }}</td>
         <td>{{ usuario.nombre }}</td>
-        <td>{{ usuario.estacion.nombre|default:"Sin asignar" }}</td>
+        <td>{{ usuario.estacion_servicio_nombre|default:"Sin asignar" }}</td>
         {% if usuario.activo %}
         <td class="text-success">Activo</td>
         {% else %}
