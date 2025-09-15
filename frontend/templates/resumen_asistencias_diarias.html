@@ -218,7 +218,7 @@
 
 /* Anchos específicos para columnas - responsive */
 .table th:nth-child(1), .table td:nth-child(1) { width: 5%; text-align: center; } /* # */
-.table th:nth-child(2), .table td:nth-child(2) { width: 10%; white-space: nowrap; text-align: center; } /* Día */
+.table th:nth-child(2), .table td:nth-child(2) { width: 12%; white-space: nowrap; text-align: center; } /* Día */
 .table th:nth-child(3), .table td:nth-child(3) { width: 16%; min-width: 120px; text-align: center; } /* Nombre */
 .table th:nth-child(4), .table td:nth-child(4) { width: 10%; text-align: center; } /* Estación */
 .table th:nth-child(5), .table td:nth-child(5) { width: 10%; text-align: center; white-space: nowrap; } /* Entrada */
@@ -237,6 +237,26 @@
 .table th:nth-child(9), .table td:nth-child(9) { width: 12%; text-align: center; } /* Tipo de Turno */
 .table th:nth-child(10), .table td:nth-child(10) { width: 10%; text-align: center; } /* Horas Extras */
 .table th:nth-child(11), .table td:nth-child(11) { width: 12%; text-align: center; } /* Aprobado */
+
+/* Estilos para nombres largos - truncar elegantemente */
+.nombre-truncado {
+    max-width: 140px; /* Ancho máximo para escritorio */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: middle;
+    cursor: help;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.nombre-truncado:hover {
+    background-color: rgba(16, 185, 129, 0.1);
+    border-radius: 4px;
+    padding: 2px 4px;
+    color: #059669;
+}
 
 /* Ajustes para badges y botones - Colores Frescos */
 .badge {
@@ -405,6 +425,17 @@
     
     .table tbody tr:hover {
         transform: none; /* Desactivar el hover en móviles */
+    }
+    
+    /* Ajustes específicos para nombres en móvil */
+    .nombre-truncado {
+        max-width: 100px; /* Más restrictivo en móviles */
+        font-size: 0.7rem;
+    }
+    
+    /* Permitir que el tooltip sea más visible en móviles */
+    .tooltip {
+        font-size: 0.8rem !important;
     }
     
     #resumen-total .col-md-3 {
@@ -734,7 +765,12 @@
                 <td>
                     <div class="d-flex align-items-center justify-content-center">
                         <div>
-                            {{ r.nombre }}
+                            <span class="nombre-truncado" 
+                                  data-bs-toggle="tooltip" 
+                                  data-bs-placement="top" 
+                                  title="{{ r.nombre }}">
+                                {{ r.nombre }}
+                            </span>
                             {% if r.es_jornada_especial %}
                                 <span class="badge bg-primary ms-2" data-bs-toggle="tooltip" 
                                       title="Jornada Especial de {{ r.jornada_especial_info.horas_programadas }}h{% if r.jornada_especial_info.observaciones %} - {{ r.jornada_especial_info.observaciones }}{% endif %}">
@@ -1120,12 +1156,85 @@ document.addEventListener('DOMContentLoaded', function() {
     // Calcular horas de retraso
     calcularHorasRetraso();
     
+    // Procesar nombres largos
+    procesarNombresLargos();
+    
     // Calcular resumen total
     calcularResumenTotal();
     
     // Ocultar spinner de carga al finalizar la carga de la página
     ocultarCargando();
 });
+
+function procesarNombresLargos() {
+    const maxLength = 18; // Máximo número de caracteres antes de truncar
+    
+    // Obtener todos los elementos con nombres
+    const nombresElementos = document.querySelectorAll('.nombre-truncado');
+    
+    nombresElementos.forEach(function(elemento) {
+        const nombreCompleto = elemento.textContent.trim();
+        
+        if (nombreCompleto.length > maxLength) {
+            // Función para abreviar nombres de manera inteligente
+            let nombreTruncado = abreviarNombre(nombreCompleto, maxLength);
+            
+            // Actualizar el texto del elemento
+            elemento.textContent = nombreTruncado;
+            
+            // Actualizar el tooltip con el nombre completo
+            elemento.setAttribute('title', nombreCompleto);
+            
+            // Log para debugging
+            console.log(`Nombre truncado: "${nombreCompleto}" -> "${nombreTruncado}"`);
+        }
+    });
+}
+
+function abreviarNombre(nombreCompleto, maxLength) {
+    // Si el nombre es muy corto, retornarlo tal como está
+    if (nombreCompleto.length <= maxLength) {
+        return nombreCompleto;
+    }
+    
+    const palabras = nombreCompleto.split(' ');
+    
+    // Si es una sola palabra muy larga
+    if (palabras.length === 1) {
+        return nombreCompleto.substring(0, maxLength - 3) + '...';
+    }
+    
+    // Si son múltiples palabras, intentar abreviar de manera inteligente
+    if (palabras.length >= 2) {
+        // Caso común: "NOMBRE APELLIDO1 APELLIDO2"
+        // Mostrar: "NOMBRE A. A2..." o similar
+        
+        let resultado = palabras[0]; // Primer nombre completo
+        
+        // Agregar iniciales de los apellidos
+        for (let i = 1; i < palabras.length; i++) {
+            let inicial = palabras[i].charAt(0) + '.';
+            if ((resultado + ' ' + inicial).length <= maxLength - 3) {
+                resultado += ' ' + inicial;
+            } else {
+                break;
+            }
+        }
+        
+        // Si todavía es muy largo, truncar el primer nombre también
+        if (resultado.length > maxLength - 3) {
+            // Mantener solo el primer nombre truncado
+            resultado = palabras[0].substring(0, maxLength - 6) + '...';
+        } else if (resultado !== nombreCompleto) {
+            resultado += '...';
+        }
+        
+        return resultado;
+    }
+    
+    // Fallback: truncar por caracteres
+    return nombreCompleto.substring(0, maxLength - 3) + '...';
+}
 
 function calcularResumenTotal() {
     console.log('🔄 Calculando resumen total...');
