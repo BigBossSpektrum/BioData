@@ -393,10 +393,28 @@ class UsuarioBiometrico(models.Model):
         
         # Análisis dinámico de patrones de trabajo
         if entradas.count() == 0:
+            # VALIDACIÓN: Verificar que no hay demasiadas salidas que puedan causar cálculos erróneos
+            if salidas.count() > 5:
+                return {
+                    'horas_trabajadas': 0,
+                    'horas_extras': 0,
+                    'horas_normales': 0,
+                    'registros': list(registros),
+                    'estado': 'demasiadas_salidas',
+                    'mensaje': f'Patrón anómalo: {salidas.count()} salidas sin entradas. Revisar registros biométricos.',
+                    'entrada': None,
+                    'salida': None,
+                    'requiere_revision': True
+                }
+            
             # NUEVO: Manejar casos donde solo hay salidas
             # Esto es común cuando el biométrico no registra entradas correctamente
             if salidas.count() > 0:
-                return self._calcular_horas_solo_salidas(fecha, list(salidas))
+                resultado = self._calcular_horas_solo_salidas(fecha, list(salidas))
+                # VALIDACIÓN: Agregar flag de advertencia
+                resultado['requiere_revision'] = True
+                resultado['advertencia'] = 'Cálculo basado solo en salidas - Verificar registros biométricos'
+                return resultado
             else:
                 return {
                     'horas_trabajadas': 0,
@@ -801,7 +819,7 @@ class UsuarioBiometrico(models.Model):
     def _calcular_horas_solo_salidas(self, fecha, registros_salida):
         """
         Calcula horas trabajadas cuando solo hay registros de salida.
-        Utiliza patrones inteligentes para inferir la hora de entrada.
+        Utiliza patrones conservadores y lógicos para inferir las horas trabajadas.
         """
         from decimal import Decimal
         from datetime import datetime, timedelta
@@ -809,58 +827,73 @@ class UsuarioBiometrico(models.Model):
         if not registros_salida:
             return self._resultado_vacio()
         
-        # Ordenar salidas por hora
-        salidas = sorted(registros_salida, key=lambda x: x.timestamp.time())
+        # Ordenar salidas cronológicamente (por timestamp completo, no solo hora)
+        salidas = sorted(registros_salida, key=lambda x: x.timestamp)
         
-        # Determinar tipo de jornada basado en la hora de salida
-        primera_salida = salidas[0].timestamp.time()
+        # Filtrar solo las salidas del día específico para evitar confusiones
+        salidas_del_dia = []
+        fecha_inicio = datetime.combine(fecha, datetime.min.time())
+        fecha_fin = datetime.combine(fecha, datetime.max.time())
         
-        # Detectar si es turno nocturno o diurno
-        if primera_salida.hour >= 22 or primera_salida.hour <= 6:
-            # Turno nocturno - típicamente trabajan de 22:00 a 06:00
+        for salida in salidas:
+            if fecha_inicio <= salida.timestamp.replace(tzinfo=None) <= fecha_fin:
+                salidas_del_dia.append(salida)
+        
+        # Si no hay salidas del día específico, usar la salida más cercana al día
+        if not salidas_del_dia:
+            # Tomar la salida más cercana al día objetivo
+            salida_referencia = min(salidas, key=lambda x: abs((x.timestamp.date() - fecha).days))
+            salidas_del_dia = [salida_referencia]
+        
+        # Usar solo la primera salida del día para evitar cálculos erróneos
+        primera_salida = salidas_del_dia[0]
+        hora_salida = primera_salida.timestamp.time()
+        
+        # Determinar jornada laboral estándar basada en la hora de salida
+        if hora_salida.hour <= 6:
+            # Salida madrugada - probablemente turno nocturno (8 horas)
             tipo_jornada = 'nocturno'
-            duracion_estandar = 8  # 8 horas estándar
-            if primera_salida.hour <= 6:
-                # Salida en la madrugada, entrada el día anterior
-                hora_entrada_estimada = (datetime.combine(fecha, primera_salida) - timedelta(hours=duracion_estandar)).time()
-            else:
-                # Salida en la noche, entrada el mismo día
-                hora_entrada_estimada = (datetime.combine(fecha, primera_salida) - timedelta(hours=duracion_estandar)).time()
-        else:
-            # Turno diurno - detectar patrón basado en hora de salida
+            horas_estimadas = 8
+        elif hora_salida.hour <= 12:
+            # Salida mañana - media jornada o turno mañana
+            tipo_jornada = 'matutino'
+            horas_estimadas = 6
+        elif hora_salida.hour <= 17:
+            # Salida tarde - jornada normal diurna
             tipo_jornada = 'diurno'
-            
-            if primera_salida.hour <= 12:
-                # Salida matutina (media jornada o jornada especial)
-                duracion_estandar = 4
-            elif primera_salida.hour <= 17:
-                # Salida tarde normal (8 horas desde las 8-9 AM)
-                duracion_estandar = 8
-            else:
-                # Salida nocturna (jornada extendida)
-                duracion_estandar = 10
-            
-            # Calcular hora de entrada estimada
-            hora_entrada_estimada = (datetime.combine(fecha, primera_salida) - timedelta(hours=duracion_estandar)).time()
+            horas_estimadas = 8
+        elif hora_salida.hour <= 22:
+            # Salida noche - jornada extendida o turno tarde
+            tipo_jornada = 'vespertino'
+            horas_estimadas = 8
+        else:
+            # Salida muy tarde - probablemente turno nocturno
+            tipo_jornada = 'nocturno'
+            horas_estimadas = 8
         
-        # Calcular horas totales basado en el patrón detectado
-        total_horas = Decimal('0')
-        ultima_salida = salidas[-1].timestamp.time()
+        # Calcular hora de entrada estimada (conservadora)
+        entrada_estimada = datetime.combine(fecha, hora_salida) - timedelta(hours=horas_estimadas)
+        hora_entrada_estimada = entrada_estimada.time()
         
-        # Usar la duración estándar como base
-        horas_calculadas = duracion_estandar
+        # Si la entrada calculada es del día anterior (para turnos nocturnos), es válido
+        if entrada_estimada.date() < fecha:
+            # Turno nocturno que inicia el día anterior
+            pass
         
-        # Si hay múltiples salidas, usar la última como referencia
-        if len(salidas) > 1:
-            # Ajustar si hay un patrón de múltiples salidas
-            tiempo_entre_salidas = (datetime.combine(fecha, ultima_salida) - 
-                                  datetime.combine(fecha, primera_salida)).seconds / 3600
-            if tiempo_entre_salidas > 1:  # Si hay más de 1 hora entre salidas
-                horas_calculadas += tiempo_entre_salidas * 0.5  # Agregar tiempo parcial
+        total_horas = Decimal(str(horas_estimadas))
         
-        total_horas = Decimal(str(horas_calculadas))
+        # VALIDACIÓN: Limitar horas máximas razonables
+        max_horas_permitidas = Decimal('16')  # Máximo 16 horas por día
+        if total_horas > max_horas_permitidas:
+            # Aplicar límite y marcar para revisión
+            total_horas = max_horas_permitidas
+            requiere_revision = True
+            advertencia = f'Horas limitadas a {max_horas_permitidas}h por seguridad. Revisar registros.'
+        else:
+            requiere_revision = False
+            advertencia = None
         
-        # Calcular horas extras (todo lo que exceda 8 horas)
+        # Calcular horas normales y extras de forma conservadora
         horas_normales = min(total_horas, Decimal('8'))
         horas_extras = max(Decimal('0'), total_horas - Decimal('8'))
         
@@ -884,9 +917,9 @@ class UsuarioBiometrico(models.Model):
             'cargo': cargo,
             'fecha': fecha,
             'tipo_jornada': tipo_jornada,
-            'observaciones': f'Calculado desde registros de salida únicamente (Patrón: {duracion_estandar}h)',
+            'observaciones': f'Calculado desde registros de salida únicamente - Estimación: {horas_estimadas}h',
             'hora_entrada_estimada': hora_entrada_estimada,
-            'hora_salida': ultima_salida,
+            'hora_salida': hora_salida,
             'horas_trabajadas': total_horas,
             'horas_normales': horas_normales,
             'horas_extras': horas_extras,
@@ -895,6 +928,9 @@ class UsuarioBiometrico(models.Model):
             'costo_horas_normales': costo_normal,
             'costo_horas_extras': costo_extra,
             'costo_total_horas_extras': costo_extra,
+            'requiere_revision': requiere_revision,
+            'advertencia': advertencia,
+            'metodo_calculo': 'solo_salidas_v2'  # Identificador de versión
         }
 
 
