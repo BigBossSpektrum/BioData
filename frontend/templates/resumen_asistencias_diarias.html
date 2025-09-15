@@ -432,71 +432,26 @@
 
 .horas-retraso {
     font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .horas-retraso .text-success {
-    font-size: 1.1em;
     font-weight: bold;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.12) 100%);
     color: #065f46 !important;
-    padding: 0.3rem 0.6rem;
-    border-radius: 12px;
-    border-left: 4px solid #10b981;
-    border-right: 1px solid rgba(16, 185, 129, 0.2);
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
 }
 
 .horas-retraso .text-info {
-    font-size: 1.1em;
     font-weight: bold;
-    background: linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(14, 165, 233, 0.12) 100%);
     color: #0c4a6e !important;
-    padding: 0.3rem 0.6rem;
-    border-radius: 12px;
-    border-left: 4px solid #06b6d4;
-    border-right: 1px solid rgba(6, 182, 212, 0.2);
-    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.15);
 }
 
 .horas-retraso .text-warning {
-    font-size: 1.1em;
     font-weight: bold;
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.12) 100%);
     color: #92400e !important;
-    padding: 0.3rem 0.6rem;
-    border-radius: 12px;
-    border-left: 4px solid #f59e0b;
-    border-right: 1px solid rgba(245, 158, 11, 0.2);
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
 }
 
 .horas-retraso .text-danger {
-    font-size: 1.1em;
     font-weight: bold;
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.12) 100%);
     color: #991b1b !important;
-    padding: 0.3rem 0.6rem;
-    border-radius: 12px;
-    border-left: 4px solid #ef4444;
-    border-right: 1px solid rgba(239, 68, 68, 0.2);
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
-    animation: pulso-retraso-fresco 2s infinite;
-}
-
-@keyframes pulso-retraso-fresco {
-    0%, 100% { 
-        opacity: 1; 
-        transform: scale(1);
-        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
-    }
-    50% { 
-        opacity: 0.85; 
-        transform: scale(1.03);
-        box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25);
-    }
 }
 
 /* Estilos para el resumen total - Colores Frescos */
@@ -552,7 +507,6 @@
 .table tbody tr,
 .badge,
 .btn-sm,
-.horas-retraso > span,
 #resumen-total .bg-white.bg-opacity-20 {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1413,11 +1367,14 @@ function calcularHorasRetraso() {
         
         console.log(`Retraso calculado: ${retraso} minutos para ${horaEntrada}`);
         
+        // Siempre mostrar el tiempo en formato de minutos
+        let textoRetraso = '';
+        let claseColor = '';
+        
         if (retraso > 0) {
             const horasRetraso = Math.floor(retraso / 60);
             const minutosRetraso = retraso % 60;
             
-            let textoRetraso = '';
             if (horasRetraso > 0) {
                 textoRetraso += horasRetraso + 'h ';
             }
@@ -1426,7 +1383,6 @@ function calcularHorasRetraso() {
             }
             
             // Aplicar color según la gravedad del retraso y actualizar contadores
-            let claseColor = '';
             if (retraso >= 60) { // 1 hora o más
                 claseColor = 'text-danger fw-bold';
                 contadores.retrasoGrave++;
@@ -1440,7 +1396,10 @@ function calcularHorasRetraso() {
             
             celda.innerHTML = `<span class="${claseColor}" title="Retraso de ${textoRetraso} respecto a ${horaEstandar} (${turno})">${textoRetraso}</span>`;
         } else {
-            celda.innerHTML = `<span class="text-success" title="A tiempo para ${turno} (${horaEstandar})">✓</span>`;
+            // Mostrar 0m cuando no hay retraso (llegó a tiempo o temprano)
+            textoRetraso = '0m';
+            claseColor = 'text-success fw-bold';
+            celda.innerHTML = `<span class="${claseColor}" title="A tiempo para ${turno} (${horaEstandar})">${textoRetraso}</span>`;
             contadores.sinRetraso++;
         }
     });
