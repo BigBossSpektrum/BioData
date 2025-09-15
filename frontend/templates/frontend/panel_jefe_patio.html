@@ -100,10 +100,21 @@
                                     <small class="text-muted">
                                         {{ jornada.hora_inicio_programada|time:"H:i" }} - 
                                         {{ jornada.hora_fin_programada|time:"H:i" }}
+                                        {% if jornada.fecha_inicio != jornada.fecha_fin %}
+                                            <br><span class="badge bg-warning text-dark">
+                                                <i class="bi bi-moon me-1"></i>Cruza medianoche
+                                            </span>
+                                        {% endif %}
                                     </small>
                                 </td>
                                 <td>
                                     <span class="badge bg-warning text-dark">{{ jornada.horas_programadas }}h</span>
+                                    {% if jornada.horas_programadas > 12 %}
+                                        <br><small class="text-muted">
+                                            <i class="bi bi-clock-history me-1"></i>
+                                            {{ jornada.horas_programadas|add:"-12" }}h extras
+                                        </small>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     {% if jornada.activa %}
@@ -119,7 +130,7 @@
                                 <td>
                                     {% if jornada.activa %}
                                         <button class="btn btn-sm btn-outline-danger" 
-                                                onclick="confirmarDesactivacion({{ jornada.id }}, '{{ jornada.empleado.nombre|escapejs }}')">>
+                                                onclick="confirmarDesactivacion({{ jornada.id }}, '{{ jornada.empleado.nombre|escapejs }}')">
                                             <i class="bi bi-x-circle me-1"></i>Desactivar
                                         </button>
                                     {% endif %}
@@ -165,9 +176,13 @@
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle me-2"></i>
-                        <strong>Información:</strong> Las jornadas especiales permiten horarios de 12 horas que pueden 
-                        extenderse al día siguiente. El sistema tomará la primera entrada del día y la siguiente salida 
-                        registrada, sin importar que sea del día siguiente.
+                        <strong>Información sobre Jornadas Especiales:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Duración:</strong> Hasta 12 horas normales, más de 12 horas se consideran extras</li>
+                            <li><strong>Cruce de medianoche:</strong> Pueden empezar un día y terminar al siguiente</li>
+                            <li><strong>Cálculo:</strong> Se toma la primera entrada y la siguiente salida registrada</li>
+                            <li><strong>Validación:</strong> Automática para horas trabajadas y extras</li>
+                        </ul>
                     </div>
                     
                     <div class="row">
@@ -208,12 +223,14 @@
                                 <i class="bi bi-clock me-1"></i>Hora Inicio *
                             </label>
                             <input type="time" class="form-control" name="hora_inicio" id="hora_inicio" value="06:00" required>
+                            <small class="text-muted">Hora de inicio de la jornada especial</small>
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="hora_fin" class="form-label">
                                 <i class="bi bi-clock-fill me-1"></i>Hora Fin *
                             </label>
                             <input type="time" class="form-control" name="hora_fin" id="hora_fin" value="18:00" required>
+                            <small class="text-muted">Puede ser del día siguiente si cruza medianoche</small>
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="horas_programadas" class="form-label">
@@ -221,7 +238,15 @@
                             </label>
                             <input type="number" class="form-control" name="horas_programadas" id="horas_programadas" 
                                    value="12.00" step="0.25" min="1" max="24">
+                            <small class="text-muted">Máximo 12h normales, extras después</small>
                         </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Jornadas que cruzan medianoche:</strong>
+                        Si la jornada empieza un día y termina al siguiente (ej: 22:00 - 06:00), 
+                        configure las fechas correctamente y el sistema calculará automáticamente las horas trabajadas.
                     </div>
                     
                     <div class="mb-3">
@@ -310,6 +335,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Establecer fecha mínima como hoy
     const fechaInicio = document.getElementById('fecha_inicio');
     const fechaFin = document.getElementById('fecha_fin');
+    const horaInicio = document.getElementById('hora_inicio');
+    const horaFin = document.getElementById('hora_fin');
+    const horasProgramadas = document.getElementById('horas_programadas');
     const hoy = new Date().toISOString().split('T')[0];
     
     fechaInicio.min = hoy;
@@ -321,7 +349,53 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fechaFin.value && fechaFin.value < this.value) {
             fechaFin.value = this.value;
         }
+        calcularHorasProgramadas();
     });
+    
+    fechaFin.addEventListener('change', calcularHorasProgramadas);
+    horaInicio.addEventListener('change', calcularHorasProgramadas);
+    horaFin.addEventListener('change', calcularHorasProgramadas);
+    
+    function calcularHorasProgramadas() {
+        if (fechaInicio.value && fechaFin.value && horaInicio.value && horaFin.value) {
+            const fechaInicioDate = new Date(fechaInicio.value + 'T' + horaInicio.value);
+            const fechaFinDate = new Date(fechaFin.value + 'T' + horaFin.value);
+            
+            // Si la hora fin es menor que la hora inicio en el mismo día, asumimos que cruza medianoche
+            if (fechaInicio.value === fechaFin.value && horaFin.value < horaInicio.value) {
+                fechaFinDate.setDate(fechaFinDate.getDate() + 1);
+            }
+            
+            const diffMs = fechaFinDate - fechaInicioDate;
+            const diffHours = diffMs / (1000 * 60 * 60);
+            
+            if (diffHours > 0 && diffHours <= 24) {
+                horasProgramadas.value = diffHours.toFixed(2);
+                
+                // Mostrar advertencia si cruza medianoche
+                const alertContainer = document.querySelector('.alert-warning');
+                if (diffHours > 12) {
+                    alertContainer.classList.remove('alert-warning');
+                    alertContainer.classList.add('alert-info');
+                    alertContainer.innerHTML = `
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Jornada extendida detectada:</strong> 
+                        ${diffHours.toFixed(2)} horas programadas. 
+                        ${diffHours > 12 ? (diffHours - 12).toFixed(2) + ' horas serán consideradas extras.' : 'Todas las horas serán normales.'}
+                    `;
+                } else {
+                    alertContainer.classList.remove('alert-info');
+                    alertContainer.classList.add('alert-warning');
+                    alertContainer.innerHTML = `
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Jornadas que cruzan medianoche:</strong>
+                        Si la jornada empieza un día y termina al siguiente (ej: 22:00 - 06:00), 
+                        configure las fechas correctamente y el sistema calculará automáticamente las horas trabajadas.
+                    `;
+                }
+            }
+        }
+    }
     
     // Inicializar tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
