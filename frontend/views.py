@@ -361,7 +361,6 @@ def resumen_asistencias_diarias(request):
         es_usuario_problematico = any(nombre.lower() in usuario.nombre.lower() for nombre in nombres_problematicos)
         
         if es_usuario_problematico:
-            print(f"DETECTADO USUARIO PROBLEMÁTICO: {usuario.nombre} - Saltando emparejamiento complejo")
             # Para usuarios problemáticos, no usar emparejamiento complejo
             turnos_emparejados = {}
         else:
@@ -458,10 +457,6 @@ def resumen_asistencias_diarias(request):
                 # NUEVO: Si solo hay salida o entrada, usar el método corregido del modelo
                 # que maneja casos donde faltan registros
                 
-                # Debug: Verificar tipos de objetos
-                print(f"DEBUG entrada: {type(entrada)} - {entrada}")
-                print(f"DEBUG salida: {type(salida)} - {salida}")
-                
                 # Determinar la fecha para el cálculo
                 fecha_calculo = fecha  # Default
                 
@@ -496,7 +491,6 @@ def resumen_asistencias_diarias(request):
                 if usar_metodo_corregido:
                     # Simplemente usar el método corregido del modelo que ya está funcionando
                     calculo_modelo = usuario.calcular_horas_dia(fecha_calculo)
-                    print(f"USANDO MÉTODO DIRECTO (ya corregido) para {usuario.nombre} - {fecha_calculo}: {calculo_modelo}")
                 else:
                     # Usar método anterior para otros usuarios
                     calculo_modelo = usuario.calcular_horas_dia(fecha_calculo)
