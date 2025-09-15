@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
 from django.utils import timezone
-from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado, validar_y_emparejar_turno_nocturno
+from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado, validar_y_emparejar_turno_nocturno, calcular_horas_con_horarios_estandar
 from django.http import HttpResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -161,49 +161,12 @@ def filtrar_asistencias(request):
                     if salida_time < entrada_time:
                         salida_time += timedelta(days=1)
                     
-                    # Usar la jornada laboral del usuario para calcular horas trabajadas
-                    if entrada.user.turno:
-                        horas = entrada.user.turno.calcular_horas_trabajadas(entrada_time, salida_time)
-                    else:
-                        # Fallback al cálculo tradicional si no hay turno asignado
-                        duracion = salida_time - entrada_time
-                        horas = round(duracion.total_seconds() / 3600, 2)
+                    # Usar la nueva función que considera horarios estándar
+                    calculo = calcular_horas_con_horarios_estandar(entrada_time, salida_time)
+                    horas = calculo['horas_trabajadas']
+                    horas_extra = calculo['horas_extras']
                     
                     turno_detectado = detectar_turno(entrada_time)
-
-                    # Cálculo de horas extra por turno (igual que antes)
-                    horas_extra = 0.0
-                    # Nuevo cálculo basado en el turno asignado al usuario
-                    if entrada.user.turno:
-                        turno_inicio = entrada.user.turno.hora_inicio
-                        turno_fin = entrada.user.turno.hora_fin
-                        # Duración del turno en horas
-                        if turno_inicio < turno_fin:
-                            duracion_turno = (datetime.combine(entrada_time.date(), turno_fin) - datetime.combine(entrada_time.date(), turno_inicio)).total_seconds() / 3600
-                        else:
-                            # Turno nocturno (ej: 22:00 a 06:00)
-                            duracion_turno = ((datetime.combine(entrada_time.date(), time(23,59,59)) - datetime.combine(entrada_time.date(), turno_inicio)).total_seconds() + (datetime.combine(entrada_time.date() + timedelta(days=1), turno_fin) - datetime.combine(entrada_time.date() + timedelta(days=1), time(0,0,0))).total_seconds() + 1) / 3600
-                        if horas > duracion_turno:
-                            horas_extra = round(horas - duracion_turno, 2)
-                        else:
-                            horas_extra = 0.0
-                    else:
-                        # Si no tiene turno asignado, usar el cálculo anterior por horario
-                        if turno_detectado == "Turno 1":
-                            turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(6, 0)))
-                            turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
-                        elif turno_detectado == "Turno 2":
-                            turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(14, 0)))
-                            turno_fin = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
-                        else:  # Turno 3
-                            turno_inicio = timezone.make_aware(datetime.combine(entrada_time.date(), time(22, 0)))
-                            turno_fin = timezone.make_aware(datetime.combine(entrada_time.date() + timedelta(days=1), time(6, 0)))
-                        horas_extra_timedelta = timedelta(0)
-                        if entrada_time < turno_inicio:
-                            horas_extra_timedelta += turno_inicio - entrada_time
-                        if salida_time > turno_fin:
-                            horas_extra_timedelta += salida_time - turno_fin
-                        horas_extra = round(horas_extra_timedelta.total_seconds() / 3600, 2)
 
                     registros_combinados.append({
                         'usuario_id': entrada.user.id,
@@ -454,22 +417,23 @@ def resumen_asistencias_diarias(request):
             info_turno = detectar_tipo_turno_detallado(entrada, salida if salida else None)
 
             horas_trabajadas = 0.0
-            resultado_turno = None
-            if salida and entrada:
-                # Usar la jornada laboral del usuario para calcular horas trabajadas
-                if hasattr(usuario, 'turno') and usuario.turno:
-                    horas_trabajadas = usuario.turno.calcular_horas_trabajadas(entrada, salida)
-                else:
-                    # Usar la nueva función para calcular diferencia de días en turnos nocturnos
-                    if salida != entrada:  # Solo si hay entrada y salida diferentes
-                        resultado_turno = calcular_diferencia_dias_turno_nocturno(entrada, salida)
-                        horas_trabajadas = resultado_turno['duracion_horas']
-                    else:
-                        horas_trabajadas = 0.0
-
+            horas_normales = 0.0
             horas_extra = 0.0
-            if horas_trabajadas > 8:
-                horas_extra = round(horas_trabajadas - 8, 2)
+            resultado_turno = None
+            
+            if salida and entrada:
+                # Usar la nueva función que considera horarios estándar
+                calculo = calcular_horas_con_horarios_estandar(entrada, salida)
+                horas_trabajadas = calculo['horas_trabajadas']
+                horas_normales = calculo['horas_normales']
+                horas_extra = calculo['horas_extras']
+                
+                # Mantener compatibilidad con la información de turno nocturno
+                resultado_turno = {
+                    'duracion_horas': horas_trabajadas,
+                    'diferencia_dias': 1 if calculo['tipo_turno'].startswith('Noche') else 0,
+                    'mensaje': calculo['mensaje']
+                }
 
             aprobados = [r.aprobado for r in registros_dia]
             aprobado = None
@@ -718,23 +682,20 @@ def exportar_resumen_asistencias_excel(request):
             info_turno = detectar_tipo_turno_detallado(entrada, salida if len(timestamps) > 1 else None)
 
             horas_trabajadas = 0.0
+            horas_extra = 0.0
             resultado_turno = None
             if salida and entrada:
-                if hasattr(usuario, 'turno') and usuario.turno:
-                    horas_trabajadas = usuario.turno.calcular_horas_trabajadas(entrada, salida)
-                else:
-                    if len(timestamps) > 1:
-                        resultado_turno = calcular_diferencia_dias_turno_nocturno(entrada, salida)
-                        horas_trabajadas = resultado_turno['duracion_horas']
-                    else:
-                        delta = salida - entrada
-                        if delta.total_seconds() < 0:
-                            delta += timedelta(days=1)
-                        horas_trabajadas = round(delta.total_seconds() / 3600, 2)
-
-            horas_extra = 0.0
-            if horas_trabajadas > 8:
-                horas_extra = round(horas_trabajadas - 8, 2)
+                # Usar la nueva función que considera horarios estándar
+                calculo = calcular_horas_con_horarios_estandar(entrada, salida)
+                horas_trabajadas = calculo['horas_trabajadas']
+                horas_extra = calculo['horas_extras']
+                
+                # Mantener información para compatibilidad
+                if len(timestamps) > 1 and calculo['tipo_turno'].startswith('Noche'):
+                    resultado_turno = {
+                        'duracion_horas': horas_trabajadas,
+                        'mensaje': calculo['mensaje']
+                    }
 
             aprobados = [r.aprobado for r in registros_dia]
             aprobado = None

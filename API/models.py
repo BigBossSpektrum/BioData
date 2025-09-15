@@ -508,23 +508,34 @@ class UsuarioBiometrico(models.Model):
                 'mensaje': 'La salida debe ser posterior a la entrada'
             }
         
-        # Calcular horas trabajadas
-        tiempo_trabajado = salida_efectiva.timestamp - entrada_efectiva.timestamp
-        horas_trabajadas = tiempo_trabajado.total_seconds() / 3600
-        
-        # Aplicar lógica de horas extras dinámicamente
-        # Considerar horas extras después de 8 horas para jornadas normales
-        # o después de 12 horas para jornadas especiales detectadas automáticamente
-        
-        # Detectar si es jornada extendida (más de 10 horas indica posible jornada de 12 horas)
-        if horas_trabajadas > 10:
-            # Jornada extendida - probablemente 12 horas
-            horas_normales = min(12, horas_trabajadas)
-            horas_extras = max(0, horas_trabajadas - 12)
+        # Calcular horas trabajadas usando la jornada laboral del usuario si está asignada
+        if hasattr(self, 'turno') and self.turno:
+            # Usar la función que respeta los horarios establecidos del turno
+            calculo_detallado = self.turno.calcular_horas_normales_y_extras(
+                entrada_efectiva.timestamp, 
+                salida_efectiva.timestamp
+            )
+            horas_trabajadas = calculo_detallado['horas_totales']
+            horas_normales = calculo_detallado['horas_normales']
+            horas_extras = calculo_detallado['horas_extras']
         else:
-            # Jornada normal - 8 horas
-            horas_normales = min(8, horas_trabajadas)
-            horas_extras = max(0, horas_trabajadas - 8)
+            # Fallback: usar cálculo tradicional para usuarios sin turno asignado
+            tiempo_trabajado = salida_efectiva.timestamp - entrada_efectiva.timestamp
+            horas_trabajadas = tiempo_trabajado.total_seconds() / 3600
+            
+            # Aplicar lógica de horas extras dinámicamente
+            # Considerar horas extras después de 8 horas para jornadas normales
+            # o después de 12 horas para jornadas especiales detectadas automáticamente
+            
+            # Detectar si es jornada extendida (más de 10 horas indica posible jornada de 12 horas)
+            if horas_trabajadas > 10:
+                # Jornada extendida - probablemente 12 horas
+                horas_normales = min(12, horas_trabajadas)
+                horas_extras = max(0, horas_trabajadas - 12)
+            else:
+                # Jornada normal - 8 horas
+                horas_normales = min(8, horas_trabajadas)
+                horas_extras = max(0, horas_trabajadas - 8)
         
         # Determinar estado y mensaje
         if horas_trabajadas == 0:

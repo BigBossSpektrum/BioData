@@ -379,3 +379,120 @@ def detectar_tipo_turno_detallado(entrada_datetime, salida_datetime=None):
         resultado['hora_salida'] = salida_datetime.strftime('%H:%M')
     
     return resultado
+
+
+def calcular_horas_con_horarios_estandar(entrada_datetime, salida_datetime):
+    """
+    Calcula las horas trabajadas considerando horarios estándar de turnos.
+    No cuenta el tiempo trabajado antes de la hora oficial de entrada.
+    
+    Horarios estándar:
+    - Turno Mañana: 07:00 - 14:00 (8 horas)
+    - Turno Tarde: 14:00 - 22:00 (8 horas)  
+    - Turno Noche: 22:00 - 06:00 (8 horas)
+    
+    Args:
+        entrada_datetime (datetime): Fecha y hora de entrada registrada
+        salida_datetime (datetime): Fecha y hora de salida registrada
+    
+    Returns:
+        dict: Información del cálculo incluyendo:
+            - horas_trabajadas (float): Total de horas trabajadas
+            - horas_normales (float): Horas dentro de la jornada normal (máximo 8)
+            - horas_extras (float): Horas trabajadas adicionales
+            - entrada_efectiva (datetime): Hora desde la que se empezó a contar
+            - salida_efectiva (datetime): Hora hasta la que se contó
+            - mensaje (str): Descripción del cálculo
+    """
+    if not entrada_datetime or not salida_datetime:
+        return {
+            'horas_trabajadas': 0,
+            'horas_normales': 0,
+            'horas_extras': 0,
+            'entrada_efectiva': None,
+            'salida_efectiva': None,
+            'mensaje': 'Faltan datos de entrada o salida'
+        }
+    
+    # Detectar qué turno es según la hora de entrada
+    hora_entrada = entrada_datetime.time()
+    fecha_entrada = entrada_datetime.date()
+    
+    # Definir horarios estándar de inicio de turno
+    if time(5, 0) <= hora_entrada < time(13, 0):  # Rango amplio para turno mañana
+        # Turno Mañana: 07:00 - 14:00
+        inicio_turno = datetime.combine(fecha_entrada, time(7, 0))
+        fin_turno = datetime.combine(fecha_entrada, time(14, 0))
+        tipo_turno = "Mañana (07:00-14:00)"
+    elif time(13, 0) <= hora_entrada < time(21, 0):  # Rango para turno tarde
+        # Turno Tarde: 14:00 - 22:00
+        inicio_turno = datetime.combine(fecha_entrada, time(14, 0))
+        fin_turno = datetime.combine(fecha_entrada, time(22, 0))
+        tipo_turno = "Tarde (14:00-22:00)"
+    else:  # Turno nocturno
+        # Turno Noche: 22:00 - 06:00 (del día siguiente)
+        if hora_entrada >= time(21, 0):  # Entrada en la noche
+            inicio_turno = datetime.combine(fecha_entrada, time(22, 0))
+            fin_turno = datetime.combine(fecha_entrada + timedelta(days=1), time(6, 0))
+        else:  # Entrada en la madrugada (es salida de turno nocturno anterior)
+            # Tratar como si fuera parte del turno nocturno anterior
+            inicio_turno = datetime.combine(fecha_entrada - timedelta(days=1), time(22, 0))
+            fin_turno = datetime.combine(fecha_entrada, time(6, 0))
+        tipo_turno = "Noche (22:00-06:00)"
+    
+    # Hacer timezone aware si es necesario
+    if hasattr(entrada_datetime, 'tzinfo') and entrada_datetime.tzinfo:
+        from django.utils import timezone
+        inicio_turno = timezone.make_aware(inicio_turno)
+        fin_turno = timezone.make_aware(fin_turno)
+    
+    # La entrada efectiva no puede ser antes del inicio oficial del turno
+    entrada_efectiva = max(entrada_datetime, inicio_turno)
+    salida_efectiva = salida_datetime
+    
+    # Si la entrada efectiva es después de la salida, no hay tiempo válido
+    if entrada_efectiva >= salida_efectiva:
+        return {
+            'horas_trabajadas': 0,
+            'horas_normales': 0,
+            'horas_extras': 0,
+            'entrada_efectiva': entrada_efectiva,
+            'salida_efectiva': salida_efectiva,
+            'mensaje': f'No hay tiempo válido. Turno: {tipo_turno}'
+        }
+    
+    # Calcular horas normales (dentro del horario oficial)
+    salida_normal = min(salida_efectiva, fin_turno)
+    if entrada_efectiva < salida_normal:
+        tiempo_normal = salida_normal - entrada_efectiva
+        horas_normales = round(tiempo_normal.total_seconds() / 3600, 2)
+    else:
+        horas_normales = 0
+    
+    # Calcular horas extras (después del fin oficial del turno)
+    horas_extras = 0
+    if salida_efectiva > fin_turno:
+        tiempo_extra = salida_efectiva - fin_turno
+        horas_extras = round(tiempo_extra.total_seconds() / 3600, 2)
+    
+    # Total de horas trabajadas
+    horas_trabajadas = round(horas_normales + horas_extras, 2)
+    
+    # Generar mensaje informativo
+    tiempo_no_contado = ""
+    if entrada_datetime < inicio_turno:
+        tiempo_antes = inicio_turno - entrada_datetime
+        minutos_antes = round(tiempo_antes.total_seconds() / 60)
+        tiempo_no_contado = f" (No se contaron {minutos_antes} min antes de las {inicio_turno.strftime('%H:%M')})"
+    
+    mensaje = f"Turno {tipo_turno}: {horas_normales:.2f}h normales + {horas_extras:.2f}h extras{tiempo_no_contado}"
+    
+    return {
+        'horas_trabajadas': horas_trabajadas,
+        'horas_normales': horas_normales,
+        'horas_extras': horas_extras,
+        'entrada_efectiva': entrada_efectiva,
+        'salida_efectiva': salida_efectiva,
+        'mensaje': mensaje,
+        'tipo_turno': tipo_turno
+    }
