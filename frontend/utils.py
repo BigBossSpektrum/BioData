@@ -22,7 +22,7 @@ def es_turno_nocturno(hora_entrada, hora_salida=None):
     """
     Identifica si es turno nocturno basándose en la hora de entrada y salida.
     Un turno es nocturno SOLO cuando:
-    - Entrada entre 20:00 y 23:59
+    - Entrada entre 21:00 y 23:59
     - Salida entre 00:00 y 08:00 del día siguiente
     - La salida es cronológicamente posterior a la entrada (cruza medianoche)
     
@@ -45,7 +45,8 @@ def es_turno_nocturno(hora_entrada, hora_salida=None):
         return False
     
     # Condiciones estrictas para turno nocturno:
-    entrada_nocturna = time(20, 0) <= hora_entrada <= time(23, 59)
+    # Ampliado el rango de entrada desde las 21:00 para cubrir casos como 21:24
+    entrada_nocturna = time(21, 0) <= hora_entrada <= time(23, 59)
     salida_nocturna = time(0, 0) <= hora_salida <= time(8, 0)
     
     # Solo es nocturno si cumple ambas condiciones
@@ -101,7 +102,7 @@ def calcular_diferencia_dias_turno_nocturno(entrada_datetime, salida_datetime):
         duracion += timedelta(days=1)
         diferencia_dias = 1
         # Re-evaluar si es nocturno con la nueva duración
-        if (time(20, 0) <= entrada_datetime.time() <= time(23, 59) and 
+        if (time(21, 0) <= entrada_datetime.time() <= time(23, 59) and 
             time(0, 0) <= salida_datetime.time() <= time(8, 0)):
             es_nocturno = True
     
@@ -129,6 +130,147 @@ def calcular_diferencia_dias_turno_nocturno(entrada_datetime, salida_datetime):
         'entrada_formateada': entrada_datetime.strftime('%H:%M'),
         'salida_formateada': salida_datetime.strftime('%H:%M')
     }
+
+
+def validar_y_emparejar_turno_nocturno(registros_usuario_completos):
+    """
+    Valida y empareja registros de turnos nocturnos que cruzan medianoche.
+    
+    Para un usuario dado, busca patrones de entrada nocturna (21:00-23:59) 
+    seguida de salida al día siguiente (00:00-08:00) y los empareja correctamente.
+    
+    Args:
+        registros_usuario_completos: Lista de registros de un usuario ordenados por fecha
+        
+    Returns:
+        dict: Registros organizados por fecha con turnos nocturnos emparejados
+    """
+    from collections import defaultdict
+    from django.utils.timezone import localtime
+    
+    # Organizar registros por fecha
+    registros_por_fecha = defaultdict(list)
+    for registro in registros_usuario_completos:
+        fecha_local = localtime(registro.timestamp).date()
+        timestamp_local = localtime(registro.timestamp)
+        registros_por_fecha[fecha_local].append(timestamp_local)
+    
+    # Ordenar fechas y registros
+    fechas_ordenadas = sorted(registros_por_fecha.keys())
+    turnos_emparejados = {}
+    registros_procesados = set()  # Para evitar procesar el mismo registro dos veces
+    
+    for i, fecha in enumerate(fechas_ordenadas):
+        registros_fecha = sorted(registros_por_fecha[fecha])
+        
+        # Buscar entradas nocturnas en esta fecha
+        entradas_nocturnas = [
+            r for r in registros_fecha 
+            if time(21, 0) <= r.time() <= time(23, 59) and r not in registros_procesados
+        ]
+        
+        if entradas_nocturnas:
+            # Para cada entrada nocturna, buscar su salida correspondiente
+            for entrada_nocturna in entradas_nocturnas:
+                salida_encontrada = None
+                
+                # 1. Buscar salida en el mismo día (poco probable pero posible)
+                salidas_mismo_dia = [
+                    r for r in registros_fecha 
+                    if time(0, 0) <= r.time() <= time(8, 0) 
+                    and r > entrada_nocturna 
+                    and r not in registros_procesados
+                ]
+                
+                if salidas_mismo_dia:
+                    salida_encontrada = min(salidas_mismo_dia)
+                else:
+                    # 2. Buscar salida en el día siguiente
+                    if i + 1 < len(fechas_ordenadas):
+                        fecha_siguiente = fechas_ordenadas[i + 1]
+                        registros_fecha_siguiente = sorted(registros_por_fecha[fecha_siguiente])
+                        
+                        salidas_dia_siguiente = [
+                            r for r in registros_fecha_siguiente 
+                            if time(0, 0) <= r.time() <= time(8, 0)
+                            and r not in registros_procesados
+                        ]
+                        
+                        if salidas_dia_siguiente:
+                            # Tomar la primera salida válida del día siguiente
+                            salida_encontrada = min(salidas_dia_siguiente)
+                
+                # Si encontramos un par entrada-salida válido
+                if salida_encontrada:
+                    # Verificar que realmente es un turno nocturno válido
+                    if es_turno_nocturno(entrada_nocturna.time(), salida_encontrada.time()):
+                        # Calcular en qué fecha clasificar este turno
+                        # Generalmente se clasifica en la fecha de entrada
+                        fecha_turno = entrada_nocturna.date()
+                        
+                        turnos_emparejados[fecha_turno] = {
+                            'entrada': entrada_nocturna,
+                            'salida': salida_encontrada,
+                            'es_nocturno': True,
+                            'emparejado': True,
+                            'crosses_midnight': salida_encontrada.date() > entrada_nocturna.date()
+                        }
+                        
+                        # Marcar ambos registros como procesados
+                        registros_procesados.add(entrada_nocturna)
+                        registros_procesados.add(salida_encontrada)
+                else:
+                    # Entrada nocturna sin salida válida encontrada
+                    fecha_turno = entrada_nocturna.date()
+                    turnos_emparejados[fecha_turno] = {
+                        'entrada': entrada_nocturna,
+                        'salida': None,
+                        'es_nocturno': False,  # No podemos confirmar sin salida
+                        'emparejado': False,
+                        'sin_salida': True
+                    }
+                    registros_procesados.add(entrada_nocturna)
+    
+    # Procesar registros no emparejados (turnos diurnos normales)
+    for fecha in fechas_ordenadas:
+        if fecha not in turnos_emparejados:
+            registros_fecha = sorted(registros_por_fecha[fecha])
+            registros_no_procesados = [r for r in registros_fecha if r not in registros_procesados]
+            
+            if registros_no_procesados:
+                if len(registros_no_procesados) >= 2:
+                    # Turno diurno normal: primer registro = entrada, último = salida
+                    turnos_emparejados[fecha] = {
+                        'entrada': registros_no_procesados[0],
+                        'salida': registros_no_procesados[-1],
+                        'es_nocturno': False,
+                        'emparejado': True,
+                        'diurno': True
+                    }
+                else:
+                    # Solo un registro
+                    registro_unico = registros_no_procesados[0]
+                    # Determinar si es entrada o salida basado en la hora
+                    if time(0, 0) <= registro_unico.time() <= time(8, 0):
+                        # Podría ser salida de turno nocturno no emparejado
+                        turnos_emparejados[fecha] = {
+                            'entrada': None,
+                            'salida': registro_unico,
+                            'es_nocturno': False,
+                            'emparejado': False,
+                            'posible_salida_nocturna': True
+                        }
+                    else:
+                        # Probablemente entrada sin salida
+                        turnos_emparejados[fecha] = {
+                            'entrada': registro_unico,
+                            'salida': None,
+                            'es_nocturno': False,
+                            'emparejado': False,
+                            'sin_salida': True
+                        }
+    
+    return turnos_emparejados
 
 
 def detectar_tipo_turno_detallado(entrada_datetime, salida_datetime=None):

@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
 from django.utils import timezone
-from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado
+from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado, validar_y_emparejar_turno_nocturno
 from django.http import HttpResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -385,87 +385,73 @@ def resumen_asistencias_diarias(request):
 
     registros = []
     for usuario, dias in asistencia_por_usuario_fecha.items():
+        # Obtener todos los registros del usuario para procesamiento completo
+        registros_usuario_completos = []
+        for fecha, registros_dia in dias.items():
+            registros_usuario_completos.extend(registros_dia)
+        
+        # Ordenar todos los registros del usuario por timestamp
+        registros_usuario_completos.sort(key=lambda r: r.timestamp)
+        
+        # Usar el nuevo validador para emparejar turnos nocturnos
+        turnos_emparejados = validar_y_emparejar_turno_nocturno(registros_usuario_completos)
+        
+        # Procesar cada fecha con los turnos ya emparejados
+        # IMPORTANTE: Solo procesar fechas que tengan turnos válidos o no hayan sido procesadas
         fechas_ordenadas = sorted(dias.keys())
-        for idx, fecha in enumerate(fechas_ordenadas):
+        fechas_procesadas = set()
+        
+        for fecha in fechas_ordenadas:
+            # Verificar si esta fecha ya fue procesada como parte de un turno nocturno
+            if fecha in fechas_procesadas:
+                continue
+                
             registros_dia = dias[fecha]
-            registros_dia.sort(key=lambda r: r.timestamp)
-
-            timestamps = [localtime(r.timestamp) for r in registros_dia]
             
-            # Nueva lógica mejorada para detectar turnos nocturnos
-            entrada = None
-            salida = None
+            # Verificar si hay emparejamiento para esta fecha
+            turno_info = turnos_emparejados.get(fecha)
             
-            if len(timestamps) >= 2:
-                # Buscar patrones de turno nocturno
-                posibles_entradas_nocturnas = []
-                posibles_salidas_nocturnas = []
+            if turno_info and turno_info.get('crosses_midnight'):
+                # Este es un turno nocturno que cruza medianoche
+                # Marcar la fecha de salida como procesada para evitar duplicados
+                if turno_info['salida']:
+                    fecha_salida = turno_info['salida'].date()
+                    fechas_procesadas.add(fecha_salida)
+            
+            if turno_info:
+                entrada = turno_info['entrada']
+                salida = turno_info['salida']
+                es_nocturno = turno_info['es_nocturno']
+                emparejado = turno_info['emparejado']
                 
-                for ts in timestamps:
-                    # Entradas nocturnas: entre 20:00 y 23:59
-                    if time(20, 0) <= ts.time() <= time(23, 59):
-                        posibles_entradas_nocturnas.append(ts)
-                    # Salidas nocturnas: entre 00:00 y 08:00
-                    elif time(0, 0) <= ts.time() <= time(8, 0):
-                        posibles_salidas_nocturnas.append(ts)
-                
-                # Verificar si hay un patrón de turno nocturno válido
-                if posibles_entradas_nocturnas and posibles_salidas_nocturnas:
-                    # Turno nocturno: entrada más tardía del día, salida más temprana del día siguiente
-                    entrada = max(posibles_entradas_nocturnas)
+                # Si este turno no tiene entrada válida y es una posible salida nocturna,
+                # es probable que ya fue procesado en otro registro
+                if (turno_info.get('posible_salida_nocturna') and not entrada):
+                    continue  # Saltar este registro
                     
-                    # Buscar salida correspondiente (puede ser en el día siguiente)
-                    # Primero intentar en las salidas del mismo día
-                    salidas_mismo_dia = [ts for ts in posibles_salidas_nocturnas if ts.date() == entrada.date()]
-                    salidas_dia_siguiente = [ts for ts in posibles_salidas_nocturnas if ts.date() > entrada.date()]
-                    
-                    if salidas_dia_siguiente:
-                        # Preferir salida del día siguiente (más lógico para turno nocturno)
-                        salida = min(salidas_dia_siguiente)
-                    elif salidas_mismo_dia:
-                        # Si solo hay salidas del mismo día, tomar la más temprana
-                        salida = min(salidas_mismo_dia)
-                    else:
-                        # Buscar en el día siguiente si existe
-                        if idx + 1 < len(fechas_ordenadas):
-                            next_fecha = fechas_ordenadas[idx + 1]
-                            next_registros_dia = dias[next_fecha]
-                            for r in sorted(next_registros_dia, key=lambda r: r.timestamp):
-                                ts = localtime(r.timestamp)
-                                if time(0, 0) <= ts.time() <= time(8, 0):
-                                    salida = ts
-                                    break
-                
-                # Si no se detectó patrón nocturno, usar lógica diurna normal
-                if not entrada or not salida:
-                    # Verificar si realmente hay registros de entrada nocturna sin salida válida
-                    if posibles_entradas_nocturnas and not salida:
-                        # Entrada nocturna sin salida válida - buscar en día siguiente
-                        entrada = max(posibles_entradas_nocturnas)
-                        if idx + 1 < len(fechas_ordenadas):
-                            next_fecha = fechas_ordenadas[idx + 1]
-                            next_registros_dia = dias[next_fecha]
-                            for r in sorted(next_registros_dia, key=lambda r: r.timestamp):
-                                ts = localtime(r.timestamp)
-                                if time(0, 0) <= ts.time() <= time(8, 0):
-                                    salida = ts
-                                    break
-                        
-                        # Si no encontramos salida en día siguiente, usar lógica normal
-                        if not salida:
-                            entrada = timestamps[0]
-                            salida = timestamps[-1]
-                    else:
-                        # Turno diurno normal: primer registro = entrada, último = salida
-                        entrada = timestamps[0]
-                        salida = timestamps[-1]
             else:
-                # Solo un registro - no se puede determinar entrada/salida
-                entrada = timestamps[0] if timestamps else None
-                salida = timestamps[0] if timestamps else None
+                # Fallback a lógica anterior si no hay emparejamiento
+                timestamps = [localtime(r.timestamp) for r in registros_dia]
+                timestamps.sort()
+                
+                if len(timestamps) >= 2:
+                    entrada = timestamps[0]
+                    salida = timestamps[-1]
+                    es_nocturno = False
+                    emparejado = True
+                elif len(timestamps) == 1:
+                    entrada = timestamps[0]
+                    salida = None
+                    es_nocturno = False
+                    emparejado = False
+                else:
+                    entrada = None
+                    salida = None
+                    es_nocturno = False
+                    emparejado = False
 
             # Detectar tipo de turno usando la nueva funcionalidad
-            info_turno = detectar_tipo_turno_detallado(entrada, salida if len(timestamps) > 1 else None)
+            info_turno = detectar_tipo_turno_detallado(entrada, salida if salida else None)
 
             horas_trabajadas = 0.0
             resultado_turno = None
@@ -475,14 +461,11 @@ def resumen_asistencias_diarias(request):
                     horas_trabajadas = usuario.turno.calcular_horas_trabajadas(entrada, salida)
                 else:
                     # Usar la nueva función para calcular diferencia de días en turnos nocturnos
-                    if len(timestamps) > 1:  # Solo si hay entrada y salida diferentes
+                    if salida != entrada:  # Solo si hay entrada y salida diferentes
                         resultado_turno = calcular_diferencia_dias_turno_nocturno(entrada, salida)
                         horas_trabajadas = resultado_turno['duracion_horas']
                     else:
-                        delta = salida - entrada
-                        if delta.total_seconds() < 0:
-                            delta += timedelta(days=1)
-                        horas_trabajadas = round(delta.total_seconds() / 3600, 2)
+                        horas_trabajadas = 0.0
 
             horas_extra = 0.0
             if horas_trabajadas > 8:
@@ -518,9 +501,21 @@ def resumen_asistencias_diarias(request):
                         'horas_programadas': jornada_especial.horas_programadas,
                         'observaciones': jornada_especial.observaciones
                     }
+            
+            # Información adicional sobre el emparejamiento
+            mensaje_emparejamiento = ""
+            if turno_info:
+                if turno_info.get('crosses_midnight'):
+                    mensaje_emparejamiento = f"Turno nocturno: salida al día siguiente {salida.strftime('%d/%m/%Y %H:%M')}"
+                elif turno_info.get('sin_salida'):
+                    mensaje_emparejamiento = "Sin salida registrada"
+                elif turno_info.get('posible_salida_nocturna'):
+                    mensaje_emparejamiento = "Posible salida de turno nocturno anterior"
+                elif turno_info.get('emparejado') and turno_info.get('es_nocturno'):
+                    mensaje_emparejamiento = "Turno nocturno emparejado correctamente"
 
             registros.append({
-                        'dia': entrada.date().strftime('%Y-%m-%d'),
+                        'dia': entrada.date().strftime('%Y-%m-%d') if entrada else fecha.strftime('%Y-%m-%d'),
                         'user_id': usuario.id,
                         'nombre': usuario.nombre,
                         'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia and registros_dia[0].estacion_servicio else '',
@@ -537,6 +532,9 @@ def resumen_asistencias_diarias(request):
                         'descripcion_turno': info_turno['descripcion'],
                         'diferencia_dias': resultado_turno['diferencia_dias'] if resultado_turno else 0,
                         'mensaje_turno': resultado_turno['mensaje'] if resultado_turno else None,
+                        # Información de emparejamiento
+                        'emparejado': emparejado,
+                        'mensaje_emparejamiento': mensaje_emparejamiento,
                         # Información de jornada especial
                         'es_jornada_especial': es_jornada_especial,
                         'jornada_especial_info': jornada_especial_info,
