@@ -348,169 +348,41 @@ def resumen_asistencias_diarias(request):
 
     registros = []
     for usuario, dias in asistencia_por_usuario_fecha.items():
-        # Obtener todos los registros del usuario para procesamiento completo
-        registros_usuario_completos = []
-        for fecha, registros_dia in dias.items():
-            registros_usuario_completos.extend(registros_dia)
-        
-        # Ordenar todos los registros del usuario por timestamp
-        registros_usuario_completos.sort(key=lambda r: r.timestamp)
-        
-        # CORRECCIÓN ESPECÍFICA: Para usuarios problemáticos, evitar emparejamiento complejo
-        nombres_problematicos = ['ANDREA', 'ALONZO MENDOZA', 'gustavo perdomo', 'CABRERA']
-        es_usuario_problematico = any(nombre.lower() in usuario.nombre.lower() for nombre in nombres_problematicos)
-        
-        if es_usuario_problematico:
-            # Para usuarios problemáticos, no usar emparejamiento complejo
-            turnos_emparejados = {}
-        else:
-            # Usar el nuevo validador para emparejar turnos nocturnos solo para usuarios no problemáticos
-            turnos_emparejados = validar_y_emparejar_turno_nocturno(registros_usuario_completos)
-        
-        # Procesar cada fecha con los turnos ya emparejados
-        # IMPORTANTE: Solo procesar fechas que tengan turnos válidos o no hayan sido procesadas
+        # Procesar cada fecha directamente usando el método corregido del modelo
         fechas_ordenadas = sorted(dias.keys())
-        fechas_procesadas = set()
         
         for fecha in fechas_ordenadas:
-            # Verificar si esta fecha ya fue procesada como parte de un turno nocturno
-            if fecha in fechas_procesadas:
-                continue
-                
             registros_dia = dias[fecha]
             
-            # Verificar si hay emparejamiento para esta fecha
-            turno_info = turnos_emparejados.get(fecha)
+            # NUEVA LÓGICA: Usar el método mejorado del modelo que detecta correctamente
+            # el primer y último registro del día
+            calculo_modelo = usuario.calcular_horas_dia(fecha)
             
-            if turno_info and turno_info.get('crosses_midnight'):
-                # Este es un turno nocturno que cruza medianoche
-                # Marcar la fecha de salida como procesada para evitar duplicados
-                if turno_info['salida']:
-                    fecha_salida = turno_info['salida'].date()
-                    fechas_procesadas.add(fecha_salida)
+            # Extraer información del cálculo del modelo
+            entrada = calculo_modelo.get('entrada')
+            salida = calculo_modelo.get('salida')
+            horas_trabajadas = calculo_modelo.get('horas_trabajadas', 0.0)
+            horas_normales = calculo_modelo.get('horas_normales', 0.0)
+            horas_extra = calculo_modelo.get('horas_extras', 0.0)
+            es_turno_nocturno = calculo_modelo.get('es_turno_nocturno', False)
             
-            if turno_info:
-                entrada = turno_info['entrada']
-                salida = turno_info['salida']
-                es_nocturno = turno_info['es_nocturno']
-                emparejado = turno_info['emparejado']
-                
-                # VALIDACIÓN: Si la diferencia entre entrada y salida es mayor a 48 horas,
-                # probablemente es un emparejamiento incorrecto
-                if entrada and salida and isinstance(entrada, datetime) and isinstance(salida, datetime):
-                    diferencia_horas = (salida - entrada).total_seconds() / 3600
-                    if diferencia_horas > 48:  # Más de 48 horas = emparejamiento incorrecto
-                        print(f"ADVERTENCIA: Emparejamiento sospechoso para {usuario.nombre} - {fecha}: {diferencia_horas:.1f} horas")
-                        # Resetear a fallback para usar método corregido
-                        turno_info = None
-                        entrada = None
-                        salida = None
-                
-                # Si este turno no tiene entrada válida y es una posible salida nocturna,
-                # es probable que ya fue procesado en otro registro
-                if turno_info and (turno_info.get('posible_salida_nocturna') and not entrada):
-                    continue  # Saltar este registro
-                    
-            else:
-                # Fallback a lógica anterior si no hay emparejamiento
-                timestamps = [localtime(r.timestamp) for r in registros_dia]
-                timestamps.sort()
-                
-                if len(timestamps) >= 2:
-                    entrada = timestamps[0]
-                    salida = timestamps[-1]
-                    es_nocturno = False
-                    emparejado = True
-                elif len(timestamps) == 1:
-                    entrada = timestamps[0]
-                    salida = None
-                    es_nocturno = False
-                    emparejado = False
-                else:
-                    entrada = None
-                    salida = None
-                    es_nocturno = False
-                    emparejado = False
+            # Convertir timestamps de modelo a datetime locales si es necesario
+            if entrada and hasattr(entrada, 'timestamp'):
+                entrada = localtime(entrada.timestamp)
+            if salida and hasattr(salida, 'timestamp'):
+                salida = localtime(salida.timestamp)
 
             # Detectar tipo de turno usando la nueva funcionalidad
             info_turno = detectar_tipo_turno_detallado(entrada, salida if salida else None)
-
-            horas_trabajadas = 0.0
-            horas_normales = 0.0
-            horas_extra = 0.0
-            resultado_turno = None
             
-            if salida and entrada:
-                # Usar la nueva función que considera horarios estándar
-                calculo = calcular_horas_con_horarios_estandar(entrada, salida)
-                horas_trabajadas = calculo['horas_trabajadas']
-                horas_normales = calculo['horas_normales']
-                horas_extra = calculo['horas_extras']
-                
-                # Mantener compatibilidad con la información de turno nocturno
+            # Mantener compatibilidad con resultado_turno si se requiere
+            resultado_turno = None
+            if horas_trabajadas > 0:
                 resultado_turno = {
                     'duracion_horas': horas_trabajadas,
-                    'diferencia_dias': 1 if calculo['tipo_turno'].startswith('Noche') else 0,
-                    'mensaje': calculo['mensaje']
+                    'diferencia_dias': 1 if es_turno_nocturno else 0,
+                    'mensaje': calculo_modelo.get('mensaje', 'Procesado con método mejorado')
                 }
-            elif salida or entrada:
-                # NUEVO: Si solo hay salida o entrada, usar el método corregido del modelo
-                # que maneja casos donde faltan registros
-                
-                # Determinar la fecha para el cálculo
-                fecha_calculo = fecha  # Default
-                
-                if entrada:
-                    # Si entrada es un datetime (del fallback) o un objeto registro
-                    if isinstance(entrada, datetime):
-                        fecha_calculo = entrada.date()
-                    elif hasattr(entrada, 'timestamp'):
-                        fecha_calculo = entrada.timestamp.date()
-                    elif hasattr(entrada, 'date') and callable(entrada.date):
-                        fecha_calculo = entrada.date()
-                    elif hasattr(entrada, 'date') and not callable(entrada.date):
-                        fecha_calculo = entrada.date
-                        
-                elif salida:
-                    # Si salida es un datetime (del fallback) o un objeto registro
-                    if isinstance(salida, datetime):
-                        fecha_calculo = salida.date()
-                    elif hasattr(salida, 'timestamp'):
-                        fecha_calculo = salida.timestamp.date()
-                    elif hasattr(salida, 'date') and callable(salida.date):
-                        fecha_calculo = salida.date()
-                    elif hasattr(salida, 'date') and not callable(salida.date):
-                        fecha_calculo = salida.date
-                
-                # CORRECCIÓN ESPECÍFICA: Usar método corregido para casos problemáticos
-                # Detectar usuarios problemáticos (ANDREA CABRERA, ALONZO MENDOZA, etc.)
-                # Nota: ANDREA CABRERA tiene doble espacio en la BD: "ANDREA  CABRERA"
-                nombres_problematicos = ['ANDREA', 'ALONZO MENDOZA', 'gustavo perdomo', 'CABRERA']
-                usar_metodo_corregido = any(nombre.lower() in usuario.nombre.lower() for nombre in nombres_problematicos)
-                
-                if usar_metodo_corregido:
-                    # Simplemente usar el método corregido del modelo que ya está funcionando
-                    calculo_modelo = usuario.calcular_horas_dia(fecha_calculo)
-                else:
-                    # Usar método anterior para otros usuarios
-                    calculo_modelo = usuario.calcular_horas_dia(fecha_calculo)
-                
-                if calculo_modelo:
-                    horas_trabajadas = calculo_modelo.get('horas_trabajadas', 0)
-                    horas_normales = calculo_modelo.get('horas_normales', 0)
-                    horas_extra = calculo_modelo.get('horas_extras', 0)
-                    
-                    # Información del turno
-                    resultado_turno = {
-                        'duracion_horas': horas_trabajadas,
-                        'diferencia_dias': 0,
-                        'mensaje': calculo_modelo.get('mensaje', 'Calculado con registros parciales')
-                    }
-                    
-                    # Agregar flag de revisión si es necesario
-                    if calculo_modelo.get('requiere_revision', False):
-                        resultado_turno['requiere_revision'] = True
-                        resultado_turno['advertencia'] = calculo_modelo.get('advertencia')
 
             aprobados = [r.aprobado for r in registros_dia]
             aprobado = None
@@ -552,17 +424,14 @@ def resumen_asistencias_diarias(request):
                         'observaciones': jornada_especial.observaciones
                     }
             
-            # Información adicional sobre el emparejamiento
+            # Información adicional sobre el emparejamiento (simplificada)
             mensaje_emparejamiento = ""
-            if turno_info:
-                if turno_info.get('crosses_midnight'):
-                    mensaje_emparejamiento = f"Turno nocturno: salida al día siguiente {salida.strftime('%d/%m/%Y %H:%M')}"
-                elif turno_info.get('sin_salida'):
-                    mensaje_emparejamiento = "Sin salida registrada"
-                elif turno_info.get('posible_salida_nocturna'):
-                    mensaje_emparejamiento = "Posible salida de turno nocturno anterior"
-                elif turno_info.get('emparejado') and turno_info.get('es_nocturno'):
-                    mensaje_emparejamiento = "Turno nocturno emparejado correctamente"
+            if es_turno_nocturno:
+                mensaje_emparejamiento = "Turno nocturno detectado"
+            elif entrada and not salida:
+                mensaje_emparejamiento = "Sin salida registrada"
+            elif not entrada and salida:
+                mensaje_emparejamiento = "Sin entrada registrada"
 
             # Determinar el día para el registro
             dia_str = fecha.strftime('%Y-%m-%d')  # Default
@@ -575,6 +444,27 @@ def resumen_asistencias_diarias(request):
                     dia_str = entrada.date().strftime('%Y-%m-%d')
                 elif hasattr(entrada, 'date'):
                     dia_str = entrada.date.strftime('%Y-%m-%d')
+
+            # Verificar si hay jornada especial activa para esta fecha
+            es_jornada_especial = False
+            jornada_especial_info = None
+            fecha_registro = fecha  # Usar la fecha del bucle
+            
+            if fecha_registro:
+                jornada_especial = JornadaEspecial.objects.filter(
+                    fecha_inicio__lte=fecha_registro,
+                    fecha_fin__gte=fecha_registro
+                ).first()
+                
+                if jornada_especial:
+                    es_jornada_especial = True
+                    jornada_especial_info = {
+                        'id': jornada_especial.id,
+                        'fecha_inicio': jornada_especial.fecha_inicio,
+                        'fecha_fin': jornada_especial.fecha_fin,
+                        'horas_programadas': jornada_especial.horas_programadas,
+                        'observaciones': jornada_especial.observaciones
+                    }
 
             registros.append({
                         'dia': dia_str,
@@ -595,7 +485,7 @@ def resumen_asistencias_diarias(request):
                         'diferencia_dias': resultado_turno['diferencia_dias'] if resultado_turno else 0,
                         'mensaje_turno': resultado_turno['mensaje'] if resultado_turno else None,
                         # Información de emparejamiento
-                        'emparejado': emparejado,
+                        'emparejado': True if entrada and salida else False,
                         'mensaje_emparejamiento': mensaje_emparejamiento,
                         # Información de jornada especial
                         'es_jornada_especial': es_jornada_especial,
@@ -789,7 +679,7 @@ def exportar_resumen_asistencias_excel(request):
                 horas_extra = calculo['horas_extras']
                 
                 # Mantener información para compatibilidad
-                if len(timestamps) > 1 and calculo['tipo_turno'].startswith('Noche'):
+                if len(timestamps) > 1 and calculo.get('tipo_turno', '').startswith('Noche'):
                     resultado_turno = {
                         'duracion_horas': horas_trabajadas,
                         'mensaje': calculo['mensaje']

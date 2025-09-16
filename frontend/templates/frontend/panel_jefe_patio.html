@@ -109,10 +109,10 @@
                                 </td>
                                 <td>
                                     <span class="badge bg-warning text-dark">{{ jornada.horas_programadas }}h</span>
-                                    {% if jornada.horas_programadas > 12 %}
+                                    {% if jornada.horas_programadas > 8 %}
                                         <br><small class="text-muted">
                                             <i class="bi bi-clock-history me-1"></i>
-                                            {{ jornada.horas_programadas|add:"-12" }}h extras
+                                            {{ jornada.horas_programadas|add:"-8" }}h extras
                                         </small>
                                     {% endif %}
                                 </td>
@@ -178,7 +178,7 @@
                         <i class="bi bi-info-circle me-2"></i>
                         <strong>Información sobre Jornadas Especiales:</strong>
                         <ul class="mb-0 mt-2">
-                            <li><strong>Duración:</strong> Hasta 12 horas normales, más de 12 horas se consideran extras</li>
+                            <li><strong>Duración:</strong> Hasta 8 horas normales, más de 8 horas se consideran extras</li>
                             <li><strong>Cruce de medianoche:</strong> Pueden empezar un día y terminar al siguiente</li>
                             <li><strong>Cálculo:</strong> Se toma la primera entrada y la siguiente salida registrada</li>
                             <li><strong>Validación:</strong> Automática para horas trabajadas y extras</li>
@@ -381,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="bi bi-info-circle me-2"></i>
                         <strong>Jornada extendida detectada:</strong> 
                         ${diffHours.toFixed(2)} horas programadas. 
-                        ${diffHours > 12 ? (diffHours - 12).toFixed(2) + ' horas serán consideradas extras.' : 'Todas las horas serán normales.'}
+                        ${diffHours > 8 ? (diffHours - 8).toFixed(2) + ' horas serán consideradas extras.' : 'Todas las horas serán normales.'}
                     `;
                 } else {
                     alertContainer.classList.remove('alert-info');

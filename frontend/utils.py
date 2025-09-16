@@ -411,7 +411,8 @@ def calcular_horas_con_horarios_estandar(entrada_datetime, salida_datetime):
             'horas_extras': 0,
             'entrada_efectiva': None,
             'salida_efectiva': None,
-            'mensaje': 'Faltan datos de entrada o salida'
+            'mensaje': 'Faltan datos de entrada o salida',
+            'tipo_turno': 'No determinado'
         }
     
     # Detectar qué turno es según la hora de entrada
@@ -458,7 +459,8 @@ def calcular_horas_con_horarios_estandar(entrada_datetime, salida_datetime):
             'horas_extras': 0,
             'entrada_efectiva': entrada_efectiva,
             'salida_efectiva': salida_efectiva,
-            'mensaje': f'No hay tiempo válido. Turno: {tipo_turno}'
+            'mensaje': f'No hay tiempo válido. Turno: {tipo_turno}',
+            'tipo_turno': tipo_turno
         }
     
     # Calcular horas normales (dentro del horario oficial)
