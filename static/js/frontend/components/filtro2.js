@@ -19,6 +19,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const filas = Array.from(document.querySelectorAll('tbody tr')).filter(f => !f.id);
     const sinCoincidencias = document.getElementById('sinCoincidencias');
 
+    // Agregar focus al filtro de usuarios al cargar la página
+    if (inputTexto) {
+        setTimeout(() => {
+            inputTexto.focus();
+            // Posicionar el cursor al final del texto existente
+            if (inputTexto.value) {
+                inputTexto.setSelectionRange(inputTexto.value.length, inputTexto.value.length);
+            }
+        }, 100); // Pequeño delay para asegurar que la página esté completamente cargada
+    }
+
     // Verificar si hay filtros aplicados desde el backend
     function hayFiltrosAplicados() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -155,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Función para actualizar URL con filtros y recargar la página
     function aplicarFiltrosConPaginacion() {
-        // Mostrar indicador de carga para navegación
+        // Mostrar indicador de carga justo antes de navegar
         safeMostrarCargando();
         
         const params = new URLSearchParams(window.location.search);
