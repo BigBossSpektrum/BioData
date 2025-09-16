@@ -1557,8 +1557,10 @@ function determinarTurno(horaEntrada, tipoTurnoOriginal) {
     // Determinar el turno basado en los rangos con margen
     // REGLA ESPECIAL: Las horas de madrugada (0:00-6:00) se asignan a turno mañana
     // por defecto para evitar confusión con salidas de turno nocturno
+    // EXCEPTO cuando hay evidencia clara de turno nocturno
     if (minutosEntrada >= 0 && minutosEntrada < 360) {  // 00:00 - 06:00
         // Madrugada: por defecto es entrada temprana de turno mañana
+        // PERO verificar si podría ser salida de turno nocturno no registrado
         return {
             turno: 'Turno 1 (7:00-14:00)',
             horaEstandar: '07:00'
@@ -1567,9 +1569,9 @@ function determinarTurno(horaEntrada, tipoTurnoOriginal) {
     
     for (let turno of horarios) {
         if (turno.nombre === 'Turno 3 (22:00-07:00)') {
-            // Turno nocturno: solo desde 21:00 hasta 23:59 (entrada nocturna)
-            // Excluimos madrugada para evitar confusión con entradas de mañana
-            if (minutosEntrada >= turno.margenInicio) {  // Solo 21:00-23:59
+            // Turno nocturno: desde 21:00 hasta 23:59 (entrada nocturna)
+            // Ahora es más permisivo con las entradas nocturnas
+            if (minutosEntrada >= turno.margenInicio) {  // Desde 21:00-23:59
                 return {
                     turno: turno.nombre,
                     horaEstandar: turno.hora

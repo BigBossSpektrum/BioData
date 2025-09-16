@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
 from django.utils import timezone
-from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado, validar_y_emparejar_turno_nocturno, calcular_horas_con_horarios_estandar
+from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado, validar_y_emparejar_turno_nocturno, calcular_horas_con_horarios_estandar, procesar_turno_nocturno_con_siguiente_registro
 from django.http import HttpResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -354,34 +354,60 @@ def resumen_asistencias_diarias(request):
         for fecha in fechas_ordenadas:
             registros_dia = dias[fecha]
             
-            # NUEVA LÓGICA: Usar el método mejorado del modelo que detecta correctamente
-            # el primer y último registro del día
-            calculo_modelo = usuario.calcular_horas_dia(fecha)
+            # NUEVA LÓGICA ESPECIAL PARA TURNOS NOCTURNOS:
+            # Primero verificar si hay entrada nocturna y buscar salida en día siguiente
+            resultado_nocturno = procesar_turno_nocturno_con_siguiente_registro(
+                asistencia_por_usuario_fecha, usuario, fecha
+            )
             
-            # Extraer información del cálculo del modelo
-            entrada = calculo_modelo.get('entrada')
-            salida = calculo_modelo.get('salida')
-            horas_trabajadas = calculo_modelo.get('horas_trabajadas', 0.0)
-            horas_normales = calculo_modelo.get('horas_normales', 0.0)
-            horas_extra = calculo_modelo.get('horas_extras', 0.0)
-            es_turno_nocturno = calculo_modelo.get('es_turno_nocturno', False)
-            
-            # Convertir timestamps de modelo a datetime locales si es necesario
-            if entrada and hasattr(entrada, 'timestamp'):
-                entrada = localtime(entrada.timestamp)
-            if salida and hasattr(salida, 'timestamp'):
-                salida = localtime(salida.timestamp)
+            if resultado_nocturno:
+                # Es un turno nocturno válido con posible salida al día siguiente
+                entrada = resultado_nocturno['entrada']
+                salida = resultado_nocturno['salida']
+                horas_trabajadas = resultado_nocturno['horas_trabajadas']
+                horas_extra = resultado_nocturno['horas_extra']
+                info_turno = resultado_nocturno['info_turno']
+                mensaje_emparejamiento = resultado_nocturno['mensaje']
+                horas_normales = horas_trabajadas - horas_extra if horas_trabajadas > 0 else 0.0
+                es_turno_nocturno_flag = True
+            else:
+                # Usar el método normal del modelo para turnos diurnos
+                calculo_modelo = usuario.calcular_horas_dia(fecha)
+                
+                # Extraer información del cálculo del modelo
+                entrada = calculo_modelo.get('entrada')
+                salida = calculo_modelo.get('salida')
+                horas_trabajadas = calculo_modelo.get('horas_trabajadas', 0.0)
+                horas_normales = calculo_modelo.get('horas_normales', 0.0)
+                horas_extra = calculo_modelo.get('horas_extras', 0.0)
+                es_turno_nocturno_flag = calculo_modelo.get('es_turno_nocturno', False)
+                
+                # Convertir timestamps de modelo a datetime locales si es necesario
+                if entrada and hasattr(entrada, 'timestamp'):
+                    entrada = localtime(entrada.timestamp)
+                if salida and hasattr(salida, 'timestamp'):
+                    salida = localtime(salida.timestamp)
 
-            # Detectar tipo de turno usando la nueva funcionalidad
-            info_turno = detectar_tipo_turno_detallado(entrada, salida if salida else None)
+                # Detectar tipo de turno usando la nueva funcionalidad
+                info_turno = detectar_tipo_turno_detallado(entrada, salida if salida else None)
+                
+                # Mensaje de emparejamiento por defecto
+                if entrada and salida:
+                    mensaje_emparejamiento = "Turno diurno normal"
+                elif entrada and not salida:
+                    mensaje_emparejamiento = "Sin salida registrada"
+                elif not entrada and salida:
+                    mensaje_emparejamiento = "Sin entrada registrada"
+                else:
+                    mensaje_emparejamiento = "Sin registros"
             
             # Mantener compatibilidad con resultado_turno si se requiere
             resultado_turno = None
             if horas_trabajadas > 0:
                 resultado_turno = {
                     'duracion_horas': horas_trabajadas,
-                    'diferencia_dias': 1 if es_turno_nocturno else 0,
-                    'mensaje': calculo_modelo.get('mensaje', 'Procesado con método mejorado')
+                    'diferencia_dias': 1 if es_turno_nocturno_flag else 0,
+                    'mensaje': mensaje_emparejamiento
                 }
 
             aprobados = [r.aprobado for r in registros_dia]
@@ -424,15 +450,6 @@ def resumen_asistencias_diarias(request):
                         'observaciones': jornada_especial.observaciones
                     }
             
-            # Información adicional sobre el emparejamiento (simplificada)
-            mensaje_emparejamiento = ""
-            if es_turno_nocturno:
-                mensaje_emparejamiento = "Turno nocturno detectado"
-            elif entrada and not salida:
-                mensaje_emparejamiento = "Sin salida registrada"
-            elif not entrada and salida:
-                mensaje_emparejamiento = "Sin entrada registrada"
-
             # Determinar el día para el registro
             dia_str = fecha.strftime('%Y-%m-%d')  # Default
             if entrada:

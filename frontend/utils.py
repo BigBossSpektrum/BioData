@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, time
+from django.utils.timezone import localtime
 
 def obtener_rango_semana(fecha_str):
     """
@@ -21,10 +22,10 @@ def obtener_rango_semana(fecha_str):
 def es_turno_nocturno(hora_entrada, hora_salida=None):
     """
     Identifica si es turno nocturno basándose en la hora de entrada y salida.
-    Un turno es nocturno SOLO cuando:
-    - Entrada entre 21:00 y 23:59
-    - Salida entre 00:00 y 08:00 del día siguiente
-    - La salida es cronológicamente posterior a la entrada (cruza medianoche)
+    Un turno es nocturno cuando:
+    - Entrada entre 21:00 y 23:59, O
+    - Si no hay salida, pero entrada es entre 21:00 y 23:59
+    - Si hay salida: entrada entre 21:00-23:59 Y salida entre 00:00-08:00
     
     Args:
         hora_entrada (time): Hora de entrada al turno
@@ -40,16 +41,17 @@ def es_turno_nocturno(hora_entrada, hora_salida=None):
     if isinstance(hora_salida, datetime):
         hora_salida = hora_salida.time()
     
-    # Para ser turno nocturno necesitamos tanto entrada como salida
-    if not hora_salida:
-        return False
-    
-    # Condiciones estrictas para turno nocturno:
-    # Ampliado el rango de entrada desde las 21:00 para cubrir casos como 21:24
+    # Condición principal: entrada nocturna
     entrada_nocturna = time(21, 0) <= hora_entrada <= time(23, 59)
+    
+    # Si no hay salida, solo considerar la entrada
+    if not hora_salida:
+        return entrada_nocturna
+    
+    # Si hay salida, verificar que también sea compatible con turno nocturno
     salida_nocturna = time(0, 0) <= hora_salida <= time(8, 0)
     
-    # Solo es nocturno si cumple ambas condiciones
+    # Es nocturno si tiene entrada nocturna Y (no hay salida O salida nocturna)
     return entrada_nocturna and salida_nocturna
 
 
@@ -321,7 +323,22 @@ def detectar_tipo_turno_detallado(entrada_datetime, salida_datetime=None):
         salida_nocturna = time(0, 0) <= hora_salida <= time(8, 0)
         diferencia_dias = (fecha_salida - fecha_entrada).days
         
-        if entrada_nocturna and salida_nocturna and diferencia_dias == 1:
+        # Ajustar lógica para ser más flexible con turnos nocturnos
+        if entrada_nocturna and salida_nocturna and (diferencia_dias == 1 or diferencia_dias == 0):
+            # Permitir diferencia de 0 días si la salida es muy temprano del mismo día
+            if diferencia_dias == 0 and hora_salida <= time(6, 0):
+                es_nocturno = True
+                tipo = 'nocturno'
+                descripcion = 'Turno nocturno (22:00 - 06:00)'
+            elif diferencia_dias == 1:
+                es_nocturno = True
+                tipo = 'nocturno'
+                descripcion = 'Turno nocturno (22:00 - 06:00)'
+            else:
+                # Entrada nocturna pero salida no válida para nocturno
+                tipo = 'nocturno'
+                descripcion = 'Turno nocturno (22:00 - 06:00)'
+        elif entrada_nocturna:  # Solo entrada nocturna, sin salida válida
             es_nocturno = True
             tipo = 'nocturno'
             descripcion = 'Turno nocturno (22:00 - 06:00)'
@@ -335,6 +352,7 @@ def detectar_tipo_turno_detallado(entrada_datetime, salida_datetime=None):
                 tipo = 'tarde'
                 descripcion = 'Turno de tarde (14:00 - 22:00)'
             elif time(21, 0) <= hora_entrada <= time(23, 59):  # Entrada nocturna tardía
+                es_nocturno = True
                 tipo = 'nocturno'
                 descripcion = 'Turno nocturno (22:00 - 06:00)'
             elif time(0, 0) <= hora_entrada < time(6, 0):  # Madrugada - por defecto mañana
@@ -354,8 +372,9 @@ def detectar_tipo_turno_detallado(entrada_datetime, salida_datetime=None):
             tipo = 'tarde'
             descripcion = 'Turno de tarde (14:00 - 22:00)'
         elif time(21, 0) <= hora_entrada <= time(23, 59):  # Entrada nocturna
-            tipo = 'posible_nocturno'
-            descripcion = 'Posible inicio de turno nocturno (22:00 - 06:00)'
+            es_nocturno = True  # Marcar como nocturno aunque no haya salida
+            tipo = 'nocturno'
+            descripcion = 'Turno nocturno (22:00 - 06:00)'
         elif time(0, 0) <= hora_entrada < time(6, 0):  # Madrugada - AMBIGUO
             # En madrugada sin más contexto, es más probable que sea entrada de mañana
             # que salida de nocturno sin registrar la entrada
@@ -497,4 +516,116 @@ def calcular_horas_con_horarios_estandar(entrada_datetime, salida_datetime):
         'salida_efectiva': salida_efectiva,
         'mensaje': mensaje,
         'tipo_turno': tipo_turno
+    }
+
+
+def procesar_turno_nocturno_con_siguiente_registro(asistencia_por_usuario_fecha, usuario, fecha_actual):
+    """
+    Procesa turnos nocturnos buscando la salida en el día siguiente.
+    Esta función se ejecuta SOLO para turnos nocturnos detectados.
+    
+    Args:
+        asistencia_por_usuario_fecha: Diccionario con todos los registros del usuario por fecha
+        usuario: El usuario actual
+        fecha_actual: La fecha donde se detectó la entrada nocturna
+        
+    Returns:
+        dict: Información del turno nocturno procesado o None si no se puede procesar
+    """
+    registros_dia_actual = asistencia_por_usuario_fecha[usuario].get(fecha_actual, [])
+    
+    if not registros_dia_actual:
+        return None
+    
+    # Ordenar registros del día actual por timestamp
+    registros_dia_actual.sort(key=lambda r: r.timestamp)
+    
+    # Buscar entrada nocturna (21:00-23:59)
+    entrada_nocturna = None
+    for registro in registros_dia_actual:
+        hora_registro = localtime(registro.timestamp).time()
+        if time(21, 0) <= hora_registro <= time(23, 59):
+            entrada_nocturna = registro
+            break
+    
+    if not entrada_nocturna:
+        return None
+    
+    entrada_dt = localtime(entrada_nocturna.timestamp)
+    
+    # Verificar que es realmente un turno nocturno
+    info_turno = detectar_tipo_turno_detallado(entrada_dt, None)
+    if not info_turno['es_nocturno']:
+        return None
+    
+    # Buscar salida en el día siguiente (00:00-08:00)
+    from datetime import timedelta
+    fecha_siguiente = fecha_actual + timedelta(days=1)
+    registros_dia_siguiente = asistencia_por_usuario_fecha[usuario].get(fecha_siguiente, [])
+    
+    salida_nocturna = None
+    if registros_dia_siguiente:
+        # Ordenar registros del día siguiente
+        registros_dia_siguiente.sort(key=lambda r: r.timestamp)
+        
+        # Buscar primera salida válida (00:00-23:59 del día siguiente)
+        # Nota: Buscamos en todo el día siguiente, pero validaremos duración
+        for registro in registros_dia_siguiente:
+            hora_registro = localtime(registro.timestamp).time()
+            # Ampliar búsqueda pero preferir salidas tempranas
+            if time(0, 0) <= hora_registro <= time(23, 59):
+                if not salida_nocturna or hora_registro <= time(8, 0):
+                    # Preferir salidas entre 00:00-08:00, pero permitir otras
+                    salida_nocturna = registro
+                    if hora_registro <= time(8, 0):
+                        break  # Si encontramos una salida temprana, la usamos
+    
+    # Si no hay salida en el día siguiente, buscar en el mismo día (para casos edge)
+    if not salida_nocturna:
+        for registro in registros_dia_actual:
+            if registro == entrada_nocturna:
+                continue
+            hora_registro = localtime(registro.timestamp).time()
+            if time(0, 0) <= hora_registro <= time(8, 0):
+                salida_nocturna = registro
+                break
+    
+    # Preparar la información de retorno
+    entrada = entrada_dt
+    salida = localtime(salida_nocturna.timestamp) if salida_nocturna else None
+    
+    # VALIDACIÓN: No permitir jornadas que superen las 20 horas
+    if salida:
+        duracion_turno = salida - entrada
+        horas_duracion = duracion_turno.total_seconds() / 3600
+        
+        if horas_duracion > 20:
+            # Si la duración supera 20 horas, rechazar este emparejamiento
+            salida = None
+            mensaje = f"Turno nocturno: {entrada.strftime('%H:%M')} - Salida rechazada (duración > 20h)"
+            horas_trabajadas = 0.0
+            horas_extra = 0.0
+        else:
+            # Calcular horas usando la función estándar
+            calculo = calcular_horas_con_horarios_estandar(entrada, salida)
+            horas_trabajadas = calculo['horas_trabajadas']
+            horas_extra = calculo['horas_extras']
+            mensaje = f"Turno nocturno: {entrada.strftime('%H:%M')} → {salida.strftime('%H:%M')} (día siguiente) - {horas_duracion:.1f}h"
+    else:
+        horas_trabajadas = 0.0
+        horas_extra = 0.0
+        mensaje = "Turno nocturno: Sin salida registrada"
+    
+    # Actualizar información del turno
+    info_turno_completo = detectar_tipo_turno_detallado(entrada, salida)
+    
+    return {
+        'entrada': entrada,
+        'salida': salida,
+        'horas_trabajadas': horas_trabajadas,
+        'horas_extra': horas_extra,
+        'es_turno_nocturno': True,
+        'info_turno': info_turno_completo,
+        'mensaje': mensaje,
+        'registros_usados': [entrada_nocturna] + ([salida_nocturna] if salida_nocturna else [])
     }
