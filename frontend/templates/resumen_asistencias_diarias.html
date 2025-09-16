@@ -645,6 +645,9 @@
             <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input type="text" id="filtroUsuarios" class="form-control" placeholder="Buscar por nombre, estación..." value="{{ search_query }}">
+                <button type="button" class="btn btn-outline-secondary" onclick="limpiarFiltros()" title="Limpiar filtros">
+                    <i class="bi bi-x-circle"></i>
+                </button>
             </div>
         </div>
         <div class="col-md-2">
@@ -654,8 +657,8 @@
             <input type="date" id="filtroHasta" class="form-control" placeholder="Hasta" value="{{ fecha_hasta }}">
         </div>
         <div class="col-md-2">
-            <button type="button" class="btn btn-outline-secondary w-100" onclick="limpiarFiltros()">
-                <i class="bi bi-x-circle"></i> Limpiar
+            <button type="button" class="btn btn-primary w-100" onclick="buscarFiltros()">
+                <i class="bi bi-search"></i> Buscar
             </button>
         </div>
         <div class="col-md-2">
@@ -1741,6 +1744,35 @@ function ocultarCargando() {
 function mostrarCargandoTemporal(duracion = 500) {
     mostrarCargando();
     setTimeout(ocultarCargando, duracion);
+}
+
+function buscarFiltros() {
+    mostrarCargando();
+    
+    // Obtener los parámetros de filtro actuales
+    const params = new URLSearchParams(window.location.search);
+    
+    // Obtener valores de los filtros
+    const search = document.getElementById('filtroUsuarios').value;
+    const fechaDesde = document.getElementById('filtroDesde').value;
+    const fechaHasta = document.getElementById('filtroHasta').value;
+    
+    // Limpiar parámetros existentes de filtros de búsqueda
+    params.delete('search');
+    params.delete('fecha_desde');
+    params.delete('fecha_hasta');
+    
+    // Agregar filtros del frontend solo si tienen valor
+    if (search && search.trim()) params.set('search', search.trim());
+    if (fechaDesde) params.set('fecha_desde', fechaDesde);
+    if (fechaHasta) params.set('fecha_hasta', fechaHasta);
+    
+    // Resetear a la primera página cuando se aplican filtros
+    params.set('page', '1');
+    
+    // Redirigir con los nuevos filtros
+    const newUrl = window.location.pathname + '?' + params.toString();
+    window.location.href = newUrl;
 }
 
 function limpiarFiltros() {

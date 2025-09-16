@@ -164,37 +164,34 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Función para actualizar URL con filtros y recargar la página
-    function aplicarFiltrosConPaginacion() {
+    // Función para aplicar filtros con paginación (buscar)
+    function buscarFiltros() {
         // Mostrar indicador de carga justo antes de navegar
         safeMostrarCargando();
         
         const params = new URLSearchParams(window.location.search);
         
-        // Mantener filtros existentes (nombre, cedula, estacion, fecha_inicio, fecha_fin)
-        // y agregar los nuevos filtros de búsqueda
+        // Limpiar parámetros existentes de filtros de búsqueda
+        params.delete('search');
+        params.delete('fecha_desde');
+        params.delete('fecha_hasta');
+        params.delete('estado');
+        
+        // Agregar los nuevos filtros de búsqueda solo si tienen valor
         if (inputTexto.value.trim()) {
             params.set('search', inputTexto.value.trim());
-        } else {
-            params.delete('search');
         }
         
         if (inputDesde.value) {
             params.set('fecha_desde', inputDesde.value);
-        } else {
-            params.delete('fecha_desde');
         }
         
         if (inputHasta.value) {
             params.set('fecha_hasta', inputHasta.value);
-        } else {
-            params.delete('fecha_hasta');
         }
         
         if (selectEstado && selectEstado.value) {
             params.set('estado', selectEstado.value);
-        } else {
-            params.delete('estado');
         }
         
         // Resetear a la primera página cuando se aplican filtros
@@ -204,38 +201,49 @@ document.addEventListener('DOMContentLoaded', function () {
         window.location.href = newUrl;
     }
 
-    // Aplicar filtros inmediatamente para la página actual (sin recargar)
-    inputTexto.addEventListener('input', function() {
-        aplicarFiltros();
-        toggleContenidoPorFiltros();
-    });
-    inputDesde.addEventListener('change', function() {
-        aplicarFiltros();
-        toggleContenidoPorFiltros();
-    });
-    inputHasta.addEventListener('change', function() {
-        aplicarFiltros();
-        toggleContenidoPorFiltros();
-    });
-    if (selectEstado) {
-        selectEstado.addEventListener('change', function() {
-            aplicarFiltros();
-            toggleContenidoPorFiltros();
+    // Función para limpiar filtros
+    function limpiarFiltros() {
+        safeMostrarCargando();
+        // Redirigir a la página sin parámetros de filtro
+        window.location.href = window.location.pathname;
+    }
+
+    // Configurar event listeners para búsqueda solo con Enter
+    if (inputTexto) {
+        inputTexto.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                buscarFiltros();
+            }
         });
     }
 
-    // Aplicar filtros con paginación después de un breve delay para evitar múltiples recargas
-    let timeoutId;
-    inputTexto.addEventListener('input', function() {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(aplicarFiltrosConPaginacion, 1000); // 1 segundo de delay
-    });
-
-    inputDesde.addEventListener('change', aplicarFiltrosConPaginacion);
-    inputHasta.addEventListener('change', aplicarFiltrosConPaginacion);
-    if (selectEstado) {
-        selectEstado.addEventListener('change', aplicarFiltrosConPaginacion);
+    if (inputDesde) {
+        inputDesde.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                buscarFiltros();
+            }
+        });
     }
+
+    if (inputHasta) {
+        inputHasta.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                buscarFiltros();
+            }
+        });
+    }
+
+    if (selectEstado) {
+        selectEstado.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                buscarFiltros();
+            }
+        });
+    }
+
+    // Hacer las funciones disponibles globalmente para el HTML
+    window.buscarFiltros = buscarFiltros;
+    window.limpiarFiltros = limpiarFiltros;
 
     // Aplicar filtros iniciales
     toggleContenidoPorFiltros(); // Verificar estado inicial
