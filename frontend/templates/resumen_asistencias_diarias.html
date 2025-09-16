@@ -143,6 +143,11 @@
     border-color: rgba(16, 185, 129, 0.08);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     line-height: 1.4;
+}
+
+/* Centrar solo las columnas que no son nombre ni estación */
+.table td:not(:nth-child(3)):not(:nth-child(4)), 
+.table th:not(:nth-child(3)):not(:nth-child(4)) {
     text-align: center !important;
 }
 
@@ -183,23 +188,45 @@
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
     white-space: nowrap;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    text-align: center;
     vertical-align: middle;
+}
+
+/* Forzar alineación izquierda para TODOS los encabezados */
+.table thead th,
+.table thead.table-dark th,
+.th-left {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+    justify-content: flex-start !important;
+}
+
+/* Forzar alineación izquierda para encabezados específicos con máxima prioridad */
+.table thead.table-dark.text-center th:nth-child(3),
+.table thead.table-dark.text-center th:nth-child(4),
+.table thead.table-dark th,
+.table th:nth-child(3),
+.table th:nth-child(4) {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+    justify-content: flex-start !important;
+}
+
+/* Centrar solo los encabezados que no son nombre ni estación */
+.table th:not(:nth-child(3)):not(:nth-child(4)) {
+    text-align: left !important;
 }
 
 .table tbody tr {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     background: rgba(255, 255, 255, 0.9);
     border-bottom: 1px solid rgba(16, 185, 129, 0.05);
-    text-align: center !important;
 }
 
 .table tbody tr td {
-    text-align: center !important;
     vertical-align: middle !important;
 }
 
-.table tr {
+.table tbody tr td:not(:nth-child(3)):not(:nth-child(4)) {
     text-align: center !important;
 }
 
@@ -239,18 +266,175 @@
 .table th:nth-child(3), .table td:nth-child(3),
 .table th:nth-child(4), .table td:nth-child(4) {
     text-align: left !important;
+    font-size: 0.85em !important;
+}
+
+/* Regla adicional con mayor especificidad */
+.table tbody tr td:nth-child(3),
+.table tbody tr td:nth-child(4),
+.table thead tr th:nth-child(3),
+.table thead tr th:nth-child(4) {
+    text-align: left !important;
+    font-size: 0.85em !important;
+}
+
+/* Sobrescribir Bootstrap text-center con mayor especificidad */
+.table.table-bordered.table-striped thead.table-dark.text-center th:nth-child(3),
+.table.table-bordered.table-striped thead.table-dark.text-center th:nth-child(4),
+.table.table-bordered.table-striped tbody.text-center td:nth-child(3),
+.table.table-bordered.table-striped tbody.text-center td:nth-child(4) {
+    text-align: left !important;
+    font-size: 0.85em !important;
 }
 
 .table th:nth-child(3) *, .table td:nth-child(3) *,
 .table th:nth-child(4) *, .table td:nth-child(4) * {
     text-align: left !important;
     justify-content: flex-start !important;
+    font-size: inherit !important;
 }
 
 .table td:nth-child(3) .d-flex,
 .table td:nth-child(4) .d-flex {
     justify-content: flex-start !important;
     text-align: left !important;
+}
+
+/* Regla CSS con máxima especificidad para forzar alineación */
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center tr th:nth-child(3),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center tr th:nth-child(4),
+.table.table-bordered.table-striped.align-middle tbody.text-center tr td:nth-child(3),
+.table.table-bordered.table-striped.align-middle tbody.text-center tr td:nth-child(4) {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+}
+
+/* Regla alternativa con selector de atributo */
+th[style*="text-align: left"],
+td[style*="text-align: left"] {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+}
+
+/* Reglas específicas para clases personalizadas */
+.th-nombre-left,
+.th-estacion-left,
+.td-nombre-left,
+.td-estacion-left {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+}
+
+.table .th-nombre-left,
+.table .th-estacion-left,
+.table .td-nombre-left,
+.table .td-estacion-left {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+}
+
+/* Regla súper específica para encabezados con estilos inline */
+#tabla-datos .table thead tr th[style*="text-align: left"],
+#tabla-datos .table tbody tr td[style*="text-align: left"] {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+}
+
+/* Reglas súper específicas usando el ID de la tabla - TODOS LOS ENCABEZADOS A LA IZQUIERDA */
+#tabla-asistencias thead th,
+#tabla-asistencias thead.table-dark th,
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(1),
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(2),
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(3),
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(4),
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(5),
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(6),
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(7),
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(8),
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(9),
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(10),
+#tabla-asistencias thead.table-dark.text-center tr th:nth-child(11) {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+    justify-content: flex-start !important;
+}
+
+#tabla-asistencias tbody.text-center tr td:nth-child(3),
+#tabla-asistencias tbody.text-center tr td:nth-child(4) {
+    text-align: left !important;
+    font-size: 0.85em !important;
+    justify-content: flex-start !important;
+}
+
+/* Reglas específicas para las clases de alineación izquierda - TODOS LOS ENCABEZADOS */
+.th-left,
+.th-nombre-left,
+.th-estacion-left {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+    justify-content: flex-start !important;
+}
+
+.td-nombre-left,
+.td-estacion-left {
+    text-align: left !important;
+    font-size: 0.85em !important;
+    justify-content: flex-start !important;
+}
+
+/* Forzar alineación en elementos internos de las celdas nombre y estación */
+.td-nombre-left .d-flex,
+.td-estacion-left .d-flex {
+    justify-content: flex-start !important;
+    text-align: left !important;
+}
+
+.td-nombre-left *,
+.td-estacion-left * {
+    text-align: left !important;
+}
+
+/* Regla con máxima especificidad para sobrescribir Bootstrap - TODOS LOS ENCABEZADOS */
+.table.table-bordered.table-striped.align-middle thead th,
+.table.table-bordered.table-striped.align-middle thead.table-dark th,
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(1),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(2),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(3),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(4),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(5),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(6),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(7),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(8),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(9),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(10),
+.table.table-bordered.table-striped.align-middle thead.table-dark.text-center th:nth-child(11) {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+    justify-content: flex-start !important;
+}
+
+.table.table-bordered.table-striped.align-middle tbody.text-center td:nth-child(3),
+.table.table-bordered.table-striped.align-middle tbody.text-center td:nth-child(4) {
+    text-align: left !important;
+    font-size: 0.85em !important;
+    justify-content: flex-start !important;
+}
+
+/* Sobrescribir todas las clases de Bootstrap para alineación de texto - TODOS LOS ENCABEZADOS */
+.table thead th,
+.table thead th.th-left,
+.table thead th.th-nombre-left,
+.table thead th.th-estacion-left {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+    justify-content: flex-start !important;
+}
+
+.table tbody td.td-nombre-left,
+.table tbody td.td-estacion-left {
+    text-align: left !important;
+    font-size: 0.85em !important;
+    justify-content: flex-start !important;
 }
 .table th:nth-child(7), .table td:nth-child(7) { width: 12%; text-align: center; } /* Horas de Retraso */
 .table th:nth-child(8), .table td:nth-child(8) { width: 10%; text-align: center; white-space: nowrap; } /* Horas Trabajadas */
@@ -269,6 +453,8 @@
     cursor: help;
     transition: all 0.3s ease;
     font-weight: 500;
+    text-align: left !important;
+    font-size: 0.85em !important;
 }
 
 .nombre-truncado:hover {
@@ -412,8 +598,8 @@
     /* Ajustar anchos para móvil */
     .table th:nth-child(1), .table td:nth-child(1) { width: 40px; min-width: 40px; } /* # */
     .table th:nth-child(2), .table td:nth-child(2) { width: 80px; min-width: 80px; } /* Día */
-    .table th:nth-child(3), .table td:nth-child(3) { width: 140px; min-width: 140px; text-align: left !important; } /* Nombre */
-    .table th:nth-child(4), .table td:nth-child(4) { width: 80px; min-width: 80px; text-align: left !important; white-space: nowrap; } /* Estación */
+    .table th:nth-child(3), .table td:nth-child(3) { width: 140px; min-width: 140px; text-align: left !important; font-size: 0.75rem !important; } /* Nombre */
+    .table th:nth-child(4), .table td:nth-child(4) { width: 80px; min-width: 80px; text-align: left !important; white-space: nowrap; font-size: 0.75rem !important; } /* Estación */
     .table th:nth-child(5), .table td:nth-child(5) { width: 70px; min-width: 70px; } /* Entrada */
     .table th:nth-child(6), .table td:nth-child(6) { width: 70px; min-width: 70px; } /* Salida */
     .table th:nth-child(7), .table td:nth-child(7) { width: 90px; min-width: 90px; } /* Horas de Retraso */
@@ -421,6 +607,15 @@
     .table th:nth-child(9), .table td:nth-child(9) { width: 100px; min-width: 100px; } /* Tipo de Turno */
     .table th:nth-child(10), .table td:nth-child(10) { width: 80px; min-width: 80px; } /* Horas Extras */
     .table th:nth-child(11), .table td:nth-child(11) { width: 120px; min-width: 120px; } /* Aprobado */
+    
+    /* Forzar alineación izquierda en móvil con mayor especificidad */
+    .table.table-bordered.table-striped thead.table-dark.text-center th:nth-child(3),
+    .table.table-bordered.table-striped thead.table-dark.text-center th:nth-child(4),
+    .table.table-bordered.table-striped tbody.text-center td:nth-child(3),
+    .table.table-bordered.table-striped tbody.text-center td:nth-child(4) {
+        text-align: left !important;
+        font-size: 0.75rem !important;
+    }
     
     .badge {
         font-size: 0.65em;
@@ -450,7 +645,8 @@
     /* Ajustes específicos para nombres en móvil */
     .nombre-truncado {
         max-width: 100px; /* Más restrictivo en móviles */
-        font-size: 0.7rem;
+        font-size: 0.7rem !important;
+        text-align: left !important;
     }
     
     /* Permitir que el tooltip sea más visible en móviles */
@@ -630,6 +826,15 @@
     font-weight: bold !important;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
 }
+
+/* REGLA FINAL CON MÁXIMA ESPECIFICIDAD PARA FORZAR ALINEACIÓN IZQUIERDA */
+html body div.container-fluid div.table-container table#tabla-asistencias.table.table-bordered.table-striped.align-middle thead.table-dark.text-center tr th:nth-child(3),
+html body div.container-fluid div.table-container table#tabla-asistencias.table.table-bordered.table-striped.align-middle thead.table-dark.text-center tr th:nth-child(4),
+html body div.container-fluid div.table-container table#tabla-asistencias.table.table-bordered.table-striped.align-middle tbody.text-center tr td:nth-child(3),
+html body div.container-fluid div.table-container table#tabla-asistencias.table.table-bordered.table-striped.align-middle tbody.text-center tr td:nth-child(4) {
+    text-align: left !important;
+    font-size: 0.75rem !important;
+}
 </style>
 
 <div class="container-fluid mt-4" style="width: 100%; margin: 0 auto;">
@@ -764,20 +969,20 @@
     {% else %}
 
     <div class="table-container" id="tabla-datos">
-        <table class="table table-bordered table-striped align-middle">
-            <thead class="table-dark text-center">
+        <table id="tabla-asistencias" class="table table-bordered table-striped align-middle">
+            <thead class="table-dark">
                 <tr>
-                    <th>#</th>
-                    <th>Día</th>
-                    <th>Nombre</th>
-                    <th>Estación</th>
-                    <th>Entrada</th>
-                    <th>Salida</th>
-                    <th>H.Retraso</th>
-                    <th>H.T</th>
-                    <th>T.Turno</th>
-                    <th>H.Extras</th>
-                    <th>Aprobado</th>
+                    <th class="th-left" style="text-align: left !important; font-size: 0.75rem !important;">#</th>
+                    <th class="th-left" style="text-align: left !important; font-size: 0.75rem !important;">Día</th>
+                    <th class="th-left th-nombre-left" style="text-align: left !important; font-size: 0.75rem !important;">Nombre</th>
+                    <th class="th-left th-estacion-left" style="text-align: left !important; font-size: 0.75rem !important; white-space: nowrap !important;">Estación</th>
+                    <th class="th-left" style="text-align: left !important; font-size: 0.75rem !important;">Entrada</th>
+                    <th class="th-left" style="text-align: left !important; font-size: 0.75rem !important;">Salida</th>
+                    <th class="th-left" style="text-align: left !important; font-size: 0.75rem !important;">H.Retraso</th>
+                    <th class="th-left" style="text-align: left !important; font-size: 0.75rem !important;">H.T</th>
+                    <th class="th-left" style="text-align: left !important; font-size: 0.75rem !important;">T.Turno</th>
+                    <th class="th-left" style="text-align: left !important; font-size: 0.75rem !important;">H.Extras</th>
+                    <th class="th-left" style="text-align: left !important; font-size: 0.75rem !important;">Aprobado</th>
                 </tr>
             </thead>
         <tbody class="text-center">
@@ -785,8 +990,8 @@
             <tr>
                 <td>{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
                 <td class="col-dia">{{ r.dia }}</td>
-                <td>
-                    <div class="d-flex align-items-center justify-content-center">
+                <td class="td-nombre-left" style="text-align: left !important; font-size: 0.85em !important;">
+                    <div class="d-flex align-items-center justify-content-start">
                         <div>
                             <span class="nombre-truncado" 
                                   data-bs-toggle="tooltip" 
@@ -803,7 +1008,7 @@
                         </div>
                     </div>
                 </td>
-                <td>{{ r.estacion|default:"-" }}</td>
+                <td class="td-estacion-left" style="text-align: left !important; font-size: 0.85em !important; white-space: nowrap !important;">{{ r.estacion|default:"-" }}</td>
                 <td>
                     {% if r.entrada %}
                         {{ r.entrada|date:"H:i" }}
