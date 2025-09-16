@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
 from django.utils import timezone
-from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado, validar_y_emparejar_turno_nocturno, calcular_horas_con_horarios_estandar, procesar_turno_nocturno_con_siguiente_registro
+from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado, validar_y_emparejar_turno_nocturno, calcular_horas_con_horarios_estandar, procesar_turno_nocturno_con_siguiente_registro, verificar_registros_ya_procesados_en_turno_nocturno
 from django.http import HttpResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -371,6 +371,16 @@ def resumen_asistencias_diarias(request):
                 horas_normales = horas_trabajadas - horas_extra if horas_trabajadas > 0 else 0.0
                 es_turno_nocturno_flag = True
             else:
+                # VERIFICAR SI LOS REGISTROS DE ESTE DÍA YA FUERON PROCESADOS EN UN TURNO NOCTURNO ANTERIOR
+                registros_ya_procesados = verificar_registros_ya_procesados_en_turno_nocturno(
+                    asistencia_por_usuario_fecha, usuario, fecha
+                )
+                
+                if registros_ya_procesados:
+                    # Los registros de este día ya fueron utilizados en un turno nocturno anterior
+                    # No mostrar este registro para evitar duplicación
+                    continue
+                
                 # Usar el método normal del modelo para turnos diurnos
                 calculo_modelo = usuario.calcular_horas_dia(fecha)
                 
@@ -624,6 +634,17 @@ def exportar_resumen_asistencias_excel(request):
         fechas_ordenadas = sorted(dias.keys())
         for idx, fecha in enumerate(fechas_ordenadas):
             registros_dia = dias[fecha]
+            
+            # VERIFICAR SI LOS REGISTROS DE ESTE DÍA YA FUERON PROCESADOS EN UN TURNO NOCTURNO ANTERIOR
+            registros_ya_procesados = verificar_registros_ya_procesados_en_turno_nocturno(
+                asistencia_por_usuario_fecha, usuario, fecha
+            )
+            
+            if registros_ya_procesados:
+                # Los registros de este día ya fueron utilizados en un turno nocturno anterior
+                # No mostrar este registro para evitar duplicación
+                continue
+                
             registros_dia.sort(key=lambda r: r.timestamp)
 
             timestamps = [localtime(r.timestamp) for r in registros_dia]

@@ -629,3 +629,66 @@ def procesar_turno_nocturno_con_siguiente_registro(asistencia_por_usuario_fecha,
         'mensaje': mensaje,
         'registros_usados': [entrada_nocturna] + ([salida_nocturna] if salida_nocturna else [])
     }
+
+
+def verificar_registros_ya_procesados_en_turno_nocturno(asistencia_por_usuario_fecha, usuario, fecha_actual):
+    """
+    Verifica si los registros del día actual ya fueron utilizados en un turno nocturno del día anterior.
+    
+    Args:
+        asistencia_por_usuario_fecha: Diccionario con todos los registros del usuario por fecha
+        usuario: El usuario actual
+        fecha_actual: La fecha a verificar
+        
+    Returns:
+        bool: True si los registros ya fueron procesados en un turno nocturno anterior
+    """
+    from datetime import timedelta, time
+    from django.utils.timezone import localtime
+    
+    # Obtener registros del día actual
+    registros_dia_actual = asistencia_por_usuario_fecha[usuario].get(fecha_actual, [])
+    
+    if not registros_dia_actual:
+        return False
+    
+    # Buscar fecha anterior
+    fecha_anterior = fecha_actual - timedelta(days=1)
+    registros_dia_anterior = asistencia_por_usuario_fecha[usuario].get(fecha_anterior, [])
+    
+    if not registros_dia_anterior:
+        return False
+    
+    # Verificar si hay entrada nocturna en el día anterior (21:00-23:59)
+    entrada_nocturna_anterior = None
+    for registro in registros_dia_anterior:
+        hora_registro = localtime(registro.timestamp).time()
+        if time(21, 0) <= hora_registro <= time(23, 59):
+            entrada_nocturna_anterior = registro
+            break
+    
+    if not entrada_nocturna_anterior:
+        return False
+    
+    # Verificar si algún registro del día actual podría ser la salida del turno nocturno anterior
+    for registro in registros_dia_actual:
+        hora_registro = localtime(registro.timestamp).time()
+        # Si hay registros entre 00:00-08:00, podrían ser salidas de turno nocturno
+        if time(0, 0) <= hora_registro <= time(8, 0):
+            # Procesar el turno nocturno para verificar si usa este registro
+            resultado_nocturno = procesar_turno_nocturno_con_siguiente_registro(
+                asistencia_por_usuario_fecha, usuario, fecha_anterior
+            )
+            
+            if resultado_nocturno and resultado_nocturno['salida']:
+                # Obtener los registros utilizados en el turno nocturno
+                registros_usados = resultado_nocturno.get('registros_usados', [])
+                
+                # Verificar si algún registro del día actual fue utilizado
+                for registro_usado in registros_usados:
+                    if hasattr(registro_usado, 'timestamp'):
+                        fecha_registro_usado = localtime(registro_usado.timestamp).date()
+                        if fecha_registro_usado == fecha_actual:
+                            return True
+    
+    return False
