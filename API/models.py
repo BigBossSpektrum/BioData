@@ -457,17 +457,15 @@ class UsuarioBiometrico(models.Model):
             horas_normales = calculo_detallado['horas_normales']
             horas_extras = calculo_detallado['horas_extras']
         else:
-            # Fallback: usar cálculo tradicional para usuarios sin turno asignado
-            tiempo_trabajado = salida_efectiva.timestamp - entrada_efectiva.timestamp
-            horas_trabajadas = tiempo_trabajado.total_seconds() / 3600
-            
-            # Aplicar lógica de horas extras después de 8 horas trabajadas
-            # Todas las jornadas se consideran con base de 8 horas normales
-            # Las horas extras se calculan después de 8 horas trabajadas
-            
-            # Jornada estándar - 8 horas
-            horas_normales = min(8, horas_trabajadas)
-            horas_extras = max(0, horas_trabajadas - 8)
+            # Fallback: usar cálculo con horarios estándar que respeta las jornadas
+            from frontend.utils import calcular_horas_con_horarios_estandar
+            calculo_detallado = calcular_horas_con_horarios_estandar(
+                entrada_efectiva.timestamp, 
+                salida_efectiva.timestamp
+            )
+            horas_trabajadas = calculo_detallado['horas_trabajadas']
+            horas_normales = calculo_detallado['horas_normales']
+            horas_extras = calculo_detallado['horas_extras']
         
         # Detectar si es turno nocturno basado en horarios
         hora_entrada = entrada_efectiva.timestamp.hour
@@ -931,6 +929,7 @@ class JornadaEspecial(models.Model):
         """
         Calcula las horas trabajadas para jornadas especiales de 12 horas
         Toma la primera entrada del día y la siguiente salida (puede ser del día siguiente)
+        IMPORTANTE: No cuenta tiempo trabajado antes del horario estipulado
         """
         if not entrada or not salida:
             return {
@@ -939,36 +938,14 @@ class JornadaEspecial(models.Model):
                 'horas_totales': 0
             }
         
-        # Convertir a datetime locales
-        entrada_dt = entrada if hasattr(entrada, 'date') else entrada
-        salida_dt = salida if hasattr(salida, 'date') else salida
-        
-        # Asegurar que salida sea posterior a entrada
-        if salida_dt <= entrada_dt:
-            return {
-                'horas_normales': 0,
-                'horas_extras': 0,
-                'horas_totales': 0
-            }
-        
-        # Calcular tiempo total trabajado
-        tiempo_trabajado = salida_dt - entrada_dt
-        horas_totales = round(tiempo_trabajado.total_seconds() / 3600, 2)
-        
-        # Para jornadas especiales ahora también se aplica el estándar de 8 horas:
-        # - Hasta 8 horas son normales
-        # - Más de 8 horas son extras
-        if horas_totales <= 8:
-            horas_normales = horas_totales
-            horas_extras = 0
-        else:
-            horas_normales = 8.0
-            horas_extras = round(horas_totales - 8.0, 2)
+        # Usar la función estandarizada que respeta horarios de jornada
+        from frontend.utils import calcular_horas_con_horarios_estandar
+        calculo_detallado = calcular_horas_con_horarios_estandar(entrada, salida)
         
         return {
-            'horas_normales': horas_normales,
-            'horas_extras': horas_extras,
-            'horas_totales': horas_totales
+            'horas_normales': calculo_detallado['horas_normales'],
+            'horas_extras': calculo_detallado['horas_extras'],
+            'horas_totales': calculo_detallado['horas_trabajadas']
         }
 
     def __str__(self):
