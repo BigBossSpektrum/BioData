@@ -184,13 +184,24 @@ def recibir_datos_biometrico(request):
         total_registros = len(datos)
         print(f"[DEBUG] 📦 Total registros recibidos: {total_registros}")
 
-        # 📊 Contadores y estadísticas
+        # � Validar límite de registros
+        MAX_REGISTROS = 1000
+        if total_registros > MAX_REGISTROS:
+            print(f"[ERROR] ❌ IP {ip_cliente} envió {total_registros} registros. Máximo permitido: {MAX_REGISTROS}")
+            return Response({
+                "error": f"Máximo {MAX_REGISTROS} registros permitidos por request",
+                "registros_enviados": total_registros,
+                "timestamp": timestamp_recepcion
+            }, status=400)
+
+        # �📊 Contadores y estadísticas
         estaciones_stats = {}
         registros_nuevos = 0
         registros_duplicados = 0
         registros_error = 0
         usuarios_nuevos = 0
         usuarios_actualizados = 0
+        estaciones_actualizadas = 0  # Nuevo contador para cambios de estación
 
         for i, registro in enumerate(datos):
             print(f"[DEBUG] 🔄 Procesando registro #{i+1}/{total_registros}")
@@ -256,13 +267,29 @@ def recibir_datos_biometrico(request):
 
             if user_created:
                 user.nombre = nombre
+                user.estacion = estacion_obj  # Asignar estación al crear usuario
                 user.save()
                 usuarios_nuevos += 1
-                print(f"[INFO] 🆕 Usuario biométrico creado: ID={user_id}, Nombre={nombre}")
+                print(f"[INFO] 🆕 Usuario biométrico creado: ID={user_id}, Nombre={nombre}, Estación={estacion_nombre}")
             else:
+                usuario_actualizado = False
+                
+                # Actualizar nombre si ha cambiado
                 if nombre and user.nombre != nombre:
                     print(f"[INFO] ✏️ Actualizando nombre: ID={user_id}, '{user.nombre}' → '{nombre}'")
                     user.nombre = nombre
+                    usuario_actualizado = True
+                
+                # Actualizar estación si ha cambiado
+                if user.estacion != estacion_obj:
+                    estacion_anterior = user.estacion.nombre if user.estacion else "Sin asignar"
+                    user.estacion = estacion_obj
+                    usuario_actualizado = True
+                    estaciones_actualizadas += 1
+                    print(f"[INFO] 🏢 Actualizando estación: ID={user_id}, '{estacion_anterior}' → '{estacion_nombre}'")
+                
+                # Guardar cambios si hubo actualizaciones
+                if usuario_actualizado:
                     user.save()
                     usuarios_actualizados += 1
 
@@ -299,6 +326,7 @@ def recibir_datos_biometrico(request):
         print(f"[DEBUG] ❌ Registros con error: {registros_error}")
         print(f"[DEBUG] 👤 Usuarios nuevos creados: {usuarios_nuevos}")
         print(f"[DEBUG] ✏️ Usuarios actualizados: {usuarios_actualizados}")
+        print(f"[DEBUG] 🏢 Estaciones actualizadas: {estaciones_actualizadas}")
         
         print(f"\n[DEBUG] 📊 === ESTADÍSTICAS POR ESTACIÓN ===")
         for estacion, stats in estaciones_stats.items():
@@ -322,7 +350,8 @@ def recibir_datos_biometrico(request):
                 "duplicados": registros_duplicados,
                 "errores": registros_error,
                 "usuarios_nuevos": usuarios_nuevos,
-                "usuarios_actualizados": usuarios_actualizados
+                "usuarios_actualizados": usuarios_actualizados,
+                "estaciones_actualizadas": estaciones_actualizadas
             },
             "estaciones": estaciones_stats
         }
