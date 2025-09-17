@@ -1098,7 +1098,8 @@ def aprobar_horas_extra(request, usuario_id, dia):
         qs = RegistroAsistencia.objects.filter(
             user_id=int(usuario_id),
             timestamp__gte=inicio_dia,
-            timestamp__lte=fin_dia
+            timestamp__lte=fin_dia,
+            id__gt=5  # Excluir registros con ID <= 5 para evitar conflictos con biométricos de estación
         )
         updated = qs.update(aprobado=True)
         print(f"[APROBACION] Registros actualizados para usuario {usuario_id} en {fecha}: {updated}")
@@ -1127,7 +1128,8 @@ def rechazar_horas_extra(request, usuario_id, dia):
         qs = RegistroAsistencia.objects.filter(
             user_id=int(usuario_id),
             timestamp__gte=inicio_dia,
-            timestamp__lte=fin_dia
+            timestamp__lte=fin_dia,
+            id__gt=5  # Excluir registros con ID <= 5 para evitar conflictos con biométricos de estación
         )
         updated = qs.update(aprobado=False)
         print(f"[RECHAZO] Registros actualizados para usuario {usuario_id} en {fecha}: {updated}")

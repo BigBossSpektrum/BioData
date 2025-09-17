@@ -434,7 +434,14 @@ def calcular_horas_con_horarios_estandar(entrada_datetime, salida_datetime):
             'tipo_turno': 'No determinado'
         }
     
-    # Detectar qué turno es según la hora de entrada
+    # CORRECCIÓN: Convertir a timezone local al inicio si es necesario
+    if hasattr(entrada_datetime, 'tzinfo') and entrada_datetime.tzinfo:
+        from django.utils import timezone
+        # Convertir a timezone local para análisis correcto
+        entrada_datetime = timezone.localtime(entrada_datetime)
+        salida_datetime = timezone.localtime(salida_datetime)
+    
+    # Detectar qué turno es según la hora de entrada (ya en timezone local)
     hora_entrada = entrada_datetime.time()
     fecha_entrada = entrada_datetime.date()
     
@@ -460,11 +467,15 @@ def calcular_horas_con_horarios_estandar(entrada_datetime, salida_datetime):
             fin_turno = datetime.combine(fecha_entrada, time(6, 0))
         tipo_turno = "Noche (22:00-06:00)"
     
-    # Hacer timezone aware si es necesario
+    # Hacer timezone aware si es necesario (solo para inicio y fin de turno)
     if hasattr(entrada_datetime, 'tzinfo') and entrada_datetime.tzinfo:
         from django.utils import timezone
         inicio_turno = timezone.make_aware(inicio_turno)
         fin_turno = timezone.make_aware(fin_turno)
+        
+        # Convertir inicio y fin de turno al mismo timezone que entrada/salida
+        inicio_turno = timezone.localtime(inicio_turno)
+        fin_turno = timezone.localtime(fin_turno)
     
     # La entrada efectiva no puede ser antes del inicio oficial del turno
     entrada_efectiva = max(entrada_datetime, inicio_turno)

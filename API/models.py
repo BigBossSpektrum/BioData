@@ -348,38 +348,105 @@ class UsuarioBiometrico(models.Model):
     def obtener_primer_ultimo_registro_dia(self, fecha):
         """
         Obtiene el primer y último registro del día de manera confiable.
-        Esto funciona independientemente del tipo de turno y maneja casos especiales.
+        MEJORADO: Maneja turnos nocturnos que cruzan medianoche y distingue entre entrada/salida por horario.
         """
         from datetime import datetime, timedelta
         from django.utils import timezone
         
-        # Obtener TODOS los registros del día específico
+        # Obtener registros del día específico
         fecha_inicio = datetime.combine(fecha, datetime.min.time())
         fecha_fin = datetime.combine(fecha, datetime.max.time())
         
         registros_dia = RegistroAsistencia.objects.filter(
             user=self,
             timestamp__gte=timezone.make_aware(fecha_inicio),
-            timestamp__lte=timezone.make_aware(fecha_fin)
+            timestamp__lte=timezone.make_aware(fecha_fin),
+            status__in=[0, 1, 15],  # Incluir registros con status 15 (Desconocido)
+            id__gt=5  # Excluir registros con ID <= 5 para evitar conflictos con biométricos de estación
         ).order_by('timestamp')
         
         if not registros_dia.exists():
             return None, None, []
         
-        # Ordenar cronológicamente todos los registros del día
         registros_ordenados = list(registros_dia.order_by('timestamp'))
         
-        # El primer registro cronológico es la entrada
-        primer_registro = registros_ordenados[0]
+        # NUEVA LÓGICA: Analizar los horarios para identificar correctamente entrada y salida
+        entrada_candidata = None
+        salida_candidata = None
         
-        # El último registro cronológico es la salida  
-        ultimo_registro = registros_ordenados[-1]
+        print(f"Analizando {len(registros_ordenados)} registros del {fecha}:")
         
-        # Si solo hay un registro, se considera entrada sin salida
-        if len(registros_ordenados) == 1:
-            return primer_registro, None, registros_ordenados
+        for registro in registros_ordenados:
+            # Convertir a hora local para análisis
+            timestamp_local = timezone.localtime(registro.timestamp)
+            hora = timestamp_local.hour
+            minuto = timestamp_local.minute
+            tiempo_decimal = hora + minuto/60.0
+            print(f"  Registro: {timestamp_local} (hora: {tiempo_decimal:.2f})")
+            
+            # Clasificar registros por horario típico
+            if tiempo_decimal <= 10.0:  # 00:00 - 10:00 = Posible salida de turno nocturno anterior
+                print(f"    -> Clasificado como: POSIBLE SALIDA NOCTURNA ANTERIOR (madrugada)")
+                # No asignar automáticamente como salida - podría ser de turno anterior
+            elif 11.0 <= tiempo_decimal <= 17.0:  # 11:00 - 17:00 = Horario diurno
+                print(f"    -> Clasificado como: HORARIO DIURNO")
+                if not entrada_candidata:
+                    entrada_candidata = registro
+                    print(f"      -> Asignado como ENTRADA DIURNA")
+                elif not salida_candidata:
+                    salida_candidata = registro  
+                    print(f"      -> Asignado como SALIDA DIURNA")
+            elif tiempo_decimal >= 18.0:  # 18:00 - 23:59 = Entrada de turno nocturno
+                print(f"    -> Clasificado como: ENTRADA NOCTURNA")
+                entrada_candidata = registro  # Entrada nocturna tiene prioridad
+                salida_candidata = None  # Reset salida - buscaremos en día siguiente
         
-        return primer_registro, ultimo_registro, registros_ordenados
+        # NUEVA LÓGICA: Si tenemos entrada nocturna, SIEMPRE buscar salida en el día siguiente
+        if entrada_candidata:
+            entrada_local = timezone.localtime(entrada_candidata.timestamp)
+            if entrada_local.hour >= 18:
+                print("ENTRADA NOCTURNA detectada - buscando salida en el dia siguiente...")
+                salida_candidata = None  # Reset cualquier salida del mismo día
+                
+                # Buscar registros del día siguiente
+                fecha_siguiente_inicio = datetime.combine(fecha + timedelta(days=1), datetime.min.time())
+                fecha_siguiente_fin = datetime.combine(fecha + timedelta(days=1), datetime.max.time())
+                
+                registros_dia_siguiente = RegistroAsistencia.objects.filter(
+                    user=self,
+                    timestamp__gte=timezone.make_aware(fecha_siguiente_inicio),
+                    timestamp__lte=timezone.make_aware(fecha_siguiente_fin),
+                    status__in=[0, 1, 15],
+                    id__gt=5
+                ).order_by('timestamp')
+                
+                print(f"  Encontrados {registros_dia_siguiente.count()} registros del dia siguiente")
+                
+                # Buscar la primera salida matutina del día siguiente
+                for registro in registros_dia_siguiente:
+                    registro_local = timezone.localtime(registro.timestamp)
+                    print(f"    Analizando: {registro_local} (hora: {registro_local.hour})")
+                    
+                    if registro_local.hour <= 10:  # Salida matutina
+                        salida_candidata = registro
+                        print(f"    ✅ SALIDA NOCTURNA encontrada: {registro_local}")
+                        # Combinar registros de ambos días
+                        registros_ordenados = registros_ordenados + list(registros_dia_siguiente)
+                        break
+                
+                if not salida_candidata:
+                    print("    ❌ No se encontró salida válida en el día siguiente")
+        
+        # Validación final
+        print(f"\\nResultado del analisis:")
+        if entrada_candidata:
+            print(f"  ENTRADA seleccionada: {timezone.localtime(entrada_candidata.timestamp)}")
+        if salida_candidata:
+            print(f"  SALIDA seleccionada: {timezone.localtime(salida_candidata.timestamp)}")
+        else:
+            print(f"  SALIDA: No encontrada")
+        
+        return entrada_candidata, salida_candidata, registros_ordenados
 
     def calcular_horas_dia(self, fecha):
         """
@@ -516,7 +583,8 @@ class UsuarioBiometrico(models.Model):
         registros = RegistroAsistencia.objects.filter(
             user=self,
             timestamp__gte=timezone.make_aware(fecha_inicio),
-            timestamp__lte=timezone.make_aware(fecha_fin)
+            timestamp__lte=timezone.make_aware(fecha_fin),
+            id__gt=5  # Excluir registros con ID <= 5 para evitar conflictos con biométricos de estación
         ).order_by('timestamp')
         
         if registros.count() == 0:
@@ -535,15 +603,20 @@ class UsuarioBiometrico(models.Model):
         
         for registro in registros:
             # Si encontramos una entrada y aún no tenemos una
-            if registro.status == 0 and primera_entrada is None:
+            if (registro.status in [0, 15]) and primera_entrada is None:
                 # Verificar que la entrada sea en la fecha de la jornada especial
                 if registro.timestamp.date() == fecha:
                     primera_entrada = registro
             
             # Si ya tenemos una entrada, buscar la siguiente salida
-            elif primera_entrada and registro.status == 1 and siguiente_salida is None:
-                siguiente_salida = registro
-                break
+            elif primera_entrada and (registro.status in [1, 15]) and siguiente_salida is None:
+                # Para status 15, usar orden cronológico: si es después de la entrada, es salida
+                if registro.status == 15 and registro.timestamp > primera_entrada.timestamp:
+                    siguiente_salida = registro
+                    break
+                elif registro.status == 1:
+                    siguiente_salida = registro
+                    break
         
         if not primera_entrada:
             return {
@@ -968,7 +1041,8 @@ class RegistroAsistencia(models.Model):
     estacion_servicio = models.ForeignKey(EstacionServicio, on_delete=models.CASCADE, null=True, blank=True)
 
     status = models.IntegerField(
-        default=0
+        default=0,
+        db_column='status'  # Mapear al campo 'status' en la base de datos
     )
 
     aprobado = models.BooleanField(
@@ -992,9 +1066,21 @@ class RegistroAsistencia(models.Model):
         return self.status == 1
 
     @property
+    def es_registro_valido(self):
+        """Retorna True si es un registro válido para cálculos (incluyendo status=15)"""
+        return self.status in [0, 1, 15]
+
+    @property
     def tipo_registro(self):
         """Retorna el tipo de registro como string"""
-        return "Entrada" if self.es_entrada else "Salida"
+        if self.status == 0:
+            return "Entrada"
+        elif self.status == 1:
+            return "Salida"
+        elif self.status == 15:
+            return "Desconocido"
+        else:
+            return "Otro"
 
     def esta_en_horario_normal(self):
         """
