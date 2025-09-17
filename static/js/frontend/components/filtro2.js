@@ -104,12 +104,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Filtro por fecha
             if (fechaTexto) {
-                const fecha = new Date(fechaTexto);
-                const desdeDate = desde ? new Date(desde) : null;
-                const hastaDate = hasta ? new Date(hasta) : null;
+                // Convertir fechas a strings YYYY-MM-DD para comparación directa
+                const fechaStr = fechaTexto; // Ya debería estar en formato YYYY-MM-DD
+                const desdeStr = desde || '';
+                const hastaStr = hasta || '';
 
-                if (desdeDate && fecha < desdeDate) visible = false;
-                if (hastaDate && fecha > hastaDate) visible = false;
+                if (desdeStr && fechaStr < desdeStr) visible = false;
+                if (hastaStr && fechaStr > hastaStr) visible = false;
             } else if (desde || hasta) {
                 // Si hay filtro de fecha pero la fila no tiene fecha, ocultar fila
                 visible = false;

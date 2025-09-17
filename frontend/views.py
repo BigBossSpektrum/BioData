@@ -521,6 +521,78 @@ def resumen_asistencias_diarias(request):
                             'jornada_especial_info': jornada_especial_info,
                     })
 
+    # NUEVA FUNCIONALIDAD: Agregar empleados sin registros en el rango de fechas
+    # Determinar el rango de fechas a procesar
+    fecha_inicio_obj = None
+    fecha_fin_obj = None
+    
+    if fecha_inicio and fecha_fin:
+        fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+        fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+    elif fecha_inicio:
+        fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
+        fecha_fin_obj = date.today()
+    elif fecha_fin:
+        fecha_inicio_obj = date.today() - timedelta(days=7)  # Últimos 7 días por defecto
+        fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+    else:
+        # Si no hay fechas específicas, usar últimos 7 días
+        fecha_inicio_obj = date.today() - timedelta(days=7)
+        fecha_fin_obj = date.today()
+    
+    if fecha_inicio_obj and fecha_fin_obj:
+        # Obtener todos los empleados que cumplen con los filtros
+        empleados_qs = UsuarioBiometrico.objects.filter(activo=True).select_related('estacion')
+        
+        # Aplicar filtros de nombre y estación a empleados
+        if nombre:
+            empleados_qs = empleados_qs.filter(nombre__icontains=nombre)
+        if estacion:
+            empleados_qs = empleados_qs.filter(estacion__nombre__icontains=estacion)
+        
+        # Aplicar filtro por jefe de patio
+        if hasattr(request.user, 'jefe_estacion') and request.user.jefe_estacion:
+            empleados_qs = empleados_qs.filter(estacion=request.user.jefe_estacion)
+        
+        # Obtener IDs de empleados que ya tienen registros
+        empleados_con_registros = set()
+        for registro in registros:
+            empleados_con_registros.add(registro['user_id'])
+        
+        # Generar fechas en el rango
+        fecha_actual = fecha_inicio_obj
+        fechas_rango = []
+        while fecha_actual <= fecha_fin_obj:
+            fechas_rango.append(fecha_actual)
+            fecha_actual += timedelta(days=1)
+        
+        # Agregar registros vacíos para empleados sin registros
+        for empleado in empleados_qs:
+            if empleado.id not in empleados_con_registros:
+                for fecha in fechas_rango:
+                    registros.append({
+                        'dia': fecha.strftime('%Y-%m-%d'),
+                        'user_id': empleado.id,
+                        'nombre': empleado.nombre,
+                        'estacion': empleado.estacion.nombre if empleado.estacion else 'Sin estación',
+                        'entrada': None,
+                        'salida': None,
+                        'horas_trabajadas': None,
+                        'horas_trabajadas_hhmm': None,
+                        'horas_extra': None,
+                        'horas_extra_hhmm': None,
+                        'aprobado': None,
+                        'es_turno_nocturno': False,
+                        'tipo_turno': 'Sin registros',
+                        'descripcion_turno': 'No hay registros de asistencia',
+                        'diferencia_dias': 0,
+                        'mensaje_turno': 'Sin registros',
+                        'emparejado': False,
+                        'mensaje_emparejamiento': 'Sin registros',
+                        'es_jornada_especial': False,
+                        'jornada_especial_info': None,
+                    })
+
     # Aplicar filtros de búsqueda adicionales
     search_query = request.GET.get('search', '').strip()
     fecha_desde = request.GET.get('fecha_desde', '').strip()

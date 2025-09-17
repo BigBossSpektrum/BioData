@@ -274,24 +274,43 @@ def recibir_datos_biometrico(request):
             else:
                 usuario_actualizado = False
                 
-                # Actualizar nombre si ha cambiado
-                if nombre and user.nombre != nombre:
-                    print(f"[INFO] ✏️ Actualizando nombre: ID={user_id}, '{user.nombre}' → '{nombre}'")
-                    user.nombre = nombre
+                # Actualizar nombre siempre que venga un nombre válido del dispositivo biométrico
+                if nombre and nombre.strip():
+                    # Solo actualizar si el nombre ha cambiado
+                    if user.nombre != nombre:
+                        print(f"[INFO] ✏️ Actualizando nombre desde dispositivo: ID={user_id}, '{user.nombre}' → '{nombre}'")
+                        user.nombre = nombre
+                        usuario_actualizado = True
+                    else:
+                        print(f"[DEBUG] 📝 Nombre confirmado desde dispositivo: ID={user_id}, '{nombre}'")
+                elif not user.nombre:
+                    # Si no viene nombre del dispositivo y el usuario no tiene nombre, asignar uno genérico
+                    nombre_generico = f"Usuario_{user_id}"
+                    print(f"[WARNING] ⚠️ Sin nombre desde dispositivo para ID={user_id}, asignando: '{nombre_generico}'")
+                    user.nombre = nombre_generico
                     usuario_actualizado = True
                 
-                # Actualizar estación si ha cambiado
-                if user.estacion != estacion_obj:
-                    estacion_anterior = user.estacion.nombre if user.estacion else "Sin asignar"
+                # VALIDACIÓN ESTRICTA: Solo asignar estación si el usuario NO tiene una asignada
+                if not user.estacion:
                     user.estacion = estacion_obj
                     usuario_actualizado = True
-                    estaciones_actualizadas += 1
-                    print(f"[INFO] 🏢 Actualizando estación: ID={user_id}, '{estacion_anterior}' → '{estacion_nombre}'")
+                    print(f"[INFO] 🏢 Asignando primera estación: ID={user_id}, → '{estacion_nombre}'")
+                elif user.estacion != estacion_obj:
+                    # ADVERTENCIA: No cambiar estación automáticamente para evitar mezcla de registros
+                    print(f"[WARNING] ⚠️ CONFLICTO ESTACIÓN: Usuario {user_id} ({user.nombre}) está asignado a '{user.estacion.nombre}' pero el registro viene de '{estacion_nombre}' - NO SE ACTUALIZA")
                 
                 # Guardar cambios si hubo actualizaciones
                 if usuario_actualizado:
                     user.save()
                     usuarios_actualizados += 1
+
+            # VALIDACIÓN CRÍTICA: Verificar que el registro provenga de la estación correcta
+            if user.estacion and user.estacion != estacion_obj:
+                print(f"[ERROR] ❌ REGISTRO RECHAZADO: Usuario {user_id} ({user.nombre}) pertenece a '{user.estacion.nombre}' pero registro viene de '{estacion_nombre}'")
+                registros_error += 1
+                if estacion_nombre:
+                    estaciones_stats[estacion_nombre]['errores'] += 1
+                continue
 
             # Verificar duplicados
             duplicado = RegistroAsistencia.objects.filter(
