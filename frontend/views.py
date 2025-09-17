@@ -119,15 +119,19 @@ def filtrar_asistencias(request):
     # Filtro por fechas
     if fecha_inicio:
         try:
+            from django.utils import timezone
             inicio = datetime.strptime(fecha_inicio, '%Y-%m-%d')
-            registros = registros.filter(timestamp__date__gte=inicio)
+            inicio_aware = timezone.make_aware(datetime.combine(inicio.date(), datetime.min.time()))
+            registros = registros.filter(timestamp__gte=inicio_aware)
         except ValueError:
             pass
 
     if fecha_fin:
         try:
+            from django.utils import timezone
             fin = datetime.strptime(fecha_fin, '%Y-%m-%d')
-            registros = registros.filter(timestamp__date__lte=fin)
+            fin_aware = timezone.make_aware(datetime.combine(fin.date(), datetime.max.time()))
+            registros = registros.filter(timestamp__lte=fin_aware)
         except ValueError:
             pass
 
@@ -320,6 +324,9 @@ def calcular_horas_trabajadas():
 
 @login_required
 def resumen_asistencias_diarias(request):
+    from django.utils import timezone
+    from datetime import datetime
+    
     nombre = request.GET.get('nombre')
     estacion = request.GET.get('estacion')
     fecha_inicio = request.GET.get('fecha_inicio')
@@ -334,10 +341,16 @@ def resumen_asistencias_diarias(request):
         registros_qs = registros_qs.filter(user__nombre__icontains=nombre)
     if estacion:
         registros_qs = registros_qs.filter(estacion_servicio__nombre__icontains=estacion)
+    
+    # CORRECCIÓN: Usar rangos timezone-aware en lugar de timestamp__date
     if fecha_inicio:
-        registros_qs = registros_qs.filter(timestamp__date__gte=fecha_inicio)
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        fecha_inicio_aware = timezone.make_aware(datetime.combine(fecha_inicio_dt.date(), datetime.min.time()))
+        registros_qs = registros_qs.filter(timestamp__gte=fecha_inicio_aware)
     if fecha_fin:
-        registros_qs = registros_qs.filter(timestamp__date__lte=fecha_fin)
+        fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
+        fecha_fin_aware = timezone.make_aware(datetime.combine(fecha_fin_dt.date(), datetime.max.time()))
+        registros_qs = registros_qs.filter(timestamp__lte=fecha_fin_aware)
 
     registros_qs = registros_qs.order_by('user__id', 'timestamp')
 
@@ -521,7 +534,7 @@ def resumen_asistencias_diarias(request):
                             'jornada_especial_info': jornada_especial_info,
                     })
 
-    # NUEVA FUNCIONALIDAD: Agregar empleados sin registros en el rango de fechas
+    # SIEMPRE MOSTRAR TODOS LOS EMPLEADOS: Con registros y sin registros
     # Determinar el rango de fechas a procesar
     fecha_inicio_obj = None
     fecha_fin_obj = None
@@ -533,13 +546,14 @@ def resumen_asistencias_diarias(request):
         fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
         fecha_fin_obj = date.today()
     elif fecha_fin:
-        fecha_inicio_obj = date.today() - timedelta(days=7)  # Últimos 7 días por defecto
+        fecha_inicio_obj = date.today() - timedelta(days=7)
         fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
     else:
         # Si no hay fechas específicas, usar últimos 7 días
         fecha_inicio_obj = date.today() - timedelta(days=7)
         fecha_fin_obj = date.today()
     
+    # SIEMPRE procesar empleados sin registros para mostrar vista completa
     if fecha_inicio_obj and fecha_fin_obj:
         # Obtener todos los empleados que cumplen con los filtros
         empleados_qs = UsuarioBiometrico.objects.filter(activo=True).select_related('estacion')
@@ -690,10 +704,20 @@ def exportar_resumen_asistencias_excel(request):
         registros_qs = registros_qs.filter(user__nombre__icontains=nombre)
     if estacion:
         registros_qs = registros_qs.filter(estacion_servicio__nombre__icontains=estacion)
+    
+    # CORRECCIÓN: Usar rangos timezone-aware en lugar de timestamp__date
     if fecha_inicio:
-        registros_qs = registros_qs.filter(timestamp__date__gte=fecha_inicio)
+        from django.utils import timezone
+        from datetime import datetime
+        fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        fecha_inicio_aware = timezone.make_aware(datetime.combine(fecha_inicio_dt.date(), datetime.min.time()))
+        registros_qs = registros_qs.filter(timestamp__gte=fecha_inicio_aware)
     if fecha_fin:
-        registros_qs = registros_qs.filter(timestamp__date__lte=fecha_fin)
+        from django.utils import timezone
+        from datetime import datetime
+        fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
+        fecha_fin_aware = timezone.make_aware(datetime.combine(fecha_fin_dt.date(), datetime.max.time()))
+        registros_qs = registros_qs.filter(timestamp__lte=fecha_fin_aware)
 
     registros_qs = registros_qs.order_by('user__id', 'timestamp')
 

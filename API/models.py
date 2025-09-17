@@ -370,45 +370,50 @@ class UsuarioBiometrico(models.Model):
         
         registros_ordenados = list(registros_dia.order_by('timestamp'))
         
-        # NUEVA LÓGICA: Analizar los horarios para identificar correctamente entrada y salida
+        # ALGORITMO MEJORADO PARA STATUS=15: Usar orden temporal simple y lógica de proximidad
         entrada_candidata = None
         salida_candidata = None
         
-        print(f"Analizando {len(registros_ordenados)} registros del {fecha}:")
-        
-        for registro in registros_ordenados:
-            # Convertir a hora local para análisis
-            timestamp_local = timezone.localtime(registro.timestamp)
-            hora = timestamp_local.hour
-            minuto = timestamp_local.minute
-            tiempo_decimal = hora + minuto/60.0
-            print(f"  Registro: {timestamp_local} (hora: {tiempo_decimal:.2f})")
+        if len(registros_ordenados) == 1:
+            # Solo un registro - considerarlo entrada sin salida
+            entrada_candidata = registros_ordenados[0]
+            salida_candidata = None
             
-            # Clasificar registros por horario típico
-            if tiempo_decimal <= 10.0:  # 00:00 - 10:00 = Posible salida de turno nocturno anterior
-                print(f"    -> Clasificado como: POSIBLE SALIDA NOCTURNA ANTERIOR (madrugada)")
-                # No asignar automáticamente como salida - podría ser de turno anterior
-            elif 11.0 <= tiempo_decimal <= 17.0:  # 11:00 - 17:00 = Horario diurno
-                print(f"    -> Clasificado como: HORARIO DIURNO")
-                if not entrada_candidata:
-                    entrada_candidata = registro
-                    print(f"      -> Asignado como ENTRADA DIURNA")
-                elif not salida_candidata:
-                    salida_candidata = registro  
-                    print(f"      -> Asignado como SALIDA DIURNA")
-            elif tiempo_decimal >= 18.0:  # 18:00 - 23:59 = Entrada de turno nocturno
-                print(f"    -> Clasificado como: ENTRADA NOCTURNA")
-                entrada_candidata = registro  # Entrada nocturna tiene prioridad
-                salida_candidata = None  # Reset salida - buscaremos en día siguiente
-        
-        # NUEVA LÓGICA: Si tenemos entrada nocturna, SIEMPRE buscar salida en el día siguiente
-        if entrada_candidata:
-            entrada_local = timezone.localtime(entrada_candidata.timestamp)
-            if entrada_local.hour >= 18:
-                print("ENTRADA NOCTURNA detectada - buscando salida en el dia siguiente...")
-                salida_candidata = None  # Reset cualquier salida del mismo día
+        elif len(registros_ordenados) == 2:
+            # Dos registros - verificar si son muy cercanos en tiempo (duplicados)
+            r1, r2 = registros_ordenados[0], registros_ordenados[1]
+            tiempo_diff_segundos = (r2.timestamp - r1.timestamp).total_seconds()
+            
+            if tiempo_diff_segundos < 120:  # Menos de 2 minutos = probablemente duplicado
+                # Registros duplicados - solo considerar el primero como entrada
+                entrada_candidata = r1
+                salida_candidata = None
+            else:
+                # Par válido con tiempo suficiente entre registros
+                entrada_candidata = r1
+                salida_candidata = r2
                 
-                # Buscar registros del día siguiente
+        elif len(registros_ordenados) >= 3:
+            # Múltiples registros - buscar el primer y último con suficiente separación
+            primer_registro = registros_ordenados[0]
+            ultimo_registro = registros_ordenados[-1]
+            
+            # Verificar que hay suficiente tiempo entre primer y último registro
+            tiempo_total = (ultimo_registro.timestamp - primer_registro.timestamp).total_seconds()
+            
+            if tiempo_total >= 120:  # Al menos 2 minutos de diferencia
+                entrada_candidata = primer_registro
+                salida_candidata = ultimo_registro
+            else:
+                # Si todos los registros están muy juntos, solo considerar entrada
+                entrada_candidata = primer_registro
+        
+        # MANEJO ESPECIAL PARA TURNOS NOCTURNOS (solo si no hay salida en el mismo día)
+        if entrada_candidata and not salida_candidata:
+            entrada_local = timezone.localtime(entrada_candidata.timestamp)
+            
+            # Si la entrada es después de las 18:00, buscar salida al día siguiente
+            if entrada_local.hour >= 18:
                 fecha_siguiente_inicio = datetime.combine(fecha + timedelta(days=1), datetime.min.time())
                 fecha_siguiente_fin = datetime.combine(fecha + timedelta(days=1), datetime.max.time())
                 
@@ -420,31 +425,14 @@ class UsuarioBiometrico(models.Model):
                     id__gt=5
                 ).order_by('timestamp')
                 
-                print(f"  Encontrados {registros_dia_siguiente.count()} registros del dia siguiente")
-                
                 # Buscar la primera salida matutina del día siguiente
                 for registro in registros_dia_siguiente:
                     registro_local = timezone.localtime(registro.timestamp)
-                    print(f"    Analizando: {registro_local} (hora: {registro_local.hour})")
-                    
-                    if registro_local.hour <= 10:  # Salida matutina
+                    if registro_local.hour <= 10:  # Salida matutina (antes de las 10:00)
                         salida_candidata = registro
-                        print(f"    ✅ SALIDA NOCTURNA encontrada: {registro_local}")
                         # Combinar registros de ambos días
                         registros_ordenados = registros_ordenados + list(registros_dia_siguiente)
                         break
-                
-                if not salida_candidata:
-                    print("    ❌ No se encontró salida válida en el día siguiente")
-        
-        # Validación final
-        print(f"\\nResultado del analisis:")
-        if entrada_candidata:
-            print(f"  ENTRADA seleccionada: {timezone.localtime(entrada_candidata.timestamp)}")
-        if salida_candidata:
-            print(f"  SALIDA seleccionada: {timezone.localtime(salida_candidata.timestamp)}")
-        else:
-            print(f"  SALIDA: No encontrada")
         
         return entrada_candidata, salida_candidata, registros_ordenados
 
