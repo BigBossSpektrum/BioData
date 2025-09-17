@@ -164,7 +164,8 @@ def eliminar_usuario(request, user_id):
 
 def crear_log_datos_biometrico(datos_request, ip_cliente, user_agent, timestamp):
     """
-    Crea un archivo de log con los datos recibidos del dispositivo biométrico
+    Actualiza el archivo de log con los datos recibidos del dispositivo biométrico.
+    Agrupa por fecha y estación, manteniendo un historial de todas las recepciones.
     """
     try:
         # Crear el directorio si no existe
@@ -172,35 +173,80 @@ def crear_log_datos_biometrico(datos_request, ip_cliente, user_agent, timestamp)
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         
-        # Nombre del archivo con timestamp
+        # Determinar la estación principal de los datos recibidos
+        estacion_principal = "SinEstacion"
+        if isinstance(datos_request, list) and len(datos_request) > 0:
+            # Obtener la estación del primer registro
+            primer_registro = datos_request[0]
+            if isinstance(primer_registro, dict) and 'estacion' in primer_registro:
+                estacion_principal = primer_registro['estacion'].replace(' ', '_').replace('/', '_')
+        
+        # Nombre del archivo con fecha y estación
         fecha_archivo = datetime.now().strftime('%Y-%m-%d')
-        timestamp_archivo = datetime.now().strftime('%H-%M-%S')
-        nombre_archivo = f"biodata_log_{fecha_archivo}_{timestamp_archivo}.json"
+        nombre_archivo = f"biodata_{estacion_principal}_{fecha_archivo}.json"
         ruta_archivo = os.path.join(log_dir, nombre_archivo)
         
-        # Estructura del log
-        log_data = {
+        # Estructura de la nueva recepción
+        nueva_recepcion = {
             "timestamp_recepcion": timestamp,
             "ip_cliente": ip_cliente,
             "user_agent": user_agent,
             "total_registros": len(datos_request) if isinstance(datos_request, list) else 1,
-            "datos_recibidos": datos_request,
-            "metadata": {
-                "version_log": "1.0",
-                "servidor": "BioData API",
-                "endpoint": "/API/recibir_datos_biometrico/"
-            }
+            "datos_recibidos": datos_request
         }
         
-        # Escribir el archivo de log
+        # Cargar datos existentes o crear estructura inicial
+        if os.path.exists(ruta_archivo):
+            try:
+                with open(ruta_archivo, 'r', encoding='utf-8') as f:
+                    log_data = json.load(f)
+                print(f"[LOG] 📄 Archivo existente encontrado: {nombre_archivo}")
+            except (json.JSONDecodeError, Exception) as e:
+                print(f"[WARNING] ⚠️ Error al leer archivo existente, creando nuevo: {str(e)}")
+                log_data = {}
+        else:
+            log_data = {}
+            print(f"[LOG] 🆕 Creando nuevo archivo: {nombre_archivo}")
+        
+        # Inicializar estructura si no existe
+        if 'metadata' not in log_data:
+            log_data['metadata'] = {
+                "version_log": "2.0",
+                "servidor": "BioData API",
+                "endpoint": "/API/recibir_datos_biometrico/",
+                "estacion_principal": estacion_principal,
+                "fecha_archivo": fecha_archivo,
+                "creado_en": timestamp,
+                "ultima_actualizacion": timestamp
+            }
+        
+        if 'recepciones' not in log_data:
+            log_data['recepciones'] = []
+        
+        # Actualizar metadata
+        log_data['metadata']['ultima_actualizacion'] = timestamp
+        log_data['metadata']['total_recepciones'] = len(log_data['recepciones']) + 1
+        
+        # Agregar la nueva recepción
+        log_data['recepciones'].append(nueva_recepcion)
+        
+        # Calcular estadísticas
+        total_registros_archivo = sum(r.get('total_registros', 0) for r in log_data['recepciones'])
+        log_data['metadata']['total_registros_acumulados'] = total_registros_archivo
+        
+        # Escribir el archivo actualizado
         with open(ruta_archivo, 'w', encoding='utf-8') as f:
             json.dump(log_data, f, indent=2, ensure_ascii=False, default=str)
         
-        print(f"[LOG] 📝 Log creado: {nombre_archivo}")
+        print(f"[LOG] ✅ Archivo actualizado: {nombre_archivo}")
+        print(f"[LOG] � Total recepciones: {len(log_data['recepciones'])}")
+        print(f"[LOG] 📈 Total registros acumulados: {total_registros_archivo}")
+        
         return ruta_archivo
         
     except Exception as e:
-        print(f"[ERROR] ❌ Error al crear log: {str(e)}")
+        print(f"[ERROR] ❌ Error al crear/actualizar log: {str(e)}")
+        print(f"[ERROR] 📄 Traceback: {traceback.format_exc()}")
         return None
 
 @api_view(["POST"])
