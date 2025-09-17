@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.utils.timezone import now, localtime, make_aware
 from collections import defaultdict
 from django.utils import timezone
+from django.db.models import Q
 from .utils import obtener_rango_semana, es_turno_nocturno, calcular_diferencia_dias_turno_nocturno, detectar_tipo_turno_detallado, validar_y_emparejar_turno_nocturno, calcular_horas_con_horarios_estandar, procesar_turno_nocturno_con_siguiente_registro, verificar_registros_ya_procesados_en_turno_nocturno
 from django.http import HttpResponse
 from openpyxl import Workbook
@@ -422,7 +423,7 @@ def resumen_asistencias_diarias(request):
                 elif not entrada and salida:
                     mensaje_emparejamiento = "Sin entrada registrada"
                 else:
-                    mensaje_emparejamiento = "Sin registros"
+                    mensaje_emparejamiento = "Ausente"
             
             # Mantener compatibilidad con resultado_turno si se requiere
             resultado_turno = None
@@ -535,26 +536,70 @@ def resumen_asistencias_diarias(request):
                     })
 
     # SIEMPRE MOSTRAR TODOS LOS EMPLEADOS: Con registros y sin registros
-    # Determinar el rango de fechas a procesar
+    # Determinar el rango de fechas a procesar considerando TODOS los parámetros de fecha
     fecha_inicio_obj = None
     fecha_fin_obj = None
     
+    # Obtener filtros adicionales de búsqueda
+    search_query = request.GET.get('search', '').strip()
+    fecha_desde = request.GET.get('fecha_desde', '').strip()
+    fecha_hasta = request.GET.get('fecha_hasta', '').strip()
+    
+    # Determinar rango de fechas desde cualquier fuente
     if fecha_inicio and fecha_fin:
         fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
         fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
+    elif fecha_desde and fecha_hasta:
+        fecha_inicio_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+        fecha_fin_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
     elif fecha_inicio:
         fecha_inicio_obj = datetime.strptime(fecha_inicio, '%Y-%m-%d').date()
         fecha_fin_obj = date.today()
+    elif fecha_desde:
+        fecha_inicio_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+        fecha_fin_obj = fecha_inicio_obj  # Si solo hay fecha_desde, usar el mismo día
     elif fecha_fin:
         fecha_inicio_obj = date.today() - timedelta(days=7)
         fecha_fin_obj = datetime.strptime(fecha_fin, '%Y-%m-%d').date()
-    else:
-        # Si no hay fechas específicas, usar últimos 7 días
-        fecha_inicio_obj = date.today() - timedelta(days=7)
-        fecha_fin_obj = date.today()
+    elif fecha_hasta:
+        fecha_fin_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+        fecha_inicio_obj = fecha_fin_obj - timedelta(days=7)
     
-    # SIEMPRE procesar empleados sin registros para mostrar vista completa
+    # PROCESAR empleados sin registros para mostrar vista completa
     if fecha_inicio_obj and fecha_fin_obj:
+        # Aplicar filtros de fecha primero para determinar el rango correcto
+        fecha_inicio_filtrado = fecha_inicio_obj
+        fecha_fin_filtrado = fecha_fin_obj
+        
+        if fecha_desde:
+            try:
+                fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                fecha_inicio_filtrado = max(fecha_inicio_filtrado, fecha_desde_obj)
+            except ValueError:
+                pass
+
+        if fecha_hasta:
+            try:
+                fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+                fecha_fin_filtrado = min(fecha_fin_filtrado, fecha_hasta_obj)
+            except ValueError:
+                pass
+
+        # Aplicar filtros de fecha a los registros existentes
+        if fecha_desde:
+            try:
+                fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+                registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() >= fecha_desde_obj]
+            except ValueError:
+                pass
+
+        if fecha_hasta:
+            try:
+                fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+                registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() <= fecha_hasta_obj]
+            except ValueError:
+                pass
+
         # Obtener todos los empleados que cumplen con los filtros
         empleados_qs = UsuarioBiometrico.objects.filter(activo=True).select_related('estacion')
         
@@ -563,29 +608,38 @@ def resumen_asistencias_diarias(request):
             empleados_qs = empleados_qs.filter(nombre__icontains=nombre)
         if estacion:
             empleados_qs = empleados_qs.filter(estacion__nombre__icontains=estacion)
+        if search_query:
+            empleados_qs = empleados_qs.filter(
+                Q(nombre__icontains=search_query) | 
+                Q(estacion__nombre__icontains=search_query)
+            )
         
         # Aplicar filtro por jefe de patio
-        if hasattr(request.user, 'jefe_estacion') and request.user.jefe_estacion:
-            empleados_qs = empleados_qs.filter(estacion=request.user.jefe_estacion)
+        empleados_qs = aplicar_filtro_jefe_patio(empleados_qs, request.user, 'estacion')
         
-        # Obtener IDs de empleados que ya tienen registros
-        empleados_con_registros = set()
-        for registro in registros:
-            empleados_con_registros.add(registro['user_id'])
-        
-        # Generar fechas en el rango
-        fecha_actual = fecha_inicio_obj
+        # Generar fechas en el rango filtrado
+        fecha_actual = fecha_inicio_filtrado
         fechas_rango = []
-        while fecha_actual <= fecha_fin_obj:
+        while fecha_actual <= fecha_fin_filtrado:
             fechas_rango.append(fecha_actual)
             fecha_actual += timedelta(days=1)
         
-        # Agregar registros vacíos para empleados sin registros
-        for empleado in empleados_qs:
-            if empleado.id not in empleados_con_registros:
-                for fecha in fechas_rango:
+        # Para cada fecha en el rango, verificar qué empleados no tienen registros
+        empleados_ausentes_agregados = 0
+        for fecha in fechas_rango:
+            fecha_str = fecha.strftime('%Y-%m-%d')
+            
+            # Obtener IDs de empleados que ya tienen registros en esta fecha específica desde los registros procesados
+            empleados_con_registros_fecha = set()
+            for registro in registros:
+                if registro['dia'] == fecha_str:
+                    empleados_con_registros_fecha.add(registro['user_id'])
+            
+            # Agregar registros vacíos para empleados sin registros en esta fecha
+            for empleado in empleados_qs:
+                if empleado.id not in empleados_con_registros_fecha:
                     registros.append({
-                        'dia': fecha.strftime('%Y-%m-%d'),
+                        'dia': fecha_str,
                         'user_id': empleado.id,
                         'nombre': empleado.nombre,
                         'estacion': empleado.estacion.nombre if empleado.estacion else 'Sin estación',
@@ -597,54 +651,24 @@ def resumen_asistencias_diarias(request):
                         'horas_extra_hhmm': None,
                         'aprobado': None,
                         'es_turno_nocturno': False,
-                        'tipo_turno': 'Sin registros',
-                        'descripcion_turno': 'No hay registros de asistencia',
+                        'tipo_turno': 'Ausente',
+                        'descripcion_turno': 'Empleado ausente',
                         'diferencia_dias': 0,
-                        'mensaje_turno': 'Sin registros',
+                        'mensaje_turno': 'Ausente',
                         'emparejado': False,
-                        'mensaje_emparejamiento': 'Sin registros',
+                        'mensaje_emparejamiento': 'Ausente',
                         'es_jornada_especial': False,
                         'jornada_especial_info': None,
                     })
+                    empleados_ausentes_agregados += 1
 
     # Aplicar filtros de búsqueda adicionales
-    search_query = request.GET.get('search', '').strip()
-    fecha_desde = request.GET.get('fecha_desde', '').strip()
-    fecha_hasta = request.GET.get('fecha_hasta', '').strip()
-    estado_filtro = request.GET.get('estado', '').strip()
-
     if search_query:
         registros = [r for r in registros if (
             search_query.lower() in r['nombre'].lower() or
             search_query.lower() in str(r['user_id']).lower() or
             search_query.lower() in r['estacion'].lower()
-
         )]
-
-    if fecha_desde:
-        try:
-            fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
-            registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() >= fecha_desde_obj]
-        except ValueError:
-            pass
-
-    if fecha_hasta:
-        try:
-            fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
-            registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() <= fecha_hasta_obj]
-        except ValueError:
-            pass
-
-    # Filtro por estado de aprobación
-    if estado_filtro:
-        if estado_filtro == 'aprobado':
-            registros = [r for r in registros if r['aprobado'] is True]
-        elif estado_filtro == 'rechazado':
-            registros = [r for r in registros if r['aprobado'] is False]
-        elif estado_filtro == 'pendiente':
-            registros = [r for r in registros if r['aprobado'] is None and r['horas_extra'] > 0]
-        elif estado_filtro == 'sin_horas_extra':
-            registros = [r for r in registros if r['horas_extra'] <= 0 or r['horas_extra'] is None]
 
     # Ordenar registros por fecha más reciente
     registros.sort(key=lambda x: datetime.strptime(x['dia'], '%Y-%m-%d'), reverse=True)
@@ -674,7 +698,6 @@ def resumen_asistencias_diarias(request):
         'search_query': search_query,
         'fecha_desde': fecha_desde,
         'fecha_hasta': fecha_hasta,
-        'estado_filtro': estado_filtro,
         **info_estacion
     }
     return render(request, 'resumen_asistencias_diarias.html', context)
@@ -691,7 +714,6 @@ def exportar_resumen_asistencias_excel(request):
     search_query = request.GET.get('search', '').strip()
     fecha_desde = request.GET.get('fecha_desde', '').strip()
     fecha_hasta = request.GET.get('fecha_hasta', '').strip()
-    estado_filtro = request.GET.get('estado', '').strip()
 
     # Reutilizar la misma lógica de filtrado que en resumen_asistencias_diarias
     registros_qs = RegistroAsistencia.objects.select_related('user', 'user__estacion').all()
@@ -707,16 +729,12 @@ def exportar_resumen_asistencias_excel(request):
     
     # CORRECCIÓN: Usar rangos timezone-aware en lugar de timestamp__date
     if fecha_inicio:
-        from django.utils import timezone
-        from datetime import datetime
         fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
-        fecha_inicio_aware = timezone.make_aware(datetime.combine(fecha_inicio_dt.date(), datetime.min.time()))
+        fecha_inicio_aware = timezone.make_aware(datetime.combine(fecha_inicio_dt.date(), time.min))
         registros_qs = registros_qs.filter(timestamp__gte=fecha_inicio_aware)
     if fecha_fin:
-        from django.utils import timezone
-        from datetime import datetime
         fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d')
-        fecha_fin_aware = timezone.make_aware(datetime.combine(fecha_fin_dt.date(), datetime.max.time()))
+        fecha_fin_aware = timezone.make_aware(datetime.combine(fecha_fin_dt.date(), time.max))
         registros_qs = registros_qs.filter(timestamp__lte=fecha_fin_aware)
 
     registros_qs = registros_qs.order_by('user__id', 'timestamp')
@@ -906,17 +924,6 @@ def exportar_resumen_asistencias_excel(request):
             registros = [r for r in registros if datetime.strptime(r['dia'], '%Y-%m-%d').date() <= fecha_hasta_obj]
         except ValueError:
             pass
-
-    # Filtro por estado de aprobación (para exportar)
-    if estado_filtro:
-        if estado_filtro == 'aprobado':
-            registros = [r for r in registros if r['aprobado'] == 'Aprobado']
-        elif estado_filtro == 'rechazado':
-            registros = [r for r in registros if r['aprobado'] == 'Rechazado']
-        elif estado_filtro == 'pendiente':
-            registros = [r for r in registros if r['aprobado'] == 'Pendiente']
-        elif estado_filtro == 'sin_horas_extra':
-            registros = [r for r in registros if r['horas_extra'] == '' or not r['horas_extra']]
 
     # Ordenar registros por fecha más reciente
     registros.sort(key=lambda x: datetime.strptime(x['dia'], '%Y-%m-%d'), reverse=True)

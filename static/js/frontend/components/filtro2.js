@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const inputTexto = document.getElementById('filtroUsuarios');
     const inputDesde = document.getElementById('filtroDesde');
     const inputHasta = document.getElementById('filtroHasta');
-    const selectEstado = document.getElementById('filtroEstado');
     const filas = Array.from(document.querySelectorAll('tbody tr')).filter(f => !f.id);
     const sinCoincidencias = document.getElementById('sinCoincidencias');
 
@@ -46,7 +45,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (inputTexto && inputTexto.value.trim() !== '') return true;
         if (inputDesde && inputDesde.value.trim() !== '') return true;
         if (inputHasta && inputHasta.value.trim() !== '') return true;
-        if (selectEstado && selectEstado.value.trim() !== '') return true;
         
         return false;
     }
@@ -87,7 +85,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const texto = inputTexto.value.toLowerCase();
         const desde = inputDesde.value;
         const hasta = inputHasta.value;
-        const estadoFiltro = selectEstado ? selectEstado.value : '';
         let visibles = 0;
 
         filas.forEach(fila => {
@@ -114,34 +111,6 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (desde || hasta) {
                 // Si hay filtro de fecha pero la fila no tiene fecha, ocultar fila
                 visible = false;
-            }
-
-            // Filtro por estado de aprobación
-            if (estadoFiltro && visible) {
-                const celdaAprobado = fila.cells[10]; // Columna "Aprobado" (índice 10)
-                const textoAprobado = celdaAprobado ? celdaAprobado.textContent.toLowerCase().trim() : '';
-                
-                let cumpleEstado = false;
-                
-                switch (estadoFiltro) {
-                    case 'aprobado':
-                        cumpleEstado = textoAprobado.includes('aprobado');
-                        break;
-                    case 'rechazado':
-                        cumpleEstado = textoAprobado.includes('rechazado');
-                        break;
-                    case 'pendiente':
-                        cumpleEstado = textoAprobado.includes('pendiente') || 
-                                     (celdaAprobado && (celdaAprobado.querySelector('.btn-confirmar-aprobacion') || celdaAprobado.querySelector('.btn-confirmar-rechazo')));
-                        break;
-                    case 'sin_horas_extra':
-                        cumpleEstado = textoAprobado === '-' || textoAprobado === '';
-                        break;
-                }
-                
-                if (!cumpleEstado) {
-                    visible = false;
-                }
             }
 
             fila.style.display = visible ? '' : 'none';
@@ -191,10 +160,6 @@ document.addEventListener('DOMContentLoaded', function () {
             params.set('fecha_hasta', inputHasta.value);
         }
         
-        if (selectEstado && selectEstado.value) {
-            params.set('estado', selectEstado.value);
-        }
-        
         // Resetear a la primera página cuando se aplican filtros
         params.set('page', '1');
         
@@ -228,14 +193,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (inputHasta) {
         inputHasta.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                buscarFiltros();
-            }
-        });
-    }
-
-    if (selectEstado) {
-        selectEstado.addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
                 buscarFiltros();
             }

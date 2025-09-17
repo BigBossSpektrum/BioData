@@ -835,6 +835,15 @@ html body div.container-fluid div.table-container table#tabla-asistencias.table.
     text-align: left !important;
     font-size: 0.75rem !important;
 }
+
+/* Estilos para empleados ausentes */
+.empleado-ausente {
+    background-color: #fff3cd !important;
+}
+
+.empleado-ausente td {
+    color: #856404 !important;
+}
 </style>
 
 <div class="container-fluid mt-4" style="width: 100%; margin: 0 auto;">
@@ -866,7 +875,7 @@ html body div.container-fluid div.table-container table#tabla-asistencias.table.
 
     <!-- Filtros -->
     <div class="row mb-3">
-        <div class="col-md-4">
+        <div class="col-md-5">
             <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                 <input type="text" id="filtroUsuarios" class="form-control" placeholder="Buscar por nombre, estación..." value="{{ search_query }}">
@@ -881,15 +890,27 @@ html body div.container-fluid div.table-container table#tabla-asistencias.table.
         <div class="col-md-2">
             <input type="date" id="filtroHasta" class="form-control" placeholder="Hasta" value="{{ fecha_hasta }}">
         </div>
-        <div class="col-md-2">
+        <div class="col-md-1">
             <button type="button" class="btn btn-primary w-100" onclick="buscarFiltros()">
-                <i class="bi bi-search"></i> Buscar
+                <i class="bi bi-search"></i>
             </button>
         </div>
         <div class="col-md-2">
             <button type="button" class="btn btn-success w-100" onclick="exportarExcel()">
-                <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+                <i class="bi bi-file-earmark-excel"></i> Exportar
             </button>
+        </div>
+    </div>
+
+    <!-- Información sobre empleados ausentes -->
+    <div class="row mb-2">
+        <div class="col-12">
+            <div class="alert alert-info py-2 mb-0">
+                <small>
+                    <i class="bi bi-info-circle"></i> 
+                    <strong>Nota:</strong> Los empleados que <strong>no marcaron asistencia</strong> aparecen con <span class="badge" style="background-color: #fff3cd; color: #856404;">fondo amarillo</span>
+                </small>
+            </div>
         </div>
     </div>
 
@@ -987,7 +1008,7 @@ html body div.container-fluid div.table-container table#tabla-asistencias.table.
             </thead>
         <tbody class="text-center">
         {% for r in registros %}
-            <tr>
+            <tr {% if not r.entrada and not r.salida %}class="table-warning empleado-ausente"{% endif %}>
                 <td>{{ forloop.counter|add:page_obj.start_index|add:"-1" }}</td>
                 <td class="col-dia">{{ r.dia }}</td>
                 <td class="td-nombre-left" style="text-align: left !important; font-size: 0.85em !important;">
@@ -1088,6 +1109,57 @@ html body div.container-fluid div.table-container table#tabla-asistencias.table.
 
         </tbody>
     </table>
+    </div>
+
+    <!-- Resumen de Asistencia -->
+    <div class="row mt-4 mb-3" id="resumen-asistencia">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm bg-light">
+                <div class="card-header bg-info text-white text-center py-2">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="bi bi-person-check me-2"></i>
+                        RESUMEN DE ASISTENCIA
+                    </h6>
+                </div>
+                <div class="card-body py-3">
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-2">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <div class="me-3">
+                                    <i class="bi bi-person-check-fill text-success fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-0 fw-bold text-success" id="empleados-presentes">0</h5>
+                                    <small class="text-muted">Días Asistidos</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <div class="me-3">
+                                    <i class="bi bi-person-x-fill text-warning fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-0 fw-bold text-warning" id="empleados-ausentes">0</h5>
+                                    <small class="text-muted">Días Ausentes</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <div class="me-3">
+                                    <i class="bi bi-percent text-primary fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-0 fw-bold text-primary" id="porcentaje-asistencia">0%</h5>
+                                    <small class="text-muted">% Asistencia</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Resumen Total -->
@@ -1390,6 +1462,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Calcular resumen total
     calcularResumenTotal();
     
+    // Debug: Mostrar información de empleados ausentes
+    console.log('=== DEBUG: EMPLEADOS AUSENTES ===');
+    const filasAusentes = document.querySelectorAll('.empleado-ausente');
+    console.log(`Total empleados ausentes encontrados: ${filasAusentes.length}`);
+    filasAusentes.forEach((fila, index) => {
+        const nombre = fila.cells[2] ? fila.cells[2].textContent.trim() : 'Sin nombre';
+        const fecha = fila.cells[1] ? fila.cells[1].textContent.trim() : 'Sin fecha';
+        console.log(`${index + 1}. ${nombre} - ${fecha}`);
+    });
+    console.log('=== FIN DEBUG ===');
+    
     // Ocultar spinner de carga al finalizar la carga de la página
     ocultarCargando();
 });
@@ -1621,6 +1704,78 @@ function calcularResumenTotal() {
     } else {
         resumenElement.style.display = 'none';
     }
+    
+    // Calcular resumen de asistencia
+    calcularResumenAsistencia();
+}
+
+// Función para calcular el resumen de asistencia (presentes vs ausentes)
+function calcularResumenAsistencia() {
+    console.log('👥 Calculando resumen de asistencia...');
+    
+    // Verificar si hay filtros aplicados
+    const tablaDatos = document.getElementById('tabla-datos');
+    if (!tablaDatos || tablaDatos.style.display === 'none') {
+        console.log('ℹ️ No hay filtros aplicados, ocultando resumen de asistencia');
+        const resumenAsistencia = document.getElementById('resumen-asistencia');
+        if (resumenAsistencia) {
+            resumenAsistencia.style.display = 'none';
+        }
+        return;
+    }
+    
+    let empleadosPresentes = 0;
+    let empleadosAusentes = 0;
+    
+    // Obtener todas las filas visibles de la tabla
+    const filasVisibles = document.querySelectorAll('tbody tr:not(#sinCoincidencias):not(#fila-totales)');
+    
+    filasVisibles.forEach(function(fila) {
+        if (fila.style.display !== 'none') {
+            // Verificar si el empleado tiene clase 'empleado-ausente'
+            if (fila.classList.contains('empleado-ausente')) {
+                empleadosAusentes++;
+            } else {
+                empleadosPresentes++;
+            }
+        }
+    });
+    
+    const totalEmpleados = empleadosPresentes + empleadosAusentes;
+    const porcentajeAsistencia = totalEmpleados > 0 ? Math.round((empleadosPresentes / totalEmpleados) * 100) : 0;
+    
+    // Actualizar elementos DOM
+    const elementoPresentes = document.getElementById('empleados-presentes');
+    if (elementoPresentes) {
+        elementoPresentes.textContent = empleadosPresentes;
+    }
+    
+    const elementoAusentes = document.getElementById('empleados-ausentes');
+    if (elementoAusentes) {
+        elementoAusentes.textContent = empleadosAusentes;
+    }
+    
+    const elementoPorcentaje = document.getElementById('porcentaje-asistencia');
+    if (elementoPorcentaje) {
+        elementoPorcentaje.textContent = porcentajeAsistencia + '%';
+    }
+    
+    // Mostrar/ocultar el resumen de asistencia
+    const resumenAsistencia = document.getElementById('resumen-asistencia');
+    if (resumenAsistencia) {
+        if (totalEmpleados > 0) {
+            resumenAsistencia.style.display = 'block';
+        } else {
+            resumenAsistencia.style.display = 'none';
+        }
+    }
+    
+    console.log('📊 Resumen de asistencia:', {
+        empleadosPresentes,
+        empleadosAusentes,
+        totalEmpleados,
+        porcentajeAsistencia
+    });
 }
 
 // Hacer la función disponible globalmente
