@@ -493,31 +493,33 @@ def resumen_asistencias_diarias(request):
                         'observaciones': jornada_especial.observaciones
                     }
 
-            registros.append({
-                        'dia': dia_str,
-                        'user_id': usuario.id,
-                        'nombre': usuario.nombre,
-                        'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia and registros_dia[0].estacion_servicio else '',
-                        'entrada': entrada,
-                        'salida': salida,
-                        'horas_trabajadas': horas_trabajadas if salida else None,
-                        'horas_trabajadas_hhmm': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_trabajadas) if salida and horas_trabajadas is not None else None,
-                        'horas_extra': horas_extra if salida else None,
-                        'horas_extra_hhmm': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_extra) if salida and horas_extra > 0 else None,
-                        'aprobado': aprobado,
-                        # Nueva información de turno nocturno
-                        'es_turno_nocturno': info_turno['es_nocturno'],
-                        'tipo_turno': info_turno['tipo'],
-                        'descripcion_turno': info_turno['descripcion'],
-                        'diferencia_dias': resultado_turno['diferencia_dias'] if resultado_turno else 0,
-                        'mensaje_turno': resultado_turno['mensaje'] if resultado_turno else None,
-                        # Información de emparejamiento
-                        'emparejado': True if entrada and salida else False,
-                        'mensaje_emparejamiento': mensaje_emparejamiento,
-                        # Información de jornada especial
-                        'es_jornada_especial': es_jornada_especial,
-                        'jornada_especial_info': jornada_especial_info,
-                })
+            # Solo agregar registro si hay entrada o salida (empleado con registros reales)
+            if entrada or salida:
+                registros.append({
+                            'dia': dia_str,
+                            'user_id': usuario.id,
+                            'nombre': usuario.nombre,
+                            'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia and registros_dia[0].estacion_servicio else '',
+                            'entrada': entrada,
+                            'salida': salida,
+                            'horas_trabajadas': horas_trabajadas if salida else None,
+                            'horas_trabajadas_hhmm': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_trabajadas) if salida and horas_trabajadas is not None else None,
+                            'horas_extra': horas_extra if salida else None,
+                            'horas_extra_hhmm': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_extra) if salida and horas_extra > 0 else None,
+                            'aprobado': aprobado,
+                            # Nueva información de turno nocturno
+                            'es_turno_nocturno': info_turno['es_nocturno'],
+                            'tipo_turno': info_turno['tipo'],
+                            'descripcion_turno': info_turno['descripcion'],
+                            'diferencia_dias': resultado_turno['diferencia_dias'] if resultado_turno else 0,
+                            'mensaje_turno': resultado_turno['mensaje'] if resultado_turno else None,
+                            # Información de emparejamiento
+                            'emparejado': True if entrada and salida else False,
+                            'mensaje_emparejamiento': mensaje_emparejamiento,
+                            # Información de jornada especial
+                            'es_jornada_especial': es_jornada_especial,
+                            'jornada_especial_info': jornada_especial_info,
+                    })
 
     # Aplicar filtros de búsqueda adicionales
     search_query = request.GET.get('search', '').strip()
@@ -772,19 +774,21 @@ def exportar_resumen_asistencias_excel(request):
                 elif hasattr(entrada, 'date'):
                     dia_str = entrada.date.strftime('%Y-%m-%d')
 
-            registros.append({
-                'dia': dia_str,
-                'nombre': usuario.nombre,
-                'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia and registros_dia[0].estacion_servicio else '',
-                'entrada': entrada.strftime('%H:%M') if entrada else '',
-                'salida': salida.strftime('%H:%M') if salida and salida != entrada else '',
-                'horas_trabajadas': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_trabajadas) if salida and horas_trabajadas is not None else '',
-                'horas_extra': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_extra) if salida and horas_extra > 0 else '',
-                'tipo_turno': info_turno['descripcion'],
-                'aprobado': 'Aprobado' if aprobado is True else 'Rechazado' if aprobado is False else 'Pendiente' if horas_extra > 0 else '',
-                'es_jornada_especial': es_jornada_especial,
-                'jornada_especial_info': jornada_especial_info,
-            })
+            # Solo agregar registro si hay entrada o salida (empleado con registros reales)
+            if entrada or salida:
+                registros.append({
+                    'dia': dia_str,
+                    'nombre': usuario.nombre,
+                    'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia and registros_dia[0].estacion_servicio else '',
+                    'entrada': entrada.strftime('%H:%M') if entrada else '',
+                    'salida': salida.strftime('%H:%M') if salida and salida != entrada else '',
+                    'horas_trabajadas': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_trabajadas) if salida and horas_trabajadas is not None else '',
+                    'horas_extra': (lambda h: f"{int(h):02d}:{int(round((h-int(h))*60)):02d}")(horas_extra) if salida and horas_extra > 0 else '',
+                    'tipo_turno': info_turno['descripcion'],
+                    'aprobado': 'Aprobado' if aprobado is True else 'Rechazado' if aprobado is False else 'Pendiente' if horas_extra > 0 else '',
+                    'es_jornada_especial': es_jornada_especial,
+                    'jornada_especial_info': jornada_especial_info,
+                })
 
     # Aplicar filtros adicionales
     if search_query:
