@@ -1,6 +1,7 @@
 # API/views.py
 import json
 import traceback
+import os
 from django.shortcuts import render, redirect, get_object_or_404
 from .Biometricos_connections import crear_o_actualizar_usuario_biometrico, eliminar_usuario_biometrico, conectar_dispositivo, importar_datos_dispositivo
 from rest_framework import generics
@@ -24,6 +25,7 @@ from django.utils.dateparse import parse_datetime
 from datetime import datetime
 import traceback
 import json
+from django.conf import settings
 User = get_user_model()
 
 class RegistroAsistenciaListView(generics.ListAPIView):
@@ -160,6 +162,47 @@ def eliminar_usuario(request, user_id):
         print("[DEBUG] Redirigiendo a lista_usuarios")
         return redirect('lista_usuarios')
 
+def crear_log_datos_biometrico(datos_request, ip_cliente, user_agent, timestamp):
+    """
+    Crea un archivo de log con los datos recibidos del dispositivo biométrico
+    """
+    try:
+        # Crear el directorio si no existe
+        log_dir = os.path.join(settings.BASE_DIR, 'registros_biometrico')
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        
+        # Nombre del archivo con timestamp
+        fecha_archivo = datetime.now().strftime('%Y-%m-%d')
+        timestamp_archivo = datetime.now().strftime('%H-%M-%S')
+        nombre_archivo = f"biodata_log_{fecha_archivo}_{timestamp_archivo}.json"
+        ruta_archivo = os.path.join(log_dir, nombre_archivo)
+        
+        # Estructura del log
+        log_data = {
+            "timestamp_recepcion": timestamp,
+            "ip_cliente": ip_cliente,
+            "user_agent": user_agent,
+            "total_registros": len(datos_request) if isinstance(datos_request, list) else 1,
+            "datos_recibidos": datos_request,
+            "metadata": {
+                "version_log": "1.0",
+                "servidor": "BioData API",
+                "endpoint": "/API/recibir_datos_biometrico/"
+            }
+        }
+        
+        # Escribir el archivo de log
+        with open(ruta_archivo, 'w', encoding='utf-8') as f:
+            json.dump(log_data, f, indent=2, ensure_ascii=False, default=str)
+        
+        print(f"[LOG] 📝 Log creado: {nombre_archivo}")
+        return ruta_archivo
+        
+    except Exception as e:
+        print(f"[ERROR] ❌ Error al crear log: {str(e)}")
+        return None
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def recibir_datos_biometrico(request):
@@ -176,6 +219,13 @@ def recibir_datos_biometrico(request):
         print(f"[DEBUG] 📍 PATH: {request.get_full_path()}")
 
         datos = request.data
+        
+        # 📝 CREAR LOG DE LOS DATOS RECIBIDOS
+        log_archivo = crear_log_datos_biometrico(datos, ip_cliente, user_agent, timestamp_recepcion)
+        if log_archivo:
+            print(f"[LOG] ✅ Datos guardados en log: {os.path.basename(log_archivo)}")
+        else:
+            print(f"[LOG] ⚠️ No se pudo crear el archivo de log")
 
         if not isinstance(datos, list):
             print(f"[ERROR] ❌ IP {ip_cliente} envió datos no válidos. Tipo: {type(datos)}")

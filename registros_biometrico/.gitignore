@@ -1,0 +1,7 @@
+# Ignorar todos los archivos de log de datos biométricos
+*.json
+*.log
+*.txt
+
+# Permitir solo este archivo .gitignore
+!.gitignore
