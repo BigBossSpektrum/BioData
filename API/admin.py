@@ -174,8 +174,12 @@ class RegistroAsistenciaAdmin(admin.ModelAdmin):
         """Versión segura del timestamp que maneja errores de timezone"""
         try:
             if obj.timestamp:
-                # Intentar acceder al timestamp como string directo
-                return str(obj.timestamp)
+                from django.utils import timezone
+                # Convertir a timezone local (America/Bogota) si es necesario
+                local_time = timezone.localtime(obj.timestamp)
+                # Formatear con información del timezone
+                formatted_time = local_time.strftime('%Y-%m-%d %H:%M:%S')
+                return f"{formatted_time} (America/Bogota UTC-5)"
             return "Sin fecha"
         except Exception as e:
             # Si hay error, intentar acceder a los datos raw
@@ -186,11 +190,11 @@ class RegistroAsistenciaAdmin(admin.ModelAdmin):
                     cursor.execute("SELECT timestamp FROM API_registroasistencia WHERE id = %s", [obj.id])
                     row = cursor.fetchone()
                     if row:
-                        return f"Raw: {row[0]}"
+                        return f"Raw: {row[0]} (America/Bogota UTC-5)"
                 return "Error en fecha"
             except Exception:
                 return f"Error crítico - ID: {obj.id}"
-    timestamp_safe.short_description = 'Fecha/Hora'
+    timestamp_safe.short_description = 'Fecha/Hora (America/Bogota UTC-5)'
 
     def estacion_servicio_safe(self, obj):
         """Versión segura para mostrar estación"""
@@ -231,18 +235,18 @@ class RegistroAsistenciaAdmin(admin.ModelAdmin):
     tipo_registro_display.short_description = 'Tipo de Registro'
 
     def timestamp_raw(self, obj):
-        """Muestra el timestamp raw de la base de datos"""
+        """Muestra el timestamp raw de la base de datos con timezone info"""
         try:
             from django.db import connection
             with connection.cursor() as cursor:
                 cursor.execute("SELECT timestamp FROM API_registroasistencia WHERE id = %s", [obj.id])
                 row = cursor.fetchone()
                 if row:
-                    return f"Raw DB: {row[0]}"
+                    return f"Raw DB: {row[0]} (America/Bogota UTC-5)"
                 return "No encontrado"
         except Exception as e:
             return f"Error: {str(e)}"
-    timestamp_raw.short_description = 'Timestamp Raw'
+    timestamp_raw.short_description = 'Timestamp Raw (America/Bogota UTC-5)'
 
     actions = ['aprobar_registros', 'rechazar_registros', 'exportar_csv_seguro', 'limpiar_timestamps_invalidos', 'ir_a_diagnostico']
 
