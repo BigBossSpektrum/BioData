@@ -23,6 +23,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.utils.dateparse import parse_datetime
 from datetime import datetime
+from django.utils import timezone as django_timezone
 import traceback
 import json
 from django.conf import settings
@@ -348,6 +349,10 @@ def recibir_datos_biometrico(request):
                 if estacion_nombre:
                     estaciones_stats[estacion_nombre]['errores'] += 1
                 continue
+            
+            # Convertir a timezone-aware si es naive
+            if timestamp.tzinfo is None:
+                timestamp = django_timezone.make_aware(timestamp, django_timezone.get_current_timezone())
 
             try:
                 estacion_obj = EstacionServicio.objects.get(nombre=estacion_nombre)
