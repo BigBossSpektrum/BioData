@@ -368,11 +368,55 @@ def resumen_asistencias_diarias(request):
         for fecha in fechas_ordenadas:
             registros_dia = dias[fecha]
             
-            # NUEVA LÓGICA ESPECIAL PARA TURNOS NOCTURNOS:
-            # Primero verificar si hay entrada nocturna y buscar salida en día siguiente
-            resultado_nocturno = procesar_turno_nocturno_con_siguiente_registro(
-                asistencia_por_usuario_fecha, usuario, fecha
-            )
+            # NUEVA LÓGICA MEJORADA PARA DISTINGUIR TURNOS:
+            # Primero analizar los registros del día para determinar si realmente es un turno nocturno
+            registros_dia.sort(key=lambda r: r.timestamp)
+            
+            # Identificar entrada y salida del mismo día
+            entrada_potencial = None
+            salida_potencial = None
+            
+            # Buscar primer registro como entrada potencial
+            if len(registros_dia) >= 1:
+                entrada_potencial = localtime(registros_dia[0].timestamp)
+            
+            # Buscar último registro como salida potencial (si hay al menos 2 registros)
+            if len(registros_dia) >= 2:
+                salida_potencial = localtime(registros_dia[-1].timestamp)
+            
+            # Verificar si es realmente un turno nocturno válido
+            es_realmente_nocturno = False
+            if entrada_potencial and salida_potencial:
+                # Solo es nocturno si:
+                # 1. Entrada después de las 21:00
+                # 2. Y salida antes de las 08:00 del día siguiente, O
+                # 3. Entrada después de las 21:00 y no hay salida (turno abierto)
+                hora_entrada = entrada_potencial.time()
+                hora_salida = salida_potencial.time()
+                
+                entrada_nocturna = hora_entrada >= time(21, 0)
+                salida_temprana_siguiente_dia = (
+                    salida_potencial.date() > entrada_potencial.date() and 
+                    hora_salida <= time(8, 0)
+                )
+                
+                es_realmente_nocturno = entrada_nocturna and (
+                    salida_temprana_siguiente_dia or 
+                    (salida_potencial.date() == entrada_potencial.date() and hora_salida <= time(6, 0))
+                )
+            elif entrada_potencial:
+                # Solo entrada, verificar si es nocturna
+                hora_entrada = entrada_potencial.time()
+                es_realmente_nocturno = hora_entrada >= time(21, 0)
+            
+            # Procesar según el tipo de turno detectado
+            if es_realmente_nocturno:
+                # Procesar como turno nocturno
+                resultado_nocturno = procesar_turno_nocturno_con_siguiente_registro(
+                    asistencia_por_usuario_fecha, usuario, fecha
+                )
+            else:
+                resultado_nocturno = None
             
             if resultado_nocturno:
                 # Es un turno nocturno válido con posible salida al día siguiente
