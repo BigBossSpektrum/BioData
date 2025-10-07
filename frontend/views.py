@@ -66,12 +66,52 @@ def home_biometrico(request):
                 salidas_ayer_por_usuario[uid] = r
 
         usuarios_finales = []
-        for uid, entrada in entradas_hoy_por_usuario.items():
-            salida_ayer = salidas_ayer_por_usuario.get(uid)
-            entrada_time = entrada.timestamp_local
+        
+        # Primero, buscar registros que puedan ser salidas de turnos nocturnos (registros de hoy temprano)
+        salidas_hoy_temprano = {}
+        for r in registros_hoy:
+            if time(0, 0) <= r.timestamp_local.time() <= time(8, 0):  # Salidas entre 00:00 y 08:00
+                uid = r.user.id
+                if uid not in salidas_hoy_temprano or r.timestamp_local > salidas_hoy_temprano[uid].timestamp_local:
+                    salidas_hoy_temprano[uid] = r
+        
+        # Buscar entradas nocturnas de ayer (21:00-23:59)
+        entradas_ayer_nocturnas = {}
+        for r in registros_ayer:
+            if time(21, 0) <= r.timestamp_local.time() <= time(23, 59):  # Entradas nocturnas
+                uid = r.user.id
+                if uid not in entradas_ayer_nocturnas or r.timestamp_local > entradas_ayer_nocturnas[uid].timestamp_local:
+                    entradas_ayer_nocturnas[uid] = r
 
+        # Procesar entradas regulares de hoy (no nocturnas)
+        for uid, entrada in entradas_hoy_por_usuario.items():
+            entrada_time = entrada.timestamp_local
+            
+            # Verificar si es turno nocturno (entrada de hoy entre 00:00-08:00 con entrada previa de ayer 21:00-23:59)
+            es_nocturno = False
+            entrada_nocturna_ayer = None
+            
+            if (time(0, 0) <= entrada_time.time() <= time(8, 0) and 
+                uid in entradas_ayer_nocturnas):
+                # Es una salida de turno nocturno, no una entrada
+                entrada_nocturna_ayer = entradas_ayer_nocturnas[uid]
+                es_nocturno = True
+            
+            # Determinar tipo de turno
+            if es_nocturno:
+                tipo_turno = 'nocturno'
+                tipo_entrada = 'Entrada nocturna'
+                tipo_salida = 'Salida nocturna'
+            else:
+                tipo_turno_info = detectar_tipo_turno_detallado(entrada_time)
+                tipo_turno = tipo_turno_info.get('tipo', 'diurno')
+                tipo_entrada = 'Entrada'
+                tipo_salida = 'Salida'
+
+            # Para turnos diurnos, buscar salida previa
             salida_valida = None
-            if salida_ayer:
+            if not es_nocturno and uid in salidas_ayer_por_usuario:
+                salida_ayer = salidas_ayer_por_usuario[uid]
                 salida_time = salida_ayer.timestamp_local
                 delta = entrada_time - salida_time
                 if timedelta(hours=0) <= delta <= timedelta(hours=8):
@@ -79,10 +119,14 @@ def home_biometrico(request):
 
             usuarios_finales.append({
                 'usuario': entrada.user,
-                'entrada': entrada,
-                'salida_ayer': salida_valida,  # Puede ser None
+                'entrada': entrada_nocturna_ayer if es_nocturno else entrada,  # Para nocturno: entrada de ayer
+                'salida': entrada if es_nocturno else salida_valida,  # Para nocturno: salida de hoy
+                'salida_ayer': salida_valida if not es_nocturno else None,  # Solo para diurnos
                 'estacion': entrada.estacion_servicio.nombre if entrada.estacion_servicio else None,
-
+                'es_nocturno': es_nocturno,
+                'tipo_turno': tipo_turno,
+                'tipo_entrada': tipo_entrada,
+                'tipo_salida': tipo_salida,
             })
 
         usuarios_finales.sort(key=lambda x: x['usuario'].nombre)
