@@ -323,6 +323,81 @@ def calcular_horas_trabajadas():
 
     return resumen_horas
 
+def procesar_registro_unico(registros_dia, usuario, fecha):
+    """
+    Procesa días con un solo registro, independientemente del tipo
+    """
+    if len(registros_dia) == 1:
+        registro_unico = registros_dia[0]
+        timestamp_local = localtime(registro_unico.timestamp)
+        
+        entrada = None
+        salida = None
+        mensaje_emparejamiento = ""
+        
+        # Determinar si es entrada o salida basado en el tipo del registro
+        if hasattr(registro_unico, 'tipo'):
+            if registro_unico.tipo == 'entrada':
+                entrada = timestamp_local
+                mensaje_emparejamiento = "Sin salida registrada"
+            else:  # tipo == 'salida'
+                salida = timestamp_local
+                mensaje_emparejamiento = "Sin entrada registrada (solo salida)"
+        else:
+            # Si no hay tipo definido, usar la lógica de detección por hora
+            hora = timestamp_local.time()
+            if usuario.turno:
+                inicio = usuario.turno.hora_inicio
+                fin = usuario.turno.hora_fin
+                
+                # Turno nocturno (ej: 22:00 a 06:00 del día siguiente)
+                if inicio > fin:
+                    if hora >= inicio or hora <= fin:
+                        # Determinar si es entrada o salida por proximidad
+                        if hora >= inicio:
+                            entrada = timestamp_local
+                            mensaje_emparejamiento = "Sin salida registrada"
+                        else:
+                            salida = timestamp_local
+                            mensaje_emparejamiento = "Sin entrada registrada (solo salida)"
+                    else:
+                        entrada = timestamp_local
+                        mensaje_emparejamiento = "Registro fuera de horario laboral"
+                else:
+                    # Turno normal - usar punto medio para determinar entrada/salida
+                    medio = (
+                        datetime.combine(datetime.today(), inicio) +
+                        (datetime.combine(datetime.today(), fin) - datetime.combine(datetime.today(), inicio)) / 2
+                    ).time()
+                    
+                    if hora <= medio:
+                        entrada = timestamp_local
+                        mensaje_emparejamiento = "Sin salida registrada"
+                    else:
+                        salida = timestamp_local
+                        mensaje_emparejamiento = "Sin entrada registrada (solo salida)"
+            else:
+                # Sin turno asignado, asumir entrada
+                entrada = timestamp_local
+                mensaje_emparejamiento = "Sin turno asignado - Sin salida registrada"
+        
+        # Detectar tipo de turno con la información disponible
+        info_turno = detectar_tipo_turno_detallado(entrada, salida)
+        
+        return {
+            'entrada': entrada,
+            'salida': salida,
+            'horas_trabajadas': 0.0,
+            'horas_extra': 0.0,
+            'tipo_turno': info_turno.get('tipo', 'No definido'),
+            'turno_detectado': info_turno.get('turno_detectado', False),
+            'mensaje_emparejamiento': mensaje_emparejamiento,
+            'es_jornada_especial': False,
+            'aprobado': '-',
+            'info_turno': info_turno
+        }
+    return None
+
 @login_required
 def resumen_asistencias_diarias(request):
     from django.utils import timezone
@@ -368,7 +443,54 @@ def resumen_asistencias_diarias(request):
         for fecha in fechas_ordenadas:
             registros_dia = dias[fecha]
             
-            # NUEVA LÓGICA MEJORADA PARA DISTINGUIR TURNOS:
+            # NUEVA LÓGICA: Manejar registros únicos primero
+            if len(registros_dia) == 1:
+                resultado_unico = procesar_registro_unico(registros_dia, usuario, fecha)
+                if resultado_unico:
+                    # Verificar si hay jornada especial activa para esta fecha
+                    jornada_especial = JornadaEspecial.objects.filter(
+                        empleado=usuario,
+                        activa=True,
+                        fecha_inicio__lte=fecha,
+                        fecha_fin__gte=fecha
+                    ).first()
+                    
+                    es_jornada_especial = bool(jornada_especial)
+                    jornada_especial_info = None
+                    if jornada_especial:
+                        jornada_especial_info = {
+                            'id': jornada_especial.id,
+                            'fecha_inicio': jornada_especial.fecha_inicio,
+                            'fecha_fin': jornada_especial.fecha_fin,
+                            'horas_programadas': jornada_especial.horas_programadas,
+                            'observaciones': jornada_especial.observaciones
+                        }
+                    
+                    registros.append({
+                        'dia': fecha.strftime('%Y-%m-%d'),
+                        'user_id': usuario.id,
+                        'nombre': usuario.nombre,
+                        'estacion': registros_dia[0].estacion_servicio.nombre if registros_dia[0].estacion_servicio else '',
+                        'entrada': resultado_unico['entrada'],
+                        'salida': resultado_unico['salida'],
+                        'horas_trabajadas': resultado_unico['horas_trabajadas'],
+                        'horas_trabajadas_hhmm': None,
+                        'horas_extra': resultado_unico['horas_extra'],
+                        'horas_extra_hhmm': None,
+                        'aprobado': resultado_unico['aprobado'],
+                        'es_turno_nocturno': resultado_unico['info_turno'].get('es_nocturno', False),
+                        'tipo_turno': resultado_unico['tipo_turno'],
+                        'descripcion_turno': resultado_unico['info_turno'].get('descripcion', 'Registro único'),
+                        'diferencia_dias': 0,
+                        'mensaje_turno': resultado_unico['mensaje_emparejamiento'],
+                        'emparejado': False,
+                        'mensaje_emparejamiento': resultado_unico['mensaje_emparejamiento'],
+                        'es_jornada_especial': es_jornada_especial,
+                        'jornada_especial_info': jornada_especial_info,
+                    })
+                continue  # Pasar al siguiente día
+            
+            # LÓGICA EXISTENTE PARA MÚLTIPLES REGISTROS:
             # Primero analizar los registros del día para determinar si realmente es un turno nocturno
             registros_dia.sort(key=lambda r: r.timestamp)
             
